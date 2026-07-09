@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+.next/
+out/
+build/
+
+# Python environment and caches
+__pycache__/
+*.pyc
+venv/
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
