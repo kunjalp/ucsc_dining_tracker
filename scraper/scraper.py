@@ -202,6 +202,5 @@ def main():
         finally:
             browser.close()
 
-# ADDED: This block is required to actually kick off execution when running `python scraper.py`
 if __name__ == "__main__":
     main()
