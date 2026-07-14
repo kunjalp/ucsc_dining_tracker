@@ -403,11 +403,8 @@ def main():
         finally:
             browser.close()
 
-<<<<<<< Updated upstream
-=======
     print(f"\n💪 Done. {grand_total} item-offerings written across all halls/meals for {scrape_date}.")
 
 
->>>>>>> Stashed changes
 if __name__ == "__main__":
     main()
