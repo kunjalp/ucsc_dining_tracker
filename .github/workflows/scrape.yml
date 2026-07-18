@@ -31,9 +31,9 @@ jobs:
           pip freeze
           echo "----- playwright install -----"
           playwright install chromium
-          
+
       - name: Run Scraper
         run: python scraper.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}E_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
