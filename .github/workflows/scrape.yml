@@ -21,12 +21,17 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        working-directory: ./scraper
         run: |
+          echo "----- requirements.txt content -----"
+          cat -A requirements.txt
+          echo "----- pip install -----"
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          echo "----- installed packages -----"
+          pip freeze
+          echo "----- playwright install -----"
           playwright install chromium
-
+          
       - name: Run Scraper
         run: python scraper.py
         env:
