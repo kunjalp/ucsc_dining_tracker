@@ -168,6 +168,7 @@ export default function DashboardPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [calendarMacro, setCalendarMacro] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories')
   const [historicalLogs, setHistoricalLogs] = useState<MealLog[]>([])
+  const [calendarViewDate, setCalendarViewDate] = useState(new Date())
 
   // Daily logs and totals tracking state
   const [loggedMeals, setLoggedMeals] = useState<MealLog[]>([])
@@ -419,13 +420,26 @@ export default function DashboardPage() {
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
   }
 
-  // Generate calendar grid dates
+  // Navigate the calendar view to the previous month
+  const goToPreviousMonth = () => {
+    setCalendarViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+  }
+
+  // Navigate the calendar view to the next month
+  const goToNextMonth = () => {
+    setCalendarViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+  }
+
+  // Whether the calendar is currently showing the real current month (used to disable "Next")
+  const isCurrentMonth =
+    calendarViewDate.getFullYear() === new Date().getFullYear() &&
+    calendarViewDate.getMonth() === new Date().getMonth()
+
+  // Generate calendar grid dates for whichever month is currently being viewed
   const getCalendarDays = () => {
-    const laDateString = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Los_Angeles'
-    })
-    
-    const [year, month] = laDateString.split('-').map(Number)
+    const year = calendarViewDate.getFullYear()
+    const month = calendarViewDate.getMonth() + 1 // keep 1-indexed to match the string-building math below
+
     const firstDay = new Date(year, month - 1, 1)
     const startingDayOfWeek = firstDay.getDay()
     const totalDays = new Date(year, month, 0).getDate()
@@ -811,9 +825,35 @@ export default function DashboardPage() {
 
                   {/* Monthly Calendar Grid Display */}
                   <div>
-                    <p className="text-sm font-black text-slate-800 mb-4 uppercase tracking-wider">
-                      {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                    </p>
+                    {/* Month label + Previous/Next navigation */}
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        type="button"
+                        onClick={goToPreviousMonth}
+                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                        aria-label="Previous month"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                        </svg>
+                      </button>
+
+                      <p className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                        {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={goToNextMonth}
+                        disabled={isCurrentMonth}
+                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        aria-label="Next month"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </button>
+                    </div>
 
                     {/* Day labels header */}
                     <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-slate-400">
