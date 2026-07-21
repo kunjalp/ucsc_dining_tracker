@@ -1,8 +1,21 @@
 'use client'
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
+import {
+  GraduationCap,
+  Bell,
+  History,
+  Search,
+  UtensilsCrossed,
+  LineChart,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Trash2,
+} from 'lucide-react'
 
 interface FoodItem {
   recipe_id: string
@@ -53,28 +66,27 @@ const DINING_HALLS = [
 interface ProgressRingProps {
   value: number
   goal: number
-  colorClass: string
-  trailColorClass: string
-  textColorClass: string
+  strokeColor: string
+  labelColor: string
   label: string
   unit: string
 }
 
-function ProgressRing({ value, goal, colorClass, trailColorClass, textColorClass, label, unit }: ProgressRingProps) {
+function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: ProgressRingProps) {
   const radius = 50
   const stroke = 10
   const normalizedRadius = radius - stroke * 2
   const circumference = normalizedRadius * 2 * Math.PI
-  
+
   const percentage = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+    <div className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/10">
       <div className="relative flex items-center justify-center">
         <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
           <circle
-            className={trailColorClass}
+            stroke="rgba(255,255,255,0.14)"
             strokeWidth={stroke}
             fill="transparent"
             r={normalizedRadius}
@@ -82,7 +94,7 @@ function ProgressRing({ value, goal, colorClass, trailColorClass, textColorClass
             cy={radius}
           />
           <circle
-            className={`${colorClass} transition-all duration-500 ease-out`}
+            stroke={strokeColor}
             strokeWidth={stroke}
             strokeDasharray={circumference + ' ' + circumference}
             style={{ strokeDashoffset }}
@@ -91,19 +103,20 @@ function ProgressRing({ value, goal, colorClass, trailColorClass, textColorClass
             r={normalizedRadius}
             cx={radius}
             cy={radius}
+            className="transition-all duration-500 ease-out"
           />
         </svg>
-        
+
         <div className="absolute text-center">
-          <span className="text-lg font-black tracking-tight text-slate-800">
+          <span className="font-['JetBrains_Mono'] text-lg font-black tracking-tight text-[#dae2fd]">
             {goal > 0 ? Math.round((value / goal) * 100) : 0}%
           </span>
         </div>
       </div>
 
       <div className="text-center mt-3">
-        <p className={`text-sm font-black ${textColorClass}`}>{label}</p>
-        <p className="text-xs text-slate-400 font-semibold mt-0.5">
+        <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
+        <p className="font-['JetBrains_Mono'] text-xs text-[#c2c6d0] font-semibold mt-0.5">
           {Math.round(value)} / {goal} {unit}
         </p>
       </div>
@@ -112,7 +125,7 @@ function ProgressRing({ value, goal, colorClass, trailColorClass, textColorClass
 }
 
 // Mini-Ring Component for the Calendar cells
-function MiniProgressRing({ value, goal, colorClass }: { value: number; goal: number; colorClass: string }) {
+function MiniProgressRing({ value, goal, strokeColor }: { value: number; goal: number; strokeColor: string }) {
   const radius = 16
   const stroke = 4
   const normalizedRadius = radius - stroke
@@ -123,7 +136,7 @@ function MiniProgressRing({ value, goal, colorClass }: { value: number; goal: nu
   return (
     <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
       <circle
-        className="stroke-slate-100"
+        stroke="rgba(255,255,255,0.1)"
         strokeWidth={stroke}
         fill="transparent"
         r={normalizedRadius}
@@ -131,7 +144,7 @@ function MiniProgressRing({ value, goal, colorClass }: { value: number; goal: nu
         cy={radius}
       />
       <circle
-        className={`${colorClass} transition-all duration-300`}
+        stroke={strokeColor}
         strokeWidth={stroke}
         strokeDasharray={circumference + ' ' + circumference}
         style={{ strokeDashoffset }}
@@ -140,6 +153,7 @@ function MiniProgressRing({ value, goal, colorClass }: { value: number; goal: nu
         r={normalizedRadius}
         cx={radius}
         cy={radius}
+        className="transition-all duration-300"
       />
     </svg>
   )
@@ -187,7 +201,7 @@ export default function DashboardPage() {
     const savedProtein = localStorage.getItem('ucsc_goal_protein')
     const savedCarbs = localStorage.getItem('ucsc_goal_carbs')
     const savedFat = localStorage.getItem('ucsc_goal_fat')
-    
+
     if (savedCals) setGoalCalories(Number(savedCals))
     if (savedProtein) setGoalProtein(Number(savedProtein))
     if (savedCarbs) setGoalCarbs(Number(savedCarbs))
@@ -263,8 +277,8 @@ export default function DashboardPage() {
       if (!food) return false
 
       const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesStation = 
-        activeStationFilters.length === 0 || 
+      const matchesStation =
+        activeStationFilters.length === 0 ||
         activeStationFilters.includes(entry.station)
 
       return matchesSearch && matchesStation
@@ -274,7 +288,7 @@ export default function DashboardPage() {
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
     const groups: { [station: string]: MenuEntry[] } = {}
-    
+
     filteredMenu.forEach((entry) => {
       const stationKey = entry.station || '-- General --'
       if (!groups[stationKey]) {
@@ -282,7 +296,7 @@ export default function DashboardPage() {
       }
       groups[stationKey].push(entry)
     })
-    
+
     return groups
   }, [filteredMenu])
 
@@ -297,7 +311,7 @@ export default function DashboardPage() {
     const todayStr = new Date().toLocaleDateString('en-CA', {
       timeZone: 'America/Los_Angeles'
     })
-    
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
@@ -464,50 +478,113 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        
-        {/* HEADER & LIVE CALORIE METRICS BANNER */}
-        <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50/50 p-4 rounded-xl text-center">
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Calories</p>
-            <p className="text-2xl font-black mt-1 text-blue-950">{Math.round(totals.calories)} kcal</p>
+    <div
+      className="min-h-screen bg-[#0b1326] text-[#dae2fd] pb-28 relative overflow-x-hidden"
+      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+    >
+      {/* Ambient background glow */}
+      <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
+
+      {/* TopAppBar */}
+      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-5 py-2.5 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+        <div className="flex items-center gap-4">
+          <GraduationCap className="text-[#ffe6ab]" size={30} strokeWidth={2} />
+          <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight">UCSC Dining Tracker</span>
+        </div>
+
+        {/* Desktop tab nav (reuses real Log / Progress state) */}
+        <nav className="hidden md:flex items-center gap-8">
+          <button
+            onClick={() => setActiveTab('log')}
+            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${
+              activeTab === 'log'
+                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+            }`}
+          >
+            Log Menu
+          </button>
+          <button
+            onClick={() => setActiveTab('progress')}
+            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${
+              activeTab === 'progress'
+                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+            }`}
+          >
+            Progress
+          </button>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => alert('Notifications are coming soon!')}
+            className="p-2 text-[#ffe6ab] hover:bg-white/10 transition-colors rounded-full active:scale-95"
+          >
+            <Bell size={20} />
+          </button>
+          <button
+            onClick={() => setShowCalendar((v) => !v)}
+            className="p-2 text-[#ffe6ab] hover:bg-white/10 transition-colors rounded-full active:scale-95"
+          >
+            <History size={20} />
+          </button>
+          <button
+            onClick={() => setActiveTab('progress')}
+            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95"
+          >
+            <User size={18} className="text-[#c2c6d0]" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="pt-[92px] px-5 max-w-[1200px] mx-auto pb-8">
+
+        {/* Live macro totals banner */}
+        <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+          <div className="bg-white/5 p-3 rounded-xl text-center">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#d8b61c] uppercase tracking-wider">Calories</p>
+            <p className="text-xl font-black mt-1">{Math.round(totals.calories)} kcal</p>
           </div>
-          <div className="bg-emerald-50/50 p-4 rounded-xl text-center">
-            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Protein</p>
-            <p className="text-2xl font-black mt-1 text-emerald-950">{Math.round(totals.protein)}g</p>
+          <div className="bg-white/5 p-3 rounded-xl text-center">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#5bb448] uppercase tracking-wider">Protein</p>
+            <p className="text-xl font-black mt-1">{Math.round(totals.protein)}g</p>
           </div>
-          <div className="bg-amber-50/50 p-4 rounded-xl text-center">
-            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Carbs</p>
-            <p className="text-2xl font-black mt-1 text-amber-950">{Math.round(totals.carbs)}g</p>
+          <div className="bg-white/5 p-3 rounded-xl text-center">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#bd5db8] uppercase tracking-wider">Carbs</p>
+            <p className="text-xl font-black mt-1">{Math.round(totals.carbs)}g</p>
           </div>
-          <div className="bg-rose-50/50 p-4 rounded-xl text-center">
-            <p className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Fat</p>
-            <p className="text-2xl font-black mt-1 text-rose-950">{Math.round(totals.fat)}g</p>
+          <div className="bg-white/5 p-3 rounded-xl text-center">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#fb7185] uppercase tracking-wider">Fat</p>
+            <p className="text-xl font-black mt-1">{Math.round(totals.fat)}g</p>
           </div>
         </div>
 
-        {/* TAB SWITCHER ROUTER RENDER CONTENT */}
         {activeTab === 'log' ? (
           <div className="space-y-6">
-            {/* MENU CONTROLS / SELECTION */}
-            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6 space-y-4">
-              <h2 className="text-xl font-bold tracking-tight">Select Dining Location</h2>
-              <div className="flex flex-col md:flex-row gap-4">
-                <select 
-                  value={selectedHall} 
+            {/* Hall + meal selector */}
+            <div className="rounded-2xl p-5 space-y-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+              <h2 className="text-lg font-bold tracking-tight">Select Dining Location</h2>
+              <div className="flex flex-col md:flex-row gap-3">
+                <select
+                  value={selectedHall}
                   onChange={(e) => setSelectedHall(e.target.value)}
-                  className="flex-1 rounded-xl border border-slate-200 p-3 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="flex-1 rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 >
                   {DINING_HALLS.map(hall => <option key={hall} value={hall}>{hall}</option>)}
                 </select>
 
-                <div className="flex bg-slate-100 p-1.5 rounded-xl gap-1">
+                <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                   {['Breakfast', 'Lunch', 'Dinner'].map(meal => (
                     <button
                       key={meal}
                       onClick={() => setSelectedMeal(meal)}
-                      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${selectedMeal === meal ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+                        selectedMeal === meal
+                          ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
+                          : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                      }`}
                     >
                       {meal}
                     </button>
@@ -515,91 +592,83 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* DYNAMIC UCSC STATION FILTERING PANEL */}
-              <div className="pt-4 border-t border-slate-100 space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Search & Station Filters</p>
-                <div className="flex flex-col gap-3">
-                  {/* Search Input Bar */}
-                  <div className="relative w-full">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search today's items..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 bg-white text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder-slate-400"
-                    />
-                  </div>
-
-                  {/* UCSC Station Toggle Pills */}
-                  {availableStations.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {availableStations.map((station) => {
-                        const isActive = activeStationFilters.includes(station)
-                        return (
-                          <button
-                            key={station}
-                            type="button"
-                            onClick={() => handleToggleStationFilter(station)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
-                              isActive
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
-                            }`}
-                          >
-                            {cleanStationName(station)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+              {/* Search + station filter pills */}
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
+                <div className="relative w-full">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search today's items..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
+                  />
                 </div>
+
+                {availableStations.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {availableStations.map((station) => {
+                      const isActive = activeStationFilters.includes(station)
+                      return (
+                        <button
+                          key={station}
+                          type="button"
+                          onClick={() => handleToggleStationFilter(station)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                            isActive
+                              ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
+                              : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                          }`}
+                        >
+                          {cleanStationName(station)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* DINING HALL ITEMS RENDER CONTAINER */}
-            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6">
-              <h2 className="text-xl font-bold mb-6 tracking-tight">Today's Menu ({selectedMeal})</h2>
+            {/* Menu items */}
+            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+              <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
 
               {loading ? (
-                <div className="py-12 text-center text-slate-400 font-medium">Loading items...</div>
+                <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
               ) : Object.keys(groupedMenu).length === 0 ? (
-                <div className="py-12 text-center text-slate-400 font-medium">
-                  {menu.length === 0 
-                    ? "No items found for this meal period today." 
+                <div className="py-12 text-center text-[#c2c6d0] font-medium">
+                  {menu.length === 0
+                    ? "No items found for this meal period today."
                     : "No menu items match your search or station filters."}
                 </div>
               ) : (
                 <div className="space-y-8">
-                  {/* Render grouped items by Station Headers */}
                   {Object.entries(groupedMenu).map(([stationRaw, entries]) => (
                     <div key={stationRaw} className="space-y-3">
-                      
-                      {/* Station Header Pill (Matching UCSC Layout) */}
                       <div className="flex items-center">
-                        <span className="text-xs font-black tracking-wider text-blue-600 uppercase bg-blue-50/70 border border-blue-100/50 px-3 py-1 rounded-lg">
+                        <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#a1c9ff] uppercase bg-[#003c6c]/40 border border-[#a1c9ff]/20 px-3 py-1 rounded-lg">
                           {cleanStationName(stationRaw)}
                         </span>
-                        <div className="flex-1 h-[1px] bg-slate-100 ml-4"></div>
+                        <div className="flex-1 h-px bg-white/10 ml-4" />
                       </div>
 
-                      <div className="divide-y divide-slate-100 bg-white">
+                      <div className="divide-y divide-white/10">
                         {entries.map((entry) => {
                           const food = entry.food_items
                           if (!food) return null
                           return (
-                            <div key={food.recipe_id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <article
+                              key={food.recipe_id}
+                              className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
+                            >
                               <div>
-                                <h4 className="font-bold text-slate-900">{food.name}</h4>
-                                <p className="text-xs text-slate-400 mt-0.5">
+                                <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
+                                <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                                   Serving Size: {food.portion || '1 serving'}
                                 </p>
-                                <div className="flex gap-3 mt-1.5 text-xs font-semibold text-slate-500">
-                                  <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
+                                <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
+                                  <span className="text-[#a1c9ff] bg-[#a1c9ff]/10 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
                                   <span>P: {food.protein}g</span>
                                   <span>C: {food.carbs}g</span>
                                   <span>F: {food.fat}g</span>
@@ -607,7 +676,7 @@ export default function DashboardPage() {
                               </div>
 
                               <div className="flex items-center gap-3">
-                                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200/50">
+                                <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
                                   {[
                                     { label: '1/4x', value: 0.25 },
                                     { label: '1/2x', value: 0.5 },
@@ -623,9 +692,9 @@ export default function DashboardPage() {
                                         type="button"
                                         onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
                                         className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                          isSelected 
-                                            ? 'bg-white text-blue-600 shadow-sm' 
-                                            : 'text-slate-500 hover:text-slate-800'
+                                          isSelected
+                                            ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                            : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                                         }`}
                                       >
                                         {opt.label}
@@ -635,13 +704,12 @@ export default function DashboardPage() {
                                 </div>
                                 <button
                                   onClick={() => handleLogFood(food.recipe_id)}
-                                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                                  className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
                                 >
                                   Log
                                 </button>
                               </div>
-
-                            </div>
+                            </article>
                           )
                         })}
                       </div>
@@ -652,50 +720,43 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          /* PROGRESS & HISTORY VIEW TAB SECTION */
+          /* PROGRESS TAB */
           <div className="space-y-6">
-            
-            {/* PROGRESS BREAKDOWN CONTAINER */}
-            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6">
-              
+            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                  <h2 className="text-lg font-bold tracking-tight">
                     {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                     {showCalendar ? 'Toggle metrics to analyze historical streaks' : 'Review live goals achieved today'}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  {/* Calendar Toggle Button */}
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
                     className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${
-                      showCalendar 
-                        ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                      showCalendar
+                        ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
+                        : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                     }`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                    </svg>
-                    {showCalendar ? 'View Today\'s Rings' : 'History Calendar'}
+                    <Calendar size={14} />
+                    {showCalendar ? "View Today's Rings" : 'History Calendar'}
                   </button>
 
                   <button
                     onClick={() => setIsEditingGoals(!isEditingGoals)}
-                    className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition"
+                    className="text-xs font-bold text-[#c2c6d0] bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition border border-white/10"
                   >
                     {isEditingGoals ? 'Cancel' : 'Set Targets'}
                   </button>
                 </div>
               </div>
 
-              {/* Editable Setup Input Widget Panel */}
               {isEditingGoals && (
-                <form 
+                <form
                   onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
@@ -706,140 +767,97 @@ export default function DashboardPage() {
                       Number(formData.get('fat') || goalFat)
                     );
                   }}
-                  className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end animate-fadeIn"
+                  className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end"
                 >
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Calories (kcal)</label>
-                    <input 
-                      type="number" 
-                      name="calories" 
+                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Calories (kcal)</label>
+                    <input
+                      type="number"
+                      name="calories"
                       defaultValue={goalCalories}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none" 
+                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Protein (g)</label>
-                    <input 
-                      type="number" 
-                      name="protein" 
+                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Protein (g)</label>
+                    <input
+                      type="number"
+                      name="protein"
                       defaultValue={goalProtein}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none" 
+                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Carbs (g)</label>
-                    <input 
-                      type="number" 
-                      name="carbs" 
+                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Carbs (g)</label>
+                    <input
+                      type="number"
+                      name="carbs"
                       defaultValue={goalCarbs}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none" 
+                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Fat (g)</label>
-                    <input 
-                      type="number" 
-                      name="fat" 
+                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Fat (g)</label>
+                    <input
+                      type="number"
+                      name="fat"
                       defaultValue={goalFat}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none" 
+                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
                     />
                   </div>
-                  <button 
+                  <button
                     type="submit"
-                    className="col-span-2 sm:col-span-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 px-4 rounded-lg transition"
+                    className="col-span-2 sm:col-span-4 w-full bg-[#d6b93a] hover:brightness-105 text-[#6b5300] font-bold text-xs py-2 px-4 rounded-lg transition"
                   >
                     Save Target Goals
                   </button>
                 </form>
               )}
 
-              {/* DYNAMIC VIEW SWAPPER */}
               {!showCalendar ? (
-                /* VIEW A: Standard Daily Rings */
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <ProgressRing
-                    value={totals.calories}
-                    goal={goalCalories}
-                    colorClass="stroke-blue-600"
-                    trailColorClass="stroke-slate-100"
-                    textColorClass="text-blue-600"
-                    label="Calories"
-                    unit="kcal"
-                  />
-
-                  <ProgressRing
-                    value={totals.protein}
-                    goal={goalProtein}
-                    colorClass="stroke-emerald-600"
-                    trailColorClass="stroke-slate-100"
-                    textColorClass="text-emerald-600"
-                    label="Protein"
-                    unit="g"
-                  />
-
-                  <ProgressRing
-                    value={totals.carbs}
-                    goal={goalCarbs}
-                    colorClass="stroke-amber-500"
-                    trailColorClass="stroke-slate-100"
-                    textColorClass="text-amber-500"
-                    label="Carbs"
-                    unit="g"
-                  />
-
-                  <ProgressRing
-                    value={totals.fat}
-                    goal={goalFat}
-                    colorClass="stroke-rose-500"
-                    trailColorClass="stroke-slate-100"
-                    textColorClass="text-rose-500"
-                    label="Fat"
-                    unit="g"
-                  />
+                  <ProgressRing value={totals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
+                  <ProgressRing value={totals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
+                  <ProgressRing value={totals.carbs} goal={goalCarbs} strokeColor="#bd5db8" labelColor="#bd5db8" label="Carbs" unit="g" />
+                  <ProgressRing value={totals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
                 </div>
               ) : (
-                /* VIEW B: Interactive Calendar View with custom filters */
-                <div className="space-y-6 animate-fadeIn">
-                  
-                  {/* Expanded Macro Selector (All 4 categories) */}
-                  <div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 overflow-x-auto">
+                <div className="space-y-6">
+                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto">
                     {[
-                      { key: 'calories', label: 'Calories', activeClass: 'bg-blue-600 text-white shadow-sm' },
-                      { key: 'protein', label: 'Protein', activeClass: 'bg-emerald-600 text-white shadow-sm' },
-                      { key: 'carbs', label: 'Carbs', activeClass: 'bg-amber-500 text-white shadow-sm' },
-                      { key: 'fat', label: 'Fat', activeClass: 'bg-rose-500 text-white shadow-sm' }
+                      { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
+                      { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
+                      { key: 'carbs', label: 'Carbs', color: '#bd5db8', text: '#612f5e' },
+                      { key: 'fat', label: 'Fat', color: '#fb7185', text: '#4c0519' }
                     ].map((macro) => (
                       <button
                         key={macro.key}
                         type="button"
                         onClick={() => setCalendarMacro(macro.key as any)}
-                        className={`flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all whitespace-nowrap ${
-                          calendarMacro === macro.key 
-                            ? macro.activeClass 
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all whitespace-nowrap"
+                        style={
+                          calendarMacro === macro.key
+                            ? { backgroundColor: macro.color, color: macro.text }
+                            : { color: '#c2c6d0' }
+                        }
                       >
                         {macro.label}
                       </button>
                     ))}
                   </div>
 
-                  {/* Monthly Calendar Grid Display */}
                   <div>
-                    {/* Month label + Previous/Next navigation */}
                     <div className="flex items-center justify-between mb-4">
                       <button
                         type="button"
                         onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition"
                         aria-label="Previous month"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                        </svg>
+                        <ChevronLeft size={16} strokeWidth={2.5} />
                       </button>
 
-                      <p className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                      <p className="font-['JetBrains_Mono'] text-sm font-black text-[#dae2fd] uppercase tracking-wider">
                         {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                       </p>
 
@@ -847,74 +865,48 @@ export default function DashboardPage() {
                         type="button"
                         onClick={goToNextMonth}
                         disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label="Next month"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
+                        <ChevronRight size={16} strokeWidth={2.5} />
                       </button>
                     </div>
 
-                    {/* Day labels header */}
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-slate-400">
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center font-['JetBrains_Mono'] text-xs font-extrabold text-[#c2c6d0]/70">
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
-                    {/* Dates Cells with Mini-Rings inside */}
                     <div className="grid grid-cols-7 gap-2">
                       {getCalendarDays().map((cell, index) => {
                         if (!cell.dayNum || !cell.dateString) {
-                          return <div key={`empty-${index}`} className="aspect-square bg-slate-100/50 rounded-xl"></div>
+                          return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
                         }
 
-                        // Calculate sums for this date cell dynamically
                         const dayStats = getHistoricalSumForDate(cell.dateString)
-                        
-                        // Select target/actual details dynamically depending on macro toggle
+
                         let actualVal = 0
                         let targetedGoal = 1
-                        let dynamicColor = 'stroke-blue-600'
+                        let ringColor = '#a1c9ff'
                         let unit = 'kcal'
 
                         if (calendarMacro === 'calories') {
-                          actualVal = dayStats.calories
-                          targetedGoal = goalCalories
-                          dynamicColor = 'stroke-blue-600'
-                          unit = 'kcal'
+                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = '#d8b61c'; unit = 'kcal'
                         } else if (calendarMacro === 'protein') {
-                          actualVal = dayStats.protein
-                          targetedGoal = goalProtein
-                          dynamicColor = 'stroke-emerald-600'
-                          unit = 'g'
+                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = '#5bb448'; unit = 'g'
                         } else if (calendarMacro === 'carbs') {
-                          actualVal = dayStats.carbs
-                          targetedGoal = goalCarbs
-                          dynamicColor = 'stroke-amber-500'
-                          unit = 'g'
+                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#bd5db8'; unit = 'g'
                         } else if (calendarMacro === 'fat') {
-                          actualVal = dayStats.fat
-                          targetedGoal = goalFat
-                          dynamicColor = 'stroke-rose-500'
-                          unit = 'g'
+                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = '#fb7185'; unit = 'g'
                         }
 
                         return (
-                          <div 
-                            key={cell.dateString} 
-                            className="aspect-square bg-slate-50 border border-slate-100 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-slate-100/50 transition relative group"
+                          <div
+                            key={cell.dateString}
+                            className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
                           >
-                            <span className="text-xs font-black text-slate-500">{cell.dayNum}</span>
-                            
-                            {/* SVG Mini Ring */}
-                            <MiniProgressRing 
-                              value={actualVal} 
-                              goal={targetedGoal} 
-                              colorClass={dynamicColor} 
-                            />
-
-                            {/* Tooltip on hovering cell */}
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md">
+                            <span className="text-xs font-black text-[#c2c6d0]">{cell.dayNum}</span>
+                            <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
                               {Math.round(actualVal)} / {targetedGoal} {unit}
                             </div>
                           </div>
@@ -926,24 +918,24 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* MEAL HISTORY LOGS ARCHIVE LIST */}
-            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6">
-              <h2 className="text-xl font-bold tracking-tight mb-4">Everything Logged Today</h2>
+            {/* Meal history */}
+            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+              <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
               {loggedMeals.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 font-medium">
+                <div className="py-12 text-center text-[#c2c6d0] font-medium">
                   You haven't logged any foods today yet. Go back to the Log tab to add meals!
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-white/10">
                   {loggedMeals.map((log) => (
                     <div key={log.id} className="py-4 flex items-center justify-between gap-4">
                       <div>
-                        <h4 className="font-bold text-slate-900">{log.food_items?.name}</h4>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
+                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                           {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings}x serving(s)
                         </p>
-                        <div className="flex gap-2 mt-1 text-xs text-slate-500">
+                        <div className="flex gap-2 mt-1 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]">
                           <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
                           <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
                           <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
@@ -953,8 +945,9 @@ export default function DashboardPage() {
 
                       <button
                         onClick={() => handleDeleteLog(log.id)}
-                        className="text-xs font-semibold text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition active:scale-95"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 px-3 py-1.5 rounded-lg transition active:scale-95"
                       >
+                        <Trash2 size={12} />
                         Delete
                       </button>
                     </div>
@@ -964,40 +957,30 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* STICKY BOTTOM FIXED DASHBOARD PLATFORM NAVIGATION */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200/80 shadow-lg py-3 px-6 z-50">
+      {/* Sticky bottom nav */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
-          
           <button
             onClick={() => setActiveTab('log')}
-            className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
-              activeTab === 'log' 
-                ? 'text-blue-600 scale-105 font-bold' 
-                : 'text-slate-400 hover:text-slate-600'
+            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${
+              activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            <span className="text-xs">Log Menu</span>
+            <UtensilsCrossed size={20} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
+            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
           </button>
 
           <button
             onClick={() => setActiveTab('progress')}
-            className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
-              activeTab === 'progress' 
-                ? 'text-blue-600 scale-105 font-bold' 
-                : 'text-slate-400 hover:text-slate-600'
+            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${
+              activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 18.375v-5.25zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125v-9.75zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-            </svg>
-            <span className="text-xs">Progress</span>
+            <LineChart size={20} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
+            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>
           </button>
-
         </div>
       </div>
     </div>

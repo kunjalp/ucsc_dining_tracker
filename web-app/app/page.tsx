@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase' 
+import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
+import { GraduationCap } from 'lucide-react'
 
 export default function AuthPage() {
   const supabase = createClient()
@@ -21,8 +22,8 @@ export default function AuthPage() {
     setMessage('')
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ 
-        email, 
+      const { error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           emailRedirectTo: `${getURL()}auth/callback`,
@@ -45,20 +46,25 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4 text-slate-800">
-      
+    <div
+      className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
+      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+    >
+      {/* Ambient background glow, matches dashboard */}
+      <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
+
       {/* Container Box */}
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
-        
+      <div className="w-full max-w-md rounded-2xl p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+
         {/* Brand Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-xl shadow-md shadow-blue-500/20">
-            🍽️
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a0]/20">
+            <GraduationCap size={26} strokeWidth={2.25} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-[#dae2fd]">
             UCSC Dining Tracker
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#c2c6d0]">
             {isSignUp ? 'Create your account to get started' : 'Welcome back! Please sign in'}
           </p>
         </div>
@@ -66,28 +72,28 @@ export default function AuthPage() {
         {/* Form */}
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <label className="block font-['JetBrains_Mono'] text-xs font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Email Address
             </label>
             <input
               type="email"
               required
               placeholder="slug@ucsc.edu"
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2.5 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <label className="block font-['JetBrains_Mono'] text-xs font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Password
             </label>
             <input
               type="password"
               required
               placeholder="••••••••"
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2.5 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -96,7 +102,7 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-70"
+            className="mt-2 w-full rounded-xl bg-[#d6b93a] py-2.5 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
             {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>
@@ -104,22 +110,22 @@ export default function AuthPage() {
 
         {/* Dynamic Alert Message */}
         {message && (
-          <div className="mt-4 rounded-lg bg-blue-50 p-3 text-center text-xs font-medium text-blue-700 border border-blue-100">
+          <div className="mt-4 rounded-lg bg-[#a1c9ff]/10 p-3 text-center text-xs font-medium text-[#a1c9ff] border border-[#a1c9ff]/20">
             {message}
           </div>
         )}
 
         {/* Footer Toggle */}
-        <div className="mt-6 border-t border-slate-100 pt-6 text-center">
+        <div className="mt-6 border-t border-white/10 pt-6 text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm font-medium text-slate-600 transition hover:text-blue-600"
+            className="text-sm font-medium text-[#c2c6d0] transition hover:text-[#ffe6ab]"
           >
             {isSignUp ? (
-              <>Already have an account? <span className="text-blue-600 font-semibold">Sign In</span></>
+              <>Already have an account? <span className="text-[#ffe6ab] font-semibold">Sign In</span></>
             ) : (
-              <>Don't have an account? <span className="text-blue-600 font-semibold">Sign Up</span></>
+              <>Don't have an account? <span className="text-[#ffe6ab] font-semibold">Sign Up</span></>
             )}
           </button>
         </div>
@@ -127,7 +133,7 @@ export default function AuthPage() {
       </div>
 
       {/* Footer Branding */}
-      <p className="mt-8 text-xs text-slate-400">
+      <p className="mt-8 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50">
         UC Santa Cruz • Dining Tracker
       </p>
     </div>
