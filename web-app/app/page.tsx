@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase' 
 import { useRouter } from 'next/navigation'
+import { getURL } from '@/lib/utils'
 
 export default function AuthPage() {
   const supabase = createClient()
@@ -20,7 +21,14 @@ export default function AuthPage() {
     setMessage('')
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      // ✅ Added emailRedirectTo so the email link points to your live Vercel domain!
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: `${getURL()}auth/callback`,
+        }
+      })
       if (error) {
         setMessage(`Sign up error: ${error.message}`)
       } else {
