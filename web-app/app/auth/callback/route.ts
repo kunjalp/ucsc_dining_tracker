@@ -1,32 +1,23 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+export default async function AuthCodeError({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>
+}) {
+  const { message } = await searchParams
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
-
-  if (code) {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
-  }
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  return (
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <h1>Confirmation link didn't work</h1>
+      <p>
+        This usually happens if the link was opened in a different browser
+        than the one you signed up with. Please try again and open the
+        confirmation email using the same browser you used to sign up.
+      </p>
+      {message && (
+        <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '1rem' }}>
+          Error: {message}
+        </p>
+      )}
+    </div>
+  )
 }
