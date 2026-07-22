@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
 import { GraduationCap } from 'lucide-react'
+import PasswordInput from './PasswordInput'
 
 export default function AuthPage() {
   const supabase = createClient()
@@ -17,33 +18,63 @@ export default function AuthPage() {
   const router = useRouter()
 
   const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+  e.preventDefault()
+  setLoading(true)
+  setMessage('')
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+  if (isSignUp) {
+    // 1. Attempt standard signup
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${getURL()}auth/callback`,
+      }
+    })
+
+    if (error) {
+      // If user already registered but hasn't verified, attempt to resend the email
+      if (error.message.toLowerCase().includes('already registered')) {
+        const { error: resendError } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo: `${getURL()}auth/callback`,
+          }
+        })
+
+        if (resendError) {
+          setMessage(`Error resending email: ${resendError.message}`)
+        } else {
+          setMessage('Account exists but unverified. We resent a new confirmation link to your email!')
+        }
+      } else {
+        setMessage(`Sign up error: ${error.message}`)
+      }
+    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      // Supabase sometimes returns an empty identities array if user exists
+      await supabase.auth.resend({
+        type: 'signup',
         email,
-        password,
         options: {
           emailRedirectTo: `${getURL()}auth/callback`,
         }
       })
-      if (error) {
-        setMessage(`Sign up error: ${error.message}`)
-      } else {
-        setMessage('Success! Check your email for a confirmation link.')
-      }
+      setMessage('Account already registered! A new confirmation link has been sent to your email.')
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setMessage(`Login error: ${error.message}`)
-      } else {
-        router.push('/dashboard')
-      }
+      setMessage('Success! Check your email for a confirmation link.')
     }
-    setLoading(false)
+  } else {
+    // Sign in logic
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setMessage(`Login error: ${error.message}`)
+    } else {
+      router.push('/dashboard')
+    }
   }
+  setLoading(false)
+}
 
   return (
     <div
@@ -89,13 +120,10 @@ export default function AuthPage() {
             <label className="block font-['JetBrains_Mono'] text-xs font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Password
             </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2.5 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
             />
           </div>
 
