@@ -1,10 +1,10 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
+import PasswordInput from './PasswordInput';
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import {
-  GraduationCap,
   Bell,
   History,
   Search,
@@ -488,29 +488,40 @@ export default function DashboardPage() {
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 flex justify-between items-center px-5 py-2.5 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
-          <GraduationCap className="text-[#ffe6ab]" size={30} strokeWidth={2} />
-          <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight">UCSC Dining Tracker</span>
+          <img
+            src="/sammy-logo-transparent.png"
+            alt="Sammy's Palate"
+            className="h-11 w-11 object-contain shrink-0"
+          />
+
+          {/* Stacked container */}
+          <div className="flex flex-col">
+            <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight leading-none mb-0.5">
+              Sammy's Palate
+            </span>
+            <span className="text-xs font-bold text-[#dae2fd]/70 tracking-wide uppercase">
+              UCSC Macro Tracker
+            </span>
+          </div>
         </div>
 
         {/* Desktop tab nav (reuses real Log / Progress state) */}
         <nav className="hidden md:flex items-center gap-8">
           <button
             onClick={() => setActiveTab('log')}
-            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${
-              activeTab === 'log'
-                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-            }`}
+            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'log'
+              ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
           >
             Log Menu
           </button>
           <button
             onClick={() => setActiveTab('progress')}
-            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${
-              activeTab === 'progress'
-                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-            }`}
+            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'progress'
+              ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
           >
             Progress
           </button>
@@ -580,11 +591,10 @@ export default function DashboardPage() {
                     <button
                       key={meal}
                       onClick={() => setSelectedMeal(meal)}
-                      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                        selectedMeal === meal
-                          ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                          : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                      }`}
+                      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${selectedMeal === meal
+                        ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
+                        : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                        }`}
                     >
                       {meal}
                     </button>
@@ -615,11 +625,10 @@ export default function DashboardPage() {
                           key={station}
                           type="button"
                           onClick={() => handleToggleStationFilter(station)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                            isActive
-                              ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
-                              : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                          }`}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
+                            ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
+                            : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                            }`}
                         >
                           {cleanStationName(station)}
                         </button>
@@ -691,11 +700,10 @@ export default function DashboardPage() {
                                         key={opt.label}
                                         type="button"
                                         onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                          isSelected
-                                            ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                                            : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                        }`}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
+                                          ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                          : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                                          }`}
                                       >
                                         {opt.label}
                                       </button>
@@ -736,11 +744,10 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${
-                      showCalendar
-                        ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
-                        : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                    }`}
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${showCalendar
+                      ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
+                      : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                      }`}
                   >
                     <Calendar size={14} />
                     {showCalendar ? "View Today's Rings" : 'History Calendar'}
@@ -964,9 +971,8 @@ export default function DashboardPage() {
         <div className="max-w-md mx-auto flex justify-around">
           <button
             onClick={() => setActiveTab('log')}
-            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${
-              activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
-            }`}
+            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+              }`}
           >
             <UtensilsCrossed size={20} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
             <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
@@ -974,9 +980,8 @@ export default function DashboardPage() {
 
           <button
             onClick={() => setActiveTab('progress')}
-            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${
-              activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
-            }`}
+            className={`flex flex-col items-center gap-1 py-1 px-6 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+              }`}
           >
             <LineChart size={20} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
             <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
-import { GraduationCap } from 'lucide-react'
+import { Settings, User } from 'lucide-react';
 import PasswordInput from './PasswordInput'
 
 export default function AuthPage() {
@@ -18,63 +18,63 @@ export default function AuthPage() {
   const router = useRouter()
 
   const handleAuth = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setMessage('')
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
 
-  if (isSignUp) {
-    // 1. Attempt standard signup
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${getURL()}auth/callback`,
-      }
-    })
+    if (isSignUp) {
+      // 1. Attempt standard signup
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${getURL()}auth/callback`,
+        }
+      })
 
-    if (error) {
-      // If user already registered but hasn't verified, attempt to resend the email
-      if (error.message.toLowerCase().includes('already registered')) {
-        const { error: resendError } = await supabase.auth.resend({
+      if (error) {
+        // If user already registered but hasn't verified, attempt to resend the email
+        if (error.message.toLowerCase().includes('already registered')) {
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email,
+            options: {
+              emailRedirectTo: `${getURL()}auth/callback`,
+            }
+          })
+
+          if (resendError) {
+            setMessage(`Error resending email: ${resendError.message}`)
+          } else {
+            setMessage('Account exists but unverified. We resent a new confirmation link to your email!')
+          }
+        } else {
+          setMessage(`Sign up error: ${error.message}`)
+        }
+      } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+        // Supabase sometimes returns an empty identities array if user exists
+        await supabase.auth.resend({
           type: 'signup',
           email,
           options: {
             emailRedirectTo: `${getURL()}auth/callback`,
           }
         })
-
-        if (resendError) {
-          setMessage(`Error resending email: ${resendError.message}`)
-        } else {
-          setMessage('Account exists but unverified. We resent a new confirmation link to your email!')
-        }
+        setMessage('Account already registered! A new confirmation link has been sent to your email.')
       } else {
-        setMessage(`Sign up error: ${error.message}`)
+        setMessage('Success! Check your email for a confirmation link.')
       }
-    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-      // Supabase sometimes returns an empty identities array if user exists
-      await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${getURL()}auth/callback`,
-        }
-      })
-      setMessage('Account already registered! A new confirmation link has been sent to your email.')
     } else {
-      setMessage('Success! Check your email for a confirmation link.')
+      // Sign in logic
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setMessage(`Login error: ${error.message}`)
+      } else {
+        router.push('/dashboard')
+      }
     }
-  } else {
-    // Sign in logic
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setMessage(`Login error: ${error.message}`)
-    } else {
-      router.push('/dashboard')
-    }
+    setLoading(false)
   }
-  setLoading(false)
-}
 
   return (
     <div
@@ -88,17 +88,28 @@ export default function AuthPage() {
       <div className="w-full max-w-md rounded-2xl p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
 
         {/* Brand Header */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a0]/20">
-            <GraduationCap size={26} strokeWidth={2.25} />
+        <div className="mb-8 flex items-center justify-center gap-4">
+          <img
+            src="/sammy-logo-transparent.png"
+            alt="Sammy's Palate"
+            className="h-20 w-20 object-contain shrink-0"
+          />
+
+          <div className="h-14 w-px bg-white/15" />
+
+          <div className="text-left">
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#dae2fd] whitespace-nowrap">
+              Sammy's Palate
+            </h1>
+            <p className="mt-1 text-xs font-semibold text-[#dae2fd]/50 tracking-wider uppercase">
+              UCSC Macro Tracker
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#dae2fd]">
-            UCSC Dining Tracker
-          </h1>
-          <p className="mt-1 text-sm text-[#c2c6d0]">
-            {isSignUp ? 'Create your account to get started' : 'Welcome back! Please sign in'}
-          </p>
         </div>
+
+        <p className="mb-8 text-center text-base text-[#c2c6d0]">
+          {isSignUp ? 'Create your account to get started' : 'Welcome back! Please sign in.'}
+        </p>
 
         {/* Form */}
         <form onSubmit={handleAuth} className="space-y-4">
