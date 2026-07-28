@@ -59,22 +59,36 @@ To get "what's on the menu right now at hall X for meal Y":
 import os
 import re
 from datetime import date, datetime, timezone
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from supabase import create_client
-from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------------
 # Config & Client Initialization
 # ---------------------------------------------------------------------------
-load_dotenv()
+# Explicitly find and load .env.local from the scraper directory
+env_path = Path(__file__).resolve().parent / ".env.local"
+load_dotenv(dotenv_path=env_path)
 
 BASE_URL = "https://nutrition.sa.ucsc.edu/"
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].strip().rstrip("/")
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
+
+# Fall back gracefully to SUPABASE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY if SERVICE_ROLE_KEY isn't set
+raw_key = (
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    or os.getenv("SUPABASE_KEY")
+    or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+)
+
+if not raw_key:
+    raise KeyError("No valid Supabase API key found in scraper/.env.local!")
+
+SUPABASE_KEY = raw_key.strip()
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Exact link text as it appears on https://nutrition.sa.ucsc.edu/
