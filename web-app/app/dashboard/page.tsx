@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
+import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import {
   Bell,
   History,
@@ -176,7 +177,7 @@ export default function DashboardPage() {
   const [goalProtein, setGoalProtein] = useState(120)
   const [goalCarbs, setGoalCarbs] = useState(250)
   const [goalFat, setGoalFat] = useState(70)
-  const [isEditingGoals, setIsEditingGoals] = useState(false)
+  const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
 
   // Calendar View State
   const [showCalendar, setShowCalendar] = useState(false)
@@ -219,17 +220,40 @@ export default function DashboardPage() {
     }
   }, [showCalendar])
 
-  // Process manual configurations save
-  const handleSaveGoals = (cals: number, prot: number, carbs: number, fat: number) => {
-    setGoalCalories(cals)
-    setGoalProtein(prot)
+  // Process manual configurations save (called from SetTargetsModal)
+  const handleSaveGoals = async (newTargets: DailyTargets) => {
+    const { calories, protein, carbs, fat } = newTargets
+
+    setGoalCalories(calories)
+    setGoalProtein(protein)
     setGoalCarbs(carbs)
     setGoalFat(fat)
-    localStorage.setItem('ucsc_goal_calories', String(cals))
-    localStorage.setItem('ucsc_goal_protein', String(prot))
+
+    localStorage.setItem('ucsc_goal_calories', String(calories))
+    localStorage.setItem('ucsc_goal_protein', String(protein))
     localStorage.setItem('ucsc_goal_carbs', String(carbs))
     localStorage.setItem('ucsc_goal_fat', String(fat))
-    setIsEditingGoals(false)
+
+    setIsTargetsModalOpen(false)
+
+    // Persist to Supabase so targets follow the user across devices.
+    // Requires a `user_goals` table keyed on user_id (see note below).
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('user_goals')
+        .upsert({
+          user_id: user.id,
+          goal_calories: calories,
+          goal_protein: protein,
+          goal_carbs: carbs,
+          goal_fat: fat,
+        }, { onConflict: 'user_id' })
+
+      if (error) {
+        console.error('Could not sync targets to Supabase:', error.message)
+      }
+    }
   }
 
   // 1. Fetch items scraped for today matching selected Hall & Meal
@@ -752,73 +776,15 @@ export default function DashboardPage() {
                     {showCalendar ? "View Today's Rings" : 'History Calendar'}
                   </button>
 
+                  {/* Set Targets button now opens the SetTargetsModal */}
                   <button
-                    onClick={() => setIsEditingGoals(!isEditingGoals)}
-                    className="text-xs font-bold text-[#c2c6d0] bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition border border-white/10"
+                    onClick={() => setIsTargetsModalOpen(true)}
+                    className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition border border-gray-700"
                   >
-                    {isEditingGoals ? 'Cancel' : 'Set Targets'}
+                    Set Targets
                   </button>
                 </div>
               </div>
-
-              {isEditingGoals && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    handleSaveGoals(
-                      Number(formData.get('calories') || goalCalories),
-                      Number(formData.get('protein') || goalProtein),
-                      Number(formData.get('carbs') || goalCarbs),
-                      Number(formData.get('fat') || goalFat)
-                    );
-                  }}
-                  className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end"
-                >
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Calories (kcal)</label>
-                    <input
-                      type="number"
-                      name="calories"
-                      defaultValue={goalCalories}
-                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Protein (g)</label>
-                    <input
-                      type="number"
-                      name="protein"
-                      defaultValue={goalProtein}
-                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Carbs (g)</label>
-                    <input
-                      type="number"
-                      name="carbs"
-                      defaultValue={goalCarbs}
-                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Fat (g)</label>
-                    <input
-                      type="number"
-                      name="fat"
-                      defaultValue={goalFat}
-                      className="w-full bg-[#171f33] border border-white/10 rounded-lg p-2 text-xs font-bold text-[#dae2fd] focus:outline-none"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="col-span-2 sm:col-span-4 w-full bg-[#d6b93a] hover:brightness-105 text-[#6b5300] font-bold text-xs py-2 px-4 rounded-lg transition"
-                  >
-                    Save Target Goals
-                  </button>
-                </form>
-              )}
 
               {!showCalendar ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -987,6 +953,20 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Set Targets Modal */}
+      {isTargetsModalOpen && (
+        <SetTargetsModal
+          currentTargets={{
+            calories: goalCalories,
+            protein: goalProtein,
+            carbs: goalCarbs,
+            fat: goalFat,
+          }}
+          onClose={() => setIsTargetsModalOpen(false)}
+          onSave={handleSaveGoals}
+        />
+      )}
     </div>
   )
 }
