@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
+import UserProfileModal, { UserProfile } from './UserProfileModal'
 import {
-  Bell,
   History,
   Search,
   UtensilsCrossed,
@@ -179,6 +179,16 @@ export default function DashboardPage() {
   const [goalFat, setGoalFat] = useState(70)
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
 
+  // User profile modal + data (nickname / email)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    nickname: '',
+    email: '',
+    avatarUrl: null,
+    memberSince: null,
+    dietaryPreferences: [],
+  })
+
   // Calendar View State
   const [showCalendar, setShowCalendar] = useState(false)
   const [calendarMacro, setCalendarMacro] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories')
@@ -206,6 +216,23 @@ export default function DashboardPage() {
     if (savedProtein) setGoalProtein(Number(savedProtein))
     if (savedCarbs) setGoalCarbs(Number(savedCarbs))
     if (savedFat) setGoalFat(Number(savedFat))
+  }, [])
+
+  // Load the current user's profile (nickname + email) for the Edit Profile modal
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserProfile({
+          nickname: (user.user_metadata?.nickname as string) || '',
+          email: user.email || '',
+          avatarUrl: (user.user_metadata?.avatar_url as string) || null,
+          memberSince: user.created_at || null,
+          dietaryPreferences: (user.user_metadata?.dietary_preferences as string[]) || [],
+        })
+      }
+    }
+    fetchProfile()
   }, [])
 
   useEffect(() => {
@@ -254,6 +281,12 @@ export default function DashboardPage() {
         console.error('Could not sync targets to Supabase:', error.message)
       }
     }
+  }
+
+  // Called from UserProfileModal after nickname/email have been saved to Supabase auth
+  const handleSaveProfile = (profile: UserProfile) => {
+    setUserProfile(profile)
+    setIsProfileModalOpen(false)
   }
 
   // 1. Fetch items scraped for today matching selected Hall & Meal
@@ -552,20 +585,15 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => alert('Notifications are coming soon!')}
-            className="p-2 text-[#ffe6ab] hover:bg-white/10 transition-colors rounded-full active:scale-95"
-          >
-            <Bell size={20} />
-          </button>
-          <button
             onClick={() => setShowCalendar((v) => !v)}
             className="p-2 text-[#ffe6ab] hover:bg-white/10 transition-colors rounded-full active:scale-95"
           >
             <History size={20} />
           </button>
           <button
-            onClick={() => setActiveTab('progress')}
+            onClick={() => setIsProfileModalOpen(true)}
             className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95"
+            aria-label="Edit user profile"
           >
             <User size={18} className="text-[#c2c6d0]" />
           </button>
@@ -965,6 +993,15 @@ export default function DashboardPage() {
           }}
           onClose={() => setIsTargetsModalOpen(false)}
           onSave={handleSaveGoals}
+        />
+      )}
+
+      {/* Edit User Profile Modal */}
+      {isProfileModalOpen && (
+        <UserProfileModal
+          currentProfile={userProfile}
+          onClose={() => setIsProfileModalOpen(false)}
+          onSave={handleSaveProfile}
         />
       )}
     </div>
