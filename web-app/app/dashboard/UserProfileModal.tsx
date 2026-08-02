@@ -54,9 +54,9 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
   const memberSinceLabel = currentProfile.memberSince
     ? new Date(currentProfile.memberSince).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      })
+      month: 'long',
+      year: 'numeric',
+    })
     : null
 
   // ---- Avatar upload ----
@@ -119,8 +119,13 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   // ---- Sign out ----
   const handleSignOut = async () => {
     setSigningOut(true)
-    await supabase.auth.signOut()
-    router.push('/auth')
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      setSigningOut(false)
+      setError(`Could not sign out: ${error.message}`)
+      return
+    }
+    router.push('/')
     router.refresh()
   }
 
@@ -332,11 +337,10 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     key={pref}
                     type="button"
                     onClick={() => toggleDietaryPreference(pref)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                      isActive
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
                         ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
                         : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                    }`}
+                      }`}
                   >
                     {isActive && <Check size={12} />}
                     {pref}
