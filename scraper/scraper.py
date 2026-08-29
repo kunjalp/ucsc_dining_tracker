@@ -62,6 +62,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from zoneinfo import ZoneInfo
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
@@ -100,7 +101,6 @@ DINING_HALLS = [
     "Rachel Carson & Oakes Dining Hall",
     "Stevenson Coffee House",
     "Perk Coffee Bar",
-    "Merrill Market",
 ]
 
 NAV_TIMEOUT_MS = 20000
@@ -398,16 +398,82 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
 
     return total_items
 
+STATUS_URL = "https://dining.ucsc.edu/locations-hours/"
+
+STATUS_HALL_LABELS = {
+    "College Nine and John R. Lewis Dining Hall": "John R. Lewis & College Nine Dining Hall",
+    "Cowell/Stevenson Dining Hall": "Cowell & Stevenson Dining Hall",
+    "Crown/Merrill Dining Hall": "Crown & Merrill Dining Hall",
+    "Porter/Kresge Dining Hall": "Porter & Kresge Dining Hall",
+    "Rachel Carson/Oakes Dining Hall": "Rachel Carson & Oakes Dining Hall",
+}
+
+def scrape_hall_statuses(page) -> list[dict]:
+    page.goto(STATUS_URL, wait_until="networkidle")
+    # Status text loads async and replaces "Loading…" — wait it out
+    page.wait_for_timeout(3000)
+    try:
+        page.wait_for_function(
+            "!document.body.innerText.includes('Loading…')",
+            timeout=10000
+        )
+    except Exception:
+        print("   ⚠️ Status page still showed 'Loading…' after timeout — scraping best-effort anyway.")
+
+    rows = page.evaluate(
+        """
+        () => {
+            const links = Array.from(document.querySelectorAll('a'))
+                .filter(a => /Dining Hall/i.test(a.textContent));
+            return links.map(a => ({
+                text: a.textContent.replace(/\\s+/g, ' ').trim()
+            }));
+        }
+        """
+    )
+
+    results = []
+    for row in rows:
+        text = row["text"]
+        matched_label = next((k for k in STATUS_HALL_LABELS if k in text), None)
+        if not matched_label:
+            continue
+        db_name = STATUS_HALL_LABELS[matched_label]
+        status_part = text.replace(matched_label, "").strip(" ›").strip()
+        is_open = status_part.upper().startswith("OPEN")
+        results.append({
+            "dining_hall": db_name,
+            "is_open": is_open,
+            "status_text": status_part or None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+    return results
+
+
+def upsert_hall_statuses(statuses: list[dict]):
+    if not statuses:
+        return
+    deduped = list({s["dining_hall"]: s for s in statuses}.values())
+    supabase.table("hall_status").upsert(deduped, on_conflict="dining_hall").execute()
+    
 
 def main():
     print("🚀 Running UCSC Dining database update pipeline...")
-    scrape_date = date.today().isoformat()
+    scrape_date = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
 
     grand_total = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         try:
+            print("\n📡 Scraping hall open/closed statuses...")
+            try:
+                statuses = scrape_hall_statuses(page)
+                upsert_hall_statuses(statuses)
+                print(f"   ✅ Updated status for {len(statuses)} hall(s).")
+            except Exception as e:
+                print(f"   💥 Status scrape failed: {e}")
+
             for hall_name in DINING_HALLS:
                 try:
                     grand_total += scrape_hall(page, hall_name, scrape_date)

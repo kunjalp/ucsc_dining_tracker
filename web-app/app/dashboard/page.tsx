@@ -51,6 +51,11 @@ interface MealLog {
   }
 }
 
+interface HallStatus {
+  is_open: boolean
+  status_text: string | null
+}
+
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
   "Cowell & Stevenson Dining Hall",
@@ -59,7 +64,6 @@ const DINING_HALLS = [
   "Rachel Carson & Oakes Dining Hall",
   "Stevenson Coffee House",
   "Perk Coffee Bar",
-  "Merrill Market"
 ]
 
 // Pure SVG Circular Progress Ring UI Component
@@ -166,6 +170,8 @@ export default function DashboardPage() {
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
   const [selectedMeal, setSelectedMeal] = useState('Breakfast')
+  const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
+  const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
 
   // SEARCH & STATION FILTER STATES
@@ -240,6 +246,18 @@ export default function DashboardPage() {
     fetchTodayTotals()
   }, [selectedHall, selectedMeal])
 
+  // Sync available meal-type tabs and the open/closed status whenever the hall changes
+  useEffect(() => {
+    const syncMealTypes = async () => {
+      const types = await fetchMealTypesForHall(selectedHall)
+      if (types.length > 0 && !types.includes(selectedMeal)) {
+        setSelectedMeal(types[0])
+      }
+    }
+    syncMealTypes()
+    fetchHallStatus(selectedHall)
+  }, [selectedHall])
+
   // Fetch all history whenever the calendar view gets activated
   useEffect(() => {
     if (showCalendar) {
@@ -312,6 +330,55 @@ export default function DashboardPage() {
       setMenu(data as unknown as MenuEntry[])
     }
     setLoading(false)
+  }
+
+  // Fetch which meal_type values actually exist for this hall today.
+  // Real dining halls have Breakfast/Lunch/Dinner; cafes/markets may only have
+  // one value like "Menu" or "ALL"; retail spots with no scraped data at all
+  // (e.g. Merrill Market) get an empty array so the tab row hides entirely.
+  const fetchMealTypesForHall = async (hall: string) => {
+    const todayStr = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'America/Los_Angeles'
+    })
+
+    const { data, error } = await supabase
+      .from('daily_menus')
+      .select('meal_type')
+      .eq('dining_hall', hall)
+      .eq('date', todayStr)
+
+    if (error || !data || data.length === 0) {
+      setAvailableMealTypes([])
+      return []
+    }
+
+    const found = Array.from(new Set(data.map((row) => row.meal_type)))
+
+    // Keep Breakfast -> Lunch -> Dinner order when present; anything else
+    // (e.g. "Menu", "ALL") gets appended after.
+    const preferredOrder = ['Breakfast', 'Lunch', 'Dinner']
+    const ordered = [
+      ...preferredOrder.filter((m) => found.includes(m)),
+      ...found.filter((m) => !preferredOrder.includes(m)),
+    ]
+
+    setAvailableMealTypes(ordered)
+    return ordered
+  }
+
+  // Fetch the current open/closed status for the selected hall from hall_status
+  const fetchHallStatus = async (hall: string) => {
+    const { data, error } = await supabase
+      .from('hall_status')
+      .select('is_open, status_text')
+      .eq('dining_hall', hall)
+      .maybeSingle()
+
+    if (error || !data) {
+      setHallStatus(null)
+      return
+    }
+    setHallStatus(data)
   }
 
   // Helper utility to strip leading and trailing hyphens from database stations (e.g. "-- Grill --" -> "Grill")
@@ -637,20 +704,22 @@ export default function DashboardPage() {
                   {DINING_HALLS.map(hall => <option key={hall} value={hall}>{hall}</option>)}
                 </select>
 
-                <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
-                  {['Breakfast', 'Lunch', 'Dinner'].map(meal => (
-                    <button
-                      key={meal}
-                      onClick={() => setSelectedMeal(meal)}
-                      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${selectedMeal === meal
-                        ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                        : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                        }`}
-                    >
-                      {meal}
-                    </button>
-                  ))}
-                </div>
+                {availableMealTypes.length > 0 && (
+                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
+                    {availableMealTypes.map(meal => (
+                      <button
+                        key={meal}
+                        onClick={() => setSelectedMeal(meal)}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${selectedMeal === meal
+                          ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
+                          : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                          }`}
+                      >
+                        {meal}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Search + station filter pills */}
@@ -690,93 +759,102 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Menu items */}
-            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-              <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
+            {/* Dining hall closed banner */}
+            {hallStatus && !hallStatus.is_open && (
+              <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
+                Dining Hall is Closed{hallStatus.status_text ? ` — ${hallStatus.status_text}` : ''}
+              </div>
+            )}
 
-              {loading ? (
-                <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
-              ) : Object.keys(groupedMenu).length === 0 ? (
-                <div className="py-12 text-center text-[#c2c6d0] font-medium">
-                  {menu.length === 0
-                    ? "No items found for this meal period today."
-                    : "No menu items match your search or station filters."}
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {Object.entries(groupedMenu).map(([stationRaw, entries]) => (
-                    <div key={stationRaw} className="space-y-3">
-                      <div className="flex items-center">
-                        <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#a1c9ff] uppercase bg-[#003c6c]/40 border border-[#a1c9ff]/20 px-3 py-1 rounded-lg">
-                          {cleanStationName(stationRaw)}
-                        </span>
-                        <div className="flex-1 h-px bg-white/10 ml-4" />
-                      </div>
+            {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
+            {!(availableMealTypes.length === 0 && hallStatus && !hallStatus.is_open) && (
+              <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+                <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
 
-                      <div className="divide-y divide-white/10">
-                        {entries.map((entry) => {
-                          const food = entry.food_items
-                          if (!food) return null
-                          return (
-                            <article
-                              key={food.recipe_id}
-                              className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
-                            >
-                              <div>
-                                <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
-                                <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                                  Serving Size: {food.portion || '1 serving'}
-                                </p>
-                                <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
-                                  <span className="text-[#a1c9ff] bg-[#a1c9ff]/10 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
-                                  <span>P: {food.protein}g</span>
-                                  <span>C: {food.carbs}g</span>
-                                  <span>F: {food.fat}g</span>
+                {loading ? (
+                  <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
+                ) : Object.keys(groupedMenu).length === 0 ? (
+                  <div className="py-12 text-center text-[#c2c6d0] font-medium">
+                    {menu.length === 0
+                      ? "No items found for this meal period today."
+                      : "No menu items match your search or station filters."}
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {Object.entries(groupedMenu).map(([stationRaw, entries]) => (
+                      <div key={stationRaw} className="space-y-3">
+                        <div className="flex items-center">
+                          <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#a1c9ff] uppercase bg-[#003c6c]/40 border border-[#a1c9ff]/20 px-3 py-1 rounded-lg">
+                            {cleanStationName(stationRaw)}
+                          </span>
+                          <div className="flex-1 h-px bg-white/10 ml-4" />
+                        </div>
+
+                        <div className="divide-y divide-white/10">
+                          {entries.map((entry) => {
+                            const food = entry.food_items
+                            if (!food) return null
+                            return (
+                              <article
+                                key={food.recipe_id}
+                                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
+                              >
+                                <div>
+                                  <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
+                                  <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                                    Serving Size: {food.portion || '1 serving'}
+                                  </p>
+                                  <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
+                                    <span className="text-[#a1c9ff] bg-[#a1c9ff]/10 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
+                                    <span>P: {food.protein}g</span>
+                                    <span>C: {food.carbs}g</span>
+                                    <span>F: {food.fat}g</span>
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className="flex items-center gap-3">
-                                <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
-                                  {[
-                                    { label: '1/4x', value: 0.25 },
-                                    { label: '1/2x', value: 0.5 },
-                                    { label: '1x', value: 1.0 },
-                                    { label: '1.5x', value: 1.5 },
-                                    { label: '2x', value: 2 }
-                                  ].map((opt) => {
-                                    const currentVal = servings[food.recipe_id] ?? 1.0
-                                    const isSelected = currentVal === opt.value
-                                    return (
-                                      <button
-                                        key={opt.label}
-                                        type="button"
-                                        onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
-                                          ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                                          : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                          }`}
-                                      >
-                                        {opt.label}
-                                      </button>
-                                    )
-                                  })}
+                                <div className="flex items-center gap-3">
+                                  <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
+                                    {[
+                                      { label: '1/4x', value: 0.25 },
+                                      { label: '1/2x', value: 0.5 },
+                                      { label: '1x', value: 1.0 },
+                                      { label: '1.5x', value: 1.5 },
+                                      { label: '2x', value: 2 }
+                                    ].map((opt) => {
+                                      const currentVal = servings[food.recipe_id] ?? 1.0
+                                      const isSelected = currentVal === opt.value
+                                      return (
+                                        <button
+                                          key={opt.label}
+                                          type="button"
+                                          onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
+                                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
+                                            ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                            : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                                            }`}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                  <button
+                                    onClick={() => handleLogFood(food.recipe_id)}
+                                    className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                                  >
+                                    Log
+                                  </button>
                                 </div>
-                                <button
-                                  onClick={() => handleLogFood(food.recipe_id)}
-                                  className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
-                                >
-                                  Log
-                                </button>
-                              </div>
-                            </article>
-                          )
-                        })}
+                              </article>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* PROGRESS TAB */
