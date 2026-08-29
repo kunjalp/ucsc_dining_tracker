@@ -652,12 +652,6 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowCalendar((v) => !v)}
-            className="p-2 text-[#ffe6ab] hover:bg-white/10 transition-colors rounded-full active:scale-95"
-          >
-            <History size={20} />
-          </button>
-          <button
             onClick={() => setIsProfileModalOpen(true)}
             className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95"
             aria-label="Edit user profile"
@@ -704,7 +698,7 @@ export default function DashboardPage() {
                   {DINING_HALLS.map(hall => <option key={hall} value={hall}>{hall}</option>)}
                 </select>
 
-                {availableMealTypes.length > 0 && (
+                {availableMealTypes.length > 0 && !(hallStatus && !hallStatus.is_open) && (
                   <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                     {availableMealTypes.map(meal => (
                       <button
@@ -762,12 +756,12 @@ export default function DashboardPage() {
             {/* Dining hall closed banner */}
             {hallStatus && !hallStatus.is_open && (
               <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
-                Dining Hall is Closed{hallStatus.status_text ? ` — ${hallStatus.status_text}` : ''}
+                Dining Hall is Closed
               </div>
             )}
 
             {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
-            {!(availableMealTypes.length === 0 && hallStatus && !hallStatus.is_open) && (
+            {!(hallStatus && !hallStatus.is_open) && (
               <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
                 <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
 
