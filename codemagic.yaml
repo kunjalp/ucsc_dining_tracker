@@ -53,7 +53,8 @@ workflows:
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             --archive-xcargs "PROVISIONING_PROFILE_SPECIFIER=8VDNYCG892 CODE_SIGN_IDENTITY=\"Apple Distribution\" DEVELOPMENT_TEAM=QZF5NC79C7 CODE_SIGN_STYLE=Manual" \
-            --export-options-plist "/Users/builder/export_options.plist"
+            --export-options-plist "/Users/builder/export_options.plist" \
+            --disable-xcpretty
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
