@@ -30,8 +30,11 @@ workflows:
 
       - name: Fetch signing files from UI settings
         script: |
-          # Fetches the UI-uploaded certificate & profile into keychain without using --create
-          app-store-connect fetch-signing-files
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
 
       - name: Set up code signing settings on Xcode project
         script: |
