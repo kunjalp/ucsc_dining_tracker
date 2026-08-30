@@ -6,6 +6,8 @@ workflows:
     integrations:
       app_store_connect: appstore_creds   # must match the integration name set in Codemagic
     environment:
+      groups:
+        - ios_signing
       vars:
         BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
