@@ -6,8 +6,10 @@ workflows:
     integrations:
       app_store_connect: appstore_creds   # must match the integration name set in Codemagic
     environment:
-      groups:
-        - ios_signing
+      # Fetch the certificate and provisioning profile uploaded in Codemagic UI
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kunjalpurohit.sammyspalate
       vars:
         BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -23,18 +25,13 @@ workflows:
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
 
-      - name: Fetch signing files from App Store Connect
-        script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create \
-            --verbose
-
       - name: Initialize keychain
         script: keychain initialize
 
-      - name: Add certificates to keychain
-        script: keychain add-certificates
+      - name: Fetch signing files from UI settings
+        script: |
+          # Fetches the UI-uploaded certificate & profile into keychain without using --create
+          app-store-connect fetch-signing-files
 
       - name: Set up code signing settings on Xcode project
         script: |
@@ -43,8 +40,8 @@ workflows:
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
-            --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
