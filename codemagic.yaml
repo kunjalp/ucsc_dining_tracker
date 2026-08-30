@@ -4,12 +4,10 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: appstore_creds   # <-- must match the integration name you set in Codemagic
+      app_store_connect: appstore_creds   # must match the integration name set in Codemagic
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kunjalpurohit.sammyspalate
       vars:
+        BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
       node: latest
@@ -23,38 +21,27 @@ workflows:
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
 
-      - name: Prepare export options plist
+      - name: Fetch signing files from App Store Connect
         script: |
-          cat > /Users/builder/export_options.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>teamID</key>
-              <string>QZF5NC79C7</string>
-              <key>signingCertificate</key>
-              <string>Apple Distribution</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>com.kunjalpurohit.sammyspalate</key>
-                  <string>8VDNYCG892</string>
-              </dict>
-          </dict>
-          </plist>
-          EOF
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Initialize keychain
+        script: keychain initialize
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
 
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME" \
-            --archive-xcargs "PROVISIONING_PROFILE_SPECIFIER=8VDNYCG892 CODE_SIGN_IDENTITY=\"Apple Distribution\" DEVELOPMENT_TEAM=QZF5NC79C7 CODE_SIGN_STYLE=Manual" \
-            --export-options-plist "/Users/builder/export_options.plist" \
-            --disable-xcpretty
+            --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
