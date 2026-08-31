@@ -6,8 +6,6 @@ workflows:
     integrations:
       app_store_connect: appstore_creds
     environment:
-      groups:
-        - ios_ui_signing
       vars:
         BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -26,7 +24,13 @@ workflows:
       - name: Initialize keychain
         script: keychain initialize
 
-      - name: Add UI certificates to keychain
+      - name: Fetch signing files from App Store Connect
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Add certificates to keychain
         script: keychain add-certificates
 
       - name: Set up code signing settings on Xcode project
