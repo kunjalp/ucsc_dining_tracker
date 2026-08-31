@@ -24,12 +24,15 @@ workflows:
       - name: Initialize keychain
         script: keychain initialize
 
-      - name: Fetch signing files from App Store Connect
+      - name: Create certificate and fetch signing files
         script: |
+          # Create a new App Store distribution certificate with private key if needed
+          app-store-connect certificates create --type IOS_DISTRIBUTION || true
+
+          # Fetch matching profile and certificate
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create \
-            --generate-missing-certificates
+            --create
 
       - name: Add certificates to keychain
         script: keychain add-certificates
