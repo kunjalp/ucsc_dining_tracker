@@ -6,6 +6,9 @@ workflows:
     integrations:
       app_store_connect: appstore_creds
     environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kunjalpurohit.sammyspalate
       vars:
         BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -21,24 +24,11 @@ workflows:
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
 
-      - name: Initialize keychain
-        script: keychain initialize
-
-      - name: Create certificate and fetch signing files
+      - name: Initialize keychain and code signing
         script: |
-          # Create a new App Store distribution certificate with private key if needed
-          app-store-connect certificates create --type IOS_DISTRIBUTION || true
-
-          # Fetch matching profile and certificate
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-
-      - name: Add certificates to keychain
-        script: keychain add-certificates
-
-      - name: Set up code signing settings on Xcode project
-        script: xcode-project use-profiles
+          keychain initialize
+          keychain add-certificates
+          xcode-project use-profiles
 
       - name: Build ipa for distribution
         script: |
