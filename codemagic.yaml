@@ -10,7 +10,6 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.kunjalpurohit.sammyspalate
       vars:
-        BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
       node: latest
@@ -21,14 +20,13 @@ workflows:
       - name: Install npm dependencies
         script: npm install
 
+      - name: Build web assets for Capacitor
+        script: npm run build
+
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
 
-      - name: Force Xcode to match signing Bundle ID
-        script: |
-          sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = [^\;]*;/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\";/g" "$XCODE_PROJECT/project.pbxproj"
-
-      - name: Initialize keychain and code signing
+      - name: Initialize keychain and apply code signing
         script: |
           keychain initialize
           keychain add-certificates
