@@ -6,12 +6,12 @@ workflows:
     integrations:
       app_store_connect: appstore_creds
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kunjalpurohit.sammyspalate
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
+      groups:
+        - ios_ui_signing
       node: latest
       xcode: latest
       cocoapods: default
@@ -26,10 +26,24 @@ workflows:
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
 
-      - name: Initialize keychain and apply code signing
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Set up provisioning profile from environment variable
         script: |
-          keychain initialize
-          keychain add-certificates
+          PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_HOME"
+          PROFILE_PATH="$(mktemp "$PROFILES_HOME"/$(uuidgen).mobileprovision)"
+          echo $CM_PROVISIONING_PROFILE | base64 --decode > "$PROFILE_PATH"
+          echo "Saved provisioning profile $PROFILE_PATH"
+
+      - name: Set up signing certificate
+        script: |
+          echo $CM_CERTIFICATE | base64 --decode > /tmp/certificate.p12
+          keychain add-certificates --certificate /tmp/certificate.p12 --certificate-password $CM_CERTIFICATE_PASSWORD
+
+      - name: Set up code signing settings on Xcode project
+        script: |
           xcode-project use-profiles --project "$XCODE_PROJECT"
 
       - name: Build ipa for distribution
