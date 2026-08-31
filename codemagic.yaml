@@ -12,6 +12,7 @@ workflows:
         BUNDLE_ID: "com.kunjalpurohit.sammyspalate"
       groups:
         - ios_ui_signing
+        - env_vars
       node: latest
       xcode: latest
       cocoapods: default
