@@ -415,22 +415,28 @@ def scrape_hall_statuses(page) -> list[dict]:
     try:
         page.wait_for_function(
             "!document.body.innerText.includes('Loading…')",
-            timeout=10000
+            timeout=20000
         )
     except Exception:
         print("   ⚠️ Status page still showed 'Loading…' after timeout — scraping best-effort anyway.")
+
+    page.wait_for_timeout(1500)  # small settle buffer after JS resolves
 
     rows = page.evaluate(
         """
         () => {
             const links = Array.from(document.querySelectorAll('a'))
-                .filter(a => /Dining Hall/i.test(a.textContent));
+                .filter(a => /Dining Hall/i.test(a.textContent) && /\\b(OPEN|CLOSED)\\b/i.test(a.textContent));
             return links.map(a => ({
                 text: a.textContent.replace(/\\s+/g, ' ').trim()
             }));
         }
         """
     )
+    
+    print("   🔍 DEBUG raw status link texts:")
+    for r in rows:
+        print(f"      '{r['text']}'")
 
     results = []
     for row in rows:
@@ -482,9 +488,6 @@ def main():
                     continue
         finally:
             browser.close()
-
-    print(f"\n💪 Done. {grand_total} item-offerings written across all halls/meals for {scrape_date}.")
-
 
 if __name__ == "__main__":
     main()

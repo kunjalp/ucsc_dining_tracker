@@ -1,14 +1,17 @@
-# Sammy's Palate — UCSC Macro Tracker
+# 🦥 Sammy's Palate — UCSC Macro Tracker
 
 A macro and nutrition tracker built specifically for UC Santa Cruz dining halls — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
 
-[![Live App](https://img.shields.io/badge/demo-live-brightgreen)](https://ucsc-dining-tracker.vercel.app/)
+<!--
+TODO: replace with your live Vercel URL and update the badge link below
+-->
+[![Live App](https://img.shields.io/badge/demo-live-brightgreen)](https://your-vercel-url.vercel.app)
 ![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=next.js)
 ![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3ECF8E?logo=supabase)
 ![Python](https://img.shields.io/badge/scraper-Python-3776AB?logo=python)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up with your email and try it out
+**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up with your `@ucsc.edu` email and try it out
 
 ---
 
@@ -33,16 +36,16 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 
 <table>
 <tr>
-<td width="50%"><img src="screenshots/login.png" alt="Sign in screen" /><br/><sub>Sign in with your UCSC email</sub></td>
-<td width="50%"><img src="screenshots/log-menu.png" alt="Log menu screen" /><br/><sub>Browse today's menu by dining hall, meal, and station</sub></td>
+<td align="center" width="50%"><img src="screenshots/login.png" alt="Sign in screen" width="380" /><br/><sub>Sign in with your UCSC email</sub></td>
+<td align="center" width="50%"><img src="screenshots/log-menu.png" alt="Log menu screen" width="380" /><br/><sub>Browse today's menu by dining hall, meal, and station</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="screenshots/progress.png" alt="Progress dashboard" /><br/><sub>Live macro breakdown against your daily targets</sub></td>
-<td width="50%"><img src="screenshots/history-calendar.png" alt="History calendar" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
+<td align="center" width="50%"><img src="screenshots/progress.png" alt="Progress dashboard" width="380" /><br/><sub>Live macro breakdown against your daily targets</sub></td>
+<td align="center" width="50%"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
-<td width="50%"><img src="screenshots/edit-profile.png" alt="Edit profile modal" /><br/><sub>Manage nickname, email, and dietary preferences</sub></td>
+<td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
+<td align="center" width="50%"><img src="screenshots/edit-profile.png" alt="Edit profile modal" width="380" /><br/><sub>Manage nickname, email, and dietary preferences</sub></td>
 </tr>
 </table>
 
@@ -148,8 +151,9 @@ The scraper writes directly to your Supabase database, so make sure your Supabas
 
 ## License
 
+<!-- TODO: pick a license — MIT is a common default for portfolio projects -->
 This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-Built by [Kunjal Purohit](https://github.com/kunjalp) — a project born out of frustration with the official UCSC nutrition calculator, and a want to build something people would actually use.
+Built by [Kunjal Patel](https://github.com/kunjalp) — a project born out of frustration with the official UCSC nutrition calculator, and a want to build something people would actually use.
