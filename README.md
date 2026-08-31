@@ -1,4 +1,4 @@
-# 🦥 Sammy's Palate — UCSC Macro Tracker
+# Sammy's Palate — UCSC Macro Tracker
 
 A macro and nutrition tracker built specifically for UC Santa Cruz dining halls — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
 
