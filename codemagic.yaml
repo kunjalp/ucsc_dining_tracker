@@ -35,7 +35,7 @@ workflows:
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
-            --archive-flags="CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES"
+            --archive-flags="CODE_SIGN_STYLE=Automatic"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
