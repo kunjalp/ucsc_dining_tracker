@@ -41,10 +41,10 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 </tr>
 <tr>
 <td align="center" width="50%"><img src="screenshots/progress.png" alt="Progress dashboard" width="380" /><br/><sub>Live macro breakdown against your daily targets</sub></td>
-<td align="center" width="50%"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
+<td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
 </tr>
 <tr>
-<td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
+<td align="center" width="50%"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
 <td align="center" width="50%"><img src="screenshots/edit-profile.png" alt="Edit profile modal" width="380" /><br/><sub>Manage nickname, email, and dietary preferences</sub></td>
 </tr>
 </table>
