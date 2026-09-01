@@ -660,7 +660,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[110px] px-5 max-w-[1200px] mx-auto pb-8">
+      <main className="pt-[150px] px-5 max-w-[1200px] mx-auto pb-[130px]">
 
         {/* Live macro totals banner */}
         <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
