@@ -99,7 +99,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     }
 
     const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
-    // Cache-bust so the new image shows immediately instead of a stale cached one
     const freshUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
 
     const { error: metaError } = await supabase.auth.updateUser({
@@ -220,33 +219,33 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-black/60 backdrop-blur-sm overflow-y-auto py-8">
-      <div className="w-full max-w-md max-h-[66vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-6 relative my-auto">
+      <div className="w-full max-w-md max-h-[66vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-4 relative my-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition"
+          className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition"
           aria-label="Close"
         >
           <X size={18} />
         </button>
 
-        <h2 className="text-lg font-bold tracking-tight text-[#dae2fd] mb-6">Edit user profile</h2>
+        <h2 className="text-base font-bold tracking-tight text-[#dae2fd] mb-3">Edit user profile</h2>
 
         {/* Avatar */}
-        <div className="flex flex-col items-center mb-6">
+        <div className="flex flex-col items-center mb-3">
           <button
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="relative w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group disabled:opacity-60"
+            className="relative w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group disabled:opacity-60"
             aria-label="Change profile picture"
           >
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <User size={28} className="text-[#c2c6d0]" />
+              <User size={22} className="text-[#c2c6d0]" />
             )}
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-              <Camera size={18} className="text-white" />
+              <Camera size={16} className="text-white" />
             </div>
           </button>
           <input
@@ -260,22 +259,21 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="mt-2 text-xs font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition disabled:opacity-60"
+            className="mt-1.5 text-xs font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition disabled:opacity-60"
           >
             {uploadingAvatar ? 'Uploading...' : 'Change photo'}
           </button>
 
-          {/* Member since */}
           {memberSinceLabel && (
-            <p className="font-['JetBrains_Mono'] text-[11px] text-[#c2c6d0]/60 mt-2">
+            <p className="font-['JetBrains_Mono'] text-[10px] text-[#c2c6d0]/60 mt-1">
               Member since {memberSinceLabel}
             </p>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
-            <label htmlFor="nickname" className="block font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5">
+            <label htmlFor="nickname" className="block font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Nickname
             </label>
             <input
@@ -284,12 +282,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="e.g. bananaslug23"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5">
+            <label htmlFor="email" className="block font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Email
             </label>
             <input
@@ -298,38 +296,36 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@ucsc.edu"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
             {emailChanged && (
-              <p className="text-[11px] text-[#a1c9ff] mt-1.5">
+              <p className="text-[10px] text-[#a1c9ff] mt-1">
                 Changing your email will send a confirmation link to the new address before it takes effect.
               </p>
             )}
           </div>
 
           {error && (
-            <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-3 py-2">
+            <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-3 py-1.5">
               {error}
             </p>
           )}
 
-          {/* Sign out */}
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition disabled:opacity-60"
           >
-            <LogOut size={15} />
+            <LogOut size={14} />
             {signingOut ? 'Signing out...' : 'Sign out'}
           </button>
 
-          {/* Dietary preferences */}
-          <div className="pt-2 border-t border-white/10">
-            <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-2 mt-4">
+          <div className="pt-1.5 border-t border-white/10">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5 mt-2">
               Dietary preferences
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {DIETARY_OPTIONS.map((pref) => {
                 const isActive = dietaryPreferences.includes(pref)
                 return (
@@ -337,12 +333,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     key={pref}
                     type="button"
                     onClick={() => toggleDietaryPreference(pref)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${isActive
                         ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
                         : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                       }`}
                   >
-                    {isActive && <Check size={12} />}
+                    {isActive && <Check size={11} />}
                     {pref}
                   </button>
                 )
@@ -350,41 +346,40 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition"
+              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-[#d6b93a] py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition shadow-md shadow-[#d6b93a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#d6b93a] py-2 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition shadow-md shadow-[#d6b93a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
         </form>
 
-        {/* Danger zone: delete account */}
-        <div className="mt-6 pt-5 border-t border-[#ffb4ab]/20">
+        <div className="mt-3 pt-3 border-t border-[#ffb4ab]/20">
           {!deleteConfirmOpen ? (
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-2.5 text-sm font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-2 text-sm font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition"
             >
-              <Trash2 size={15} />
+              <Trash2 size={14} />
               Delete account
             </button>
           ) : (
-            <div className="rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 p-4 space-y-3">
+            <div className="rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 p-3 space-y-2">
               <p className="text-xs font-semibold text-[#ffb4ab]">
                 This permanently deletes your account and all logged meals. This cannot be undone.
               </p>
-              <p className="text-[11px] text-[#c2c6d0]">
+              <p className="text-[10px] text-[#c2c6d0]">
                 Type <span className="font-['JetBrains_Mono'] font-bold text-[#dae2fd]">DELETE</span> to confirm.
               </p>
               <input
@@ -405,7 +400,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     setDeleteConfirmText('')
                     setDeleteError(null)
                   }}
-                  className="flex-1 rounded-lg border border-white/15 bg-white/5 py-2 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition"
+                  className="flex-1 rounded-lg border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition"
                 >
                   Cancel
                 </button>
@@ -413,7 +408,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmText !== 'DELETE' || deleting}
-                  className="flex-1 rounded-lg bg-[#ffb4ab] py-2 text-xs font-bold text-[#4c0519] hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-[#ffb4ab] py-1.5 text-xs font-bold text-[#4c0519] hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {deleting ? 'Deleting...' : 'Delete permanently'}
                 </button>
