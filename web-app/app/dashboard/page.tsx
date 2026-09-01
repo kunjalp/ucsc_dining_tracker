@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
+import { getHallOpenStatus } from '@/lib/diningHours'
 
 import {
   History,
@@ -369,6 +370,14 @@ export default function DashboardPage() {
 
   // Fetch the current open/closed status for the selected hall from hall_status
   const fetchHallStatus = async (hall: string) => {
+    // Try instant, hours-based status first
+    const instantStatus = getHallOpenStatus(hall)
+    if (instantStatus) {
+      setHallStatus(instantStatus)
+      return
+    }
+
+    // Fall back to scraped status for halls without published hours data
     const { data, error } = await supabase
       .from('hall_status')
       .select('is_open, status_text')
