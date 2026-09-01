@@ -609,7 +609,7 @@ export default function DashboardPage() {
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-5 py-2.5 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-2.5 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
@@ -1032,7 +1032,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Sticky bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
+      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
           <button
             onClick={() => setActiveTab('log')}
