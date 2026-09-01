@@ -628,7 +628,7 @@ export default function DashboardPage() {
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
       {/* TopAppBar */}
-      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-2.5 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-4 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
@@ -660,7 +660,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[92px] px-5 max-w-[1200px] mx-auto pb-8">
+      <main className="pt-[110px] px-5 max-w-[1200px] mx-auto pb-8">
 
         {/* Live macro totals banner */}
         <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
