@@ -612,7 +612,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#0b1326] text-[#dae2fd] relative overflow-x-hidden">
+      className="min-h-screen bg-[#0b1326] text-[#dae2fd] relative overflow-x-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* Ambient background glow */}
