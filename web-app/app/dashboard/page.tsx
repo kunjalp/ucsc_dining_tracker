@@ -1036,7 +1036,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Sticky bottom nav */}
-      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
+      <div className="app-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
           <button
             onClick={() => setActiveTab('log')}
