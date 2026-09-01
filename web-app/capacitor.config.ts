@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://ucsc-dining-tracker.vercel.app/',
     cleartext: false
+  },
+  ios: {
+    contentInset: 'never',
+    backgroundColor: '#0b1326',
+    scrollEnabled: true,
   }
 };
 
