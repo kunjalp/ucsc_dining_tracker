@@ -5,6 +5,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
+import { Capacitor } from '@capacitor/core'
+
 import {
   History,
   Search,
@@ -629,26 +631,28 @@ export default function DashboardPage() {
         </div>
 
         {/* Desktop tab nav (reuses real Log / Progress state) */}
-        <nav className="hidden md:flex items-center gap-8">
-          <button
-            onClick={() => setActiveTab('log')}
-            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'log'
-              ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-              }`}
-          >
-            Log Menu
-          </button>
-          <button
-            onClick={() => setActiveTab('progress')}
-            className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'progress'
-              ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-              }`}
-          >
-            Progress
-          </button>
-        </nav>
+        {!Capacitor.isNativePlatform() && (
+          <nav className="hidden md:flex items-center gap-8">
+            <button
+              onClick={() => setActiveTab('log')}
+              className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'log'
+                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                }`}
+            >
+              Log Menu
+            </button>
+            <button
+              onClick={() => setActiveTab('progress')}
+              className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'progress'
+                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                }`}
+            >
+              Progress
+            </button>
+          </nav>
+        )}
 
         <div className="flex items-center gap-2">
           <button
