@@ -1021,24 +1021,24 @@ export default function DashboardPage() {
       </main>
 
       {/* Sticky bottom nav */}
-      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-5 px-6 z-50">
+      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3.5 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
           <button
             onClick={() => setActiveTab('log')}
-            className={`flex flex-col items-center gap-1.5 py-2 px-8 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
               }`}
           >
-            <UtensilsCrossed size={26} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[11px] font-bold uppercase tracking-wide">Log Menu</span>
+            <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
+            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
           </button>
 
           <button
             onClick={() => setActiveTab('progress')}
-            className={`flex flex-col items-center gap-1.5 py-2 px-8 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
               }`}
           >
-            <LineChart size={26} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[11px] font-bold uppercase tracking-wide">Progress</span>
+            <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
+            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>
           </button>
         </div>
       </div>
