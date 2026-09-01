@@ -19,8 +19,25 @@
   }
 }
 
+.app-header {
+  padding-top: env(safe-area-inset-top);
+}
+
+.app-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 html {
   overscroll-behavior: none;
+}
+
+body.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 body {

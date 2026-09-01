@@ -207,6 +207,15 @@ export default function DashboardPage() {
   const [loggedMeals, setLoggedMeals] = useState<MealLog[]>([])
   const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 })
 
+  // Show scrollbar on Log Menu, hide it on Progress
+  useEffect(() => {
+    if (activeTab === 'progress') {
+      document.body.classList.add('hide-scrollbar')
+    } else {
+      document.body.classList.remove('hide-scrollbar')
+    }
+  }, [activeTab])
+
   // Reset filters when location or meal type changes
   useEffect(() => {
     setSearchQuery('')
