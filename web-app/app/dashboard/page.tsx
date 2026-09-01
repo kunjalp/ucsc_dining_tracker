@@ -5,7 +5,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { Capacitor } from '@capacitor/core'
 
 import {
   History,
@@ -630,29 +629,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Desktop tab nav (reuses real Log / Progress state) */}
-        {!Capacitor.isNativePlatform() && (
-          <nav className="hidden md:flex items-center gap-8">
-            <button
-              onClick={() => setActiveTab('log')}
-              className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'log'
-                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                }`}
-            >
-              Log Menu
-            </button>
-            <button
-              onClick={() => setActiveTab('progress')}
-              className={`font-['JetBrains_Mono'] text-xs uppercase tracking-wider pb-1 transition-colors ${activeTab === 'progress'
-                ? 'text-[#ffe6ab] border-b-2 border-[#ffe6ab]'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                }`}
-            >
-              Progress
-            </button>
-          </nav>
-        )}
 
         <div className="flex items-center gap-2">
           <button
@@ -1036,7 +1012,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Sticky bottom nav */}
-      <div className="app-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
+      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
           <button
             onClick={() => setActiveTab('log')}
