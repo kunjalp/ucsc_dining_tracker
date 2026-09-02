@@ -994,7 +994,7 @@ export default function DashboardPage() {
 
               {loggedMeals.length === 0 ? (
                 <div className="py-12 text-center text-[#c2c6d0] font-medium">
-                  You haven't logged any foods today yet. Go back to the Log tab to add meals!
+                  You haven't logged any foods today yet. Go back to Log Menu to add meals!
                 </div>
               ) : (
                 <div className="divide-y divide-white/10">
