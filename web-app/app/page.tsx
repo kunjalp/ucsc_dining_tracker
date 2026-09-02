@@ -46,7 +46,7 @@ export default function AuthPage() {
           setMessage(`Sign up error: ${error.message}`)
         }
       } else if (data.session) {
-        router.push('/dashboard')
+        router.push('/onboarding')
       } else {
         setMessage('Success! Check your email for a confirmation link.')
       }
