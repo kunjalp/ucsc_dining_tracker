@@ -24,7 +24,7 @@ interface RecommendedProfile {
 interface SetTargetsModalProps {
   currentTargets?: DailyTargets;
   onClose: () => void;
-  onSave: (targets: DailyTargets) => void;
+  onSave: (targets: DailyTargets, mode: 'recommended' | 'manual') => void;
 }
 
 const DEFAULT_TARGETS: DailyTargets = { calories: 2000, protein: 120, carbs: 250, fat: 70 };
@@ -106,9 +106,9 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
         goal,
         goal === 'maintain' ? 0 : rate
       );
-      onSave(calculated);
+      onSave(calculated, 'recommended');
     } else {
-      onSave(manualTargets);
+      onSave(manualTargets, 'manual');
     }
     onClose();
   };
