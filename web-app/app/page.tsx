@@ -25,45 +25,19 @@ export default function AuthPage() {
     setMessage('')
 
     if (isSignUp) {
-      // 1. Attempt standard signup
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getURL()}auth/callback`,
-        }
-      })
+      const { data, error } = await supabase.auth.signUp({ email, password })
 
       if (error) {
-        // If user already registered but hasn't verified, attempt to resend the email
         if (error.message.toLowerCase().includes('already registered')) {
-          const { error: resendError } = await supabase.auth.resend({
-            type: 'signup',
-            email,
-            options: {
-              emailRedirectTo: `${getURL()}auth/callback`,
-            }
-          })
-
-          if (resendError) {
-            setMessage(`Error resending email: ${resendError.message}`)
-          } else {
-            setMessage('Account exists but unverified. We resent a new confirmation link to your email!')
-          }
+          setMessage('An account with this email already exists. Try signing in instead.')
         } else {
           setMessage(`Sign up error: ${error.message}`)
         }
-      } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-        // Supabase sometimes returns an empty identities array if user exists
-        await supabase.auth.resend({
-          type: 'signup',
-          email,
-          options: {
-            emailRedirectTo: `${getURL()}auth/callback`,
-          }
-        })
-        setMessage('Account already registered! A new confirmation link has been sent to your email.')
+      } else if (data.session) {
+        // Confirmation is off, so signUp already returned a live session — go straight in
+        router.push('/dashboard')
       } else {
+        // Fallback, in case confirmation ever gets turned back on later
         setMessage('Success! Check your email for a confirmation link.')
       }
     } else {
