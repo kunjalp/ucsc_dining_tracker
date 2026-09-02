@@ -125,6 +125,29 @@ export default function AuthPage() {
           </div>
         </div>
 
+        <div className="mb-4 flex bg-[#171f33] p-1 rounded-xl gap-1">
+          <button
+            type="button"
+            onClick={() => setIsSignUp(false)}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${!isSignUp
+                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSignUp(true)}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${isSignUp
+                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
+          >
+            Sign Up
+          </button>
+        </div>
+
         <p className="mb-4 text-center text-sm text-[#c2c6d0]">
           {isSignUp ? 'Create your account to get started.' : 'Welcome back! Please sign in.'}
         </p>
@@ -161,8 +184,8 @@ export default function AuthPage() {
               type="button"
               onClick={() => setRememberMeState(!rememberMe)}
               className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
-                  ? 'bg-[#d6b93a] border-[#d6b93a]'
-                  : 'bg-[#171f33] border-white/20'
+                ? 'bg-[#d6b93a] border-[#d6b93a]'
+                : 'bg-[#171f33] border-white/20'
                 }`}
               aria-label="Stay signed in"
             >
@@ -211,21 +234,6 @@ export default function AuthPage() {
             {message}
           </div>
         )}
-
-        {/* Footer Toggle */}
-        <div className="mt-4 border-t border-white/10 pt-4 text-center">
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm font-medium text-[#c2c6d0] transition hover:text-[#ffe6ab]"
-          >
-            {isSignUp ? (
-              <>Already have an account? <span className="text-[#ffe6ab] font-semibold">Sign In</span></>
-            ) : (
-              <>Don't have an account? <span className="text-[#ffe6ab] font-semibold">Sign Up</span></>
-            )}
-          </button>
-        </div>
 
       </div>
 
