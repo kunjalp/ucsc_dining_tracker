@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient, setRememberMe } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
@@ -20,6 +20,16 @@ export default function AuthPage() {
   const router = useRouter()
   const [rememberMe, setRememberMeState] = useState(true)
 
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+    checkExistingSession()
+  }, [])
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setRememberMe(rememberMe)
@@ -36,14 +46,11 @@ export default function AuthPage() {
           setMessage(`Sign up error: ${error.message}`)
         }
       } else if (data.session) {
-        // Confirmation is off, so signUp already returned a live session — go straight in
         router.push('/dashboard')
       } else {
-        // Fallback, in case confirmation ever gets turned back on later
         setMessage('Success! Check your email for a confirmation link.')
       }
     } else {
-      // Sign in logic
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage(`Login error: ${error.message}`)
@@ -87,7 +94,6 @@ export default function AuthPage() {
     setLoading(false)
   }
 
-
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
@@ -97,50 +103,50 @@ export default function AuthPage() {
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
       {/* Container Box */}
-      <div className="w-full max-w-md rounded-2xl p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+      <div className="w-full max-w-md rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
 
         {/* Brand Header */}
-        <div className="mb-8 flex items-center justify-center gap-4">
+        <div className="mb-4 flex items-center justify-center gap-3">
           <img
             src="/sammy-logo-transparent.png"
             alt="Sammy's Palate"
-            className="h-20 w-20 object-contain shrink-0"
+            className="h-14 w-14 object-contain shrink-0"
           />
 
-          <div className="h-14 w-px bg-white/15" />
+          <div className="h-11 w-px bg-white/15" />
 
           <div className="text-left">
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#dae2fd] whitespace-nowrap">
+            <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] whitespace-nowrap">
               Sammy's Palate
             </h1>
-            <p className="mt-1 text-xs font-semibold text-[#dae2fd]/50 tracking-wider uppercase">
+            <p className="mt-0.5 text-[11px] font-semibold text-[#dae2fd]/50 tracking-wider uppercase">
               UCSC Macro Tracker
             </p>
           </div>
         </div>
 
-        <p className="mb-8 text-center text-base text-[#c2c6d0]">
+        <p className="mb-4 text-center text-sm text-[#c2c6d0]">
           {isSignUp ? 'Create your account to get started.' : 'Welcome back! Please sign in.'}
         </p>
 
         {/* Form */}
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-3">
           <div>
-            <label className="block font-['JetBrains_Mono'] text-xs font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Email Address
             </label>
             <input
               type="email"
               required
               placeholder="slug@ucsc.edu"
-              className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2.5 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block font-['JetBrains_Mono'] text-xs font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Password
             </label>
             <PasswordInput
@@ -149,6 +155,7 @@ export default function AuthPage() {
               placeholder="••••••••"
             />
           </div>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -171,15 +178,15 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-xl bg-[#d6b93a] py-2.5 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
             {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs font-semibold text-[#c2c6d0]/50 uppercase tracking-wider">or</span>
+          <span className="text-[11px] font-semibold text-[#c2c6d0]/50 uppercase tracking-wider">or</span>
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
@@ -187,7 +194,7 @@ export default function AuthPage() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="mt-4 w-full flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-[#dae2fd] transition hover:bg-white/10 active:scale-[0.98] disabled:opacity-60"
+          className="mt-3 w-full flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-semibold text-[#dae2fd] transition hover:bg-white/10 active:scale-[0.98] disabled:opacity-60"
         >
           <svg width="16" height="16" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -200,13 +207,13 @@ export default function AuthPage() {
 
         {/* Dynamic Alert Message */}
         {message && (
-          <div className="mt-4 rounded-lg bg-[#a1c9ff]/10 p-3 text-center text-xs font-medium text-[#a1c9ff] border border-[#a1c9ff]/20">
+          <div className="mt-3 rounded-lg bg-[#a1c9ff]/10 p-2.5 text-center text-xs font-medium text-[#a1c9ff] border border-[#a1c9ff]/20">
             {message}
           </div>
         )}
 
         {/* Footer Toggle */}
-        <div className="mt-6 border-t border-white/10 pt-6 text-center">
+        <div className="mt-4 border-t border-white/10 pt-4 text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
@@ -223,7 +230,7 @@ export default function AuthPage() {
       </div>
 
       {/* Footer Branding */}
-      <p className="mt-8 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50">
+      <p className="mt-5 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50">
         UC Santa Cruz • Dining Tracker
       </p>
     </div>
