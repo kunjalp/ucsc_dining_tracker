@@ -175,6 +175,7 @@ export default function DashboardPage() {
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
+  const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
@@ -276,19 +277,35 @@ export default function DashboardPage() {
     }
   }, [showCalendar])
 
+  useEffect(() => {
+    const savedCals = localStorage.getItem('ucsc_goal_calories')
+    const savedProtein = localStorage.getItem('ucsc_goal_protein')
+    const savedCarbs = localStorage.getItem('ucsc_goal_carbs')
+    const savedFat = localStorage.getItem('ucsc_goal_fat')
+    const savedMode = localStorage.getItem('ucsc_goal_mode')
+
+    if (savedCals) setGoalCalories(Number(savedCals))
+    if (savedProtein) setGoalProtein(Number(savedProtein))
+    if (savedCarbs) setGoalCarbs(Number(savedCarbs))
+    if (savedFat) setGoalFat(Number(savedFat))
+    if (savedMode === 'recommended' || savedMode === 'manual') setGoalMode(savedMode)
+  }, [])
+
   // Process manual configurations save (called from SetTargetsModal)
-  const handleSaveGoals = async (newTargets: DailyTargets) => {
+  const handleSaveGoals = async (newTargets: DailyTargets, mode: 'recommended' | 'manual') => {
     const { calories, protein, carbs, fat } = newTargets
 
     setGoalCalories(calories)
     setGoalProtein(protein)
     setGoalCarbs(carbs)
     setGoalFat(fat)
+    setGoalMode(mode)
 
     localStorage.setItem('ucsc_goal_calories', String(calories))
     localStorage.setItem('ucsc_goal_protein', String(protein))
     localStorage.setItem('ucsc_goal_carbs', String(carbs))
     localStorage.setItem('ucsc_goal_fat', String(fat))
+    localStorage.setItem('ucsc_goal_mode', mode)
 
     setIsTargetsModalOpen(false)
 
@@ -857,8 +874,18 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-bold tracking-tight">
                     {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
                   </h2>
-                  <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                    {showCalendar ? 'Toggle metrics to analyze historical streaks' : 'Review live goals achieved today'}
+                  <p
+                    className={
+                      showCalendar
+                        ? 'text-xs text-[#c2c6d0]/70 mt-0.5'
+                        : `text-sm font-bold mt-0.5 ${goalMode === 'recommended' ? 'text-[#a1c9ff]' : 'text-[#ffe6ab]'}`
+                    }
+                  >
+                    {showCalendar
+                      ? 'Toggle metrics to analyze historical streaks'
+                      : goalMode === 'recommended'
+                        ? 'Recommended Target'
+                        : 'Target Amount'}
                   </p>
                 </div>
 

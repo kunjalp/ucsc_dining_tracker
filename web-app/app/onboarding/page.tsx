@@ -13,7 +13,7 @@ export default function OnboardingPage() {
 
     const goToDashboard = () => router.push('/dashboard')
 
-    const handleSaveGoals = async (targets: DailyTargets) => {
+    const handleSaveGoals = async (targets: DailyTargets, mode: 'recommended' | 'manual') => {
         setSaving(true)
 
         // Same localStorage keys the dashboard reads on load, so the rings
@@ -22,6 +22,7 @@ export default function OnboardingPage() {
         localStorage.setItem('ucsc_goal_protein', String(targets.protein))
         localStorage.setItem('ucsc_goal_carbs', String(targets.carbs))
         localStorage.setItem('ucsc_goal_fat', String(targets.fat))
+        localStorage.setItem('ucsc_goal_mode', mode)
 
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
