@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { createClient, setRememberMe } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
 import { Settings, User } from 'lucide-react';
@@ -18,9 +18,11 @@ export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const [rememberMe, setRememberMeState] = useState(true)
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    setRememberMe(rememberMe)
     setLoading(true)
     setMessage('')
 
@@ -53,6 +55,7 @@ export default function AuthPage() {
   }
 
   const handleGoogleSignIn = async () => {
+    setRememberMe(rememberMe)
     setLoading(true)
     setMessage('')
 
@@ -117,7 +120,7 @@ export default function AuthPage() {
         </div>
 
         <p className="mb-8 text-center text-base text-[#c2c6d0]">
-          {isSignUp ? 'Create your account to get started' : 'Welcome back! Please sign in.'}
+          {isSignUp ? 'Create your account to get started.' : 'Welcome back! Please sign in.'}
         </p>
 
         {/* Form */}
@@ -145,6 +148,24 @@ export default function AuthPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRememberMeState(!rememberMe)}
+              className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
+                  ? 'bg-[#d6b93a] border-[#d6b93a]'
+                  : 'bg-[#171f33] border-white/20'
+                }`}
+              aria-label="Stay signed in"
+            >
+              {rememberMe && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b5300" strokeWidth="3">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              )}
+            </button>
+            <span className="text-xs font-medium text-[#c2c6d0]">Stay signed in</span>
           </div>
 
           <button
