@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import DeepLinkHandler from './components/DeepLinkHandler'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
 import "./globals.css";
 
 const geistSans = Geist({
