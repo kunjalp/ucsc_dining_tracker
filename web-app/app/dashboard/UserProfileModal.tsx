@@ -303,7 +303,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
-            <label htmlFor="nickname" className="block font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="nickname" className="block font-['JetBrains_Mono'] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Nickname
             </label>
             <input
@@ -312,12 +312,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="e.g. bananaslug23"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-base text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="email" className="block font-['JetBrains_Mono'] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Email
             </label>
             <input
@@ -326,7 +326,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@ucsc.edu"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-base text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
             {emailChanged && (
               <p className="text-[10px] text-[#a1c9ff] mt-1">
