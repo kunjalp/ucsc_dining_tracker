@@ -71,23 +71,6 @@ export default function AuthPage() {
       ? 'sammyspalate://auth-callback'
       : `${getURL()}auth/callback`
 
-    const handleForgotPassword = async (e: React.FormEvent) => {
-      e.preventDefault()
-      setLoading(true)
-      setMessage('')
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getURL()}auth/callback?next=/auth/update-password`,
-      })
-
-      if (error) {
-        setMessage(`Error: ${error.message}`)
-      } else {
-        setMessage('Check your email for a password reset link.')
-      }
-      setLoading(false)
-    }
-
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -109,6 +92,23 @@ export default function AuthPage() {
       } else {
         window.location.href = data.url
       }
+    }
+    setLoading(false)
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${getURL()}auth/callback?next=/auth/update-password`,
+    })
+
+    if (error) {
+      setMessage(`Error: ${error.message}`)
+    } else {
+      setMessage('Check your email for a password reset link.')
     }
     setLoading(false)
   }
