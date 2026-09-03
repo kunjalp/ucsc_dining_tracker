@@ -105,8 +105,12 @@ export default function AuthPage() {
     setLoading(true)
     setMessage('')
 
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'sammyspalate://auth-callback?next=/auth/update-password'
+      : `${getURL()}auth/callback?next=/auth/update-password`
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${getURL()}auth/callback?next=/auth/update-password`,
+      redirectTo,
     })
 
     if (error) {
@@ -116,7 +120,7 @@ export default function AuthPage() {
     }
     setLoading(false)
   }
-
+  
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
