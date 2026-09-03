@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
 import { getHallOpenStatus } from '@/lib/diningHours'
+import { classifyByName } from '@/lib/stationClassifier'
 
 import {
   History,
@@ -67,6 +68,13 @@ const DINING_HALLS = [
   "Stevenson Coffee House",
   "Perk Coffee Bar",
 ]
+
+const getEffectiveStation = (entry: MenuEntry): string => {
+  const rawStation = entry.station?.trim()
+  if (rawStation) return rawStation // trust scraped value when present — Entrees, Grill, etc. already work
+  const byName = classifyByName(entry.food_items?.name || '')
+  return byName || 'General'
+}
 
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
@@ -423,29 +431,9 @@ export default function DashboardPage() {
     return rawName.replace(/--/g, '').trim()
   }
 
-  const ALL_DAY_SUBCATEGORIES: { label: string; keywords: string[] }[] = [
-    { label: 'Dairy & Yogurt', keywords: ['yogurt', 'cottage cheese', 'half & half', 'milk'] },
-    { label: 'Nuts & Seeds', keywords: ['peanut', 'almond', 'sunflower seed', 'cashew', 'walnut', 'pecan'] },
-    { label: 'Fruit', keywords: ['apple', 'banana', 'berry', 'berries', 'grape', 'melon', 'pineapple', 'peach', 'pear', 'mango', 'orange', 'grapefruit', 'watermelon', 'strawberr', 'apricot', 'cranberr', 'raisin', 'mandarin', 'fruit salad'] },
-    { label: 'Sweets & Extras', keywords: ['sugar', 'honey', 'splenda', 'coconut', 'creamer', 'whipped'] },
-  ]
-
-  const classifyAllDayItem = (name: string): string => {
-    const lower = name.toLowerCase()
-    for (const cat of ALL_DAY_SUBCATEGORIES) {
-      if (cat.keywords.some((kw) => lower.includes(kw))) return cat.label
-    }
-    return 'Other'
-  }
-
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
-    const stations = menu.map((entry) => {
-      const raw = entry.station || ''
-      return raw.toLowerCase() === 'all day'
-        ? classifyAllDayItem(entry.food_items?.name || '')
-        : raw
-    }).filter(Boolean)
+    const stations = menu.map((entry) => getEffectiveStation(entry))
     return Array.from(new Set(stations))
   }, [menu])
 
@@ -456,16 +444,9 @@ export default function DashboardPage() {
       if (!food) return false
 
       const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase())
-
-      const rawStation = entry.station || ''
-      const effectiveStation =
-        rawStation.toLowerCase() === 'all day'
-          ? classifyAllDayItem(entry.food_items?.name || '')
-          : rawStation
-
       const matchesStation =
         activeStationFilters.length === 0 ||
-        activeStationFilters.includes(effectiveStation)
+        activeStationFilters.includes(getEffectiveStation(entry))
 
       return matchesSearch && matchesStation
     })
@@ -474,20 +455,11 @@ export default function DashboardPage() {
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
     const groups: { [station: string]: MenuEntry[] } = {}
-
     filteredMenu.forEach((entry) => {
-      const rawStation = entry.station || ''
-      const stationKey =
-        rawStation.toLowerCase() === 'all day'
-          ? classifyAllDayItem(entry.food_items?.name || '')
-          : rawStation || 'General'
-
-      if (!groups[stationKey]) {
-        groups[stationKey] = []
-      }
+      const stationKey = getEffectiveStation(entry)
+      if (!groups[stationKey]) groups[stationKey] = []
       groups[stationKey].push(entry)
     })
-
     return groups
   }, [filteredMenu])
 
