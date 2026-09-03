@@ -735,41 +735,43 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Search + station filter pills */}
-              <div className="pt-4 border-t border-white/10 space-y-3">
-                <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
-                <div className="relative w-full">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search today's items..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
-                  />
-                </div>
-
-                {availableStations.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {availableStations.map((station) => {
-                      const isActive = activeStationFilters.includes(station)
-                      return (
-                        <button
-                          key={station}
-                          type="button"
-                          onClick={() => handleToggleStationFilter(station)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
-                            ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
-                            : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                            }`}
-                        >
-                          {cleanStationName(station)}
-                        </button>
-                      )
-                    })}
+              {/* Search + station filter pills — hidden when the hall is closed */}
+              {!(hallStatus && !hallStatus.is_open) && (
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
+                  <div className="relative w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search today's items..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
+                    />
                   </div>
-                )}
-              </div>
+
+                  {availableStations.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {availableStations.map((station) => {
+                        const isActive = activeStationFilters.includes(station)
+                        return (
+                          <button
+                            key={station}
+                            type="button"
+                            onClick={() => handleToggleStationFilter(station)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
+                              ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
+                              : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                              }`}
+                          >
+                            {cleanStationName(station)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Dining hall closed banner */}
