@@ -69,6 +69,35 @@ const DINING_HALLS = [
   "Perk Coffee Bar",
 ]
 
+const STATION_DISPLAY_ORDER = [
+  'Entrees',
+  'Grill',
+  'Hot Bars',
+  'Pizza',
+  'Soups',
+  'Sweet Treats',
+  'Campus Bakery',
+  'Clean Plate',
+  'Salad Bar',
+  'Deli Bar',
+  'Cereal',
+  'Barista Station',
+  'Beverages',
+  'Bread & Bagels',
+  'Condiments - Dressings, Oils & Vinegars',
+  'Condiments - Hot Sauces & Seasonings',
+  'Condiments - Sauces & Syrups',
+  'Condiments - Spreads & Butters',
+  'Fruit',
+  'Dairy & Yogurt',
+  'Nuts & Seeds',
+]
+
+const getStationSortIndex = (station: string): number => {
+  const idx = STATION_DISPLAY_ORDER.indexOf(station)
+  return idx === -1 ? STATION_DISPLAY_ORDER.length : idx // unknown stations sort last
+}
+
 const getEffectiveStation = (entry: MenuEntry): string => {
   const rawStation = entry.station?.trim()
   if (rawStation) return rawStation // trust scraped value when present — Entrees, Grill, etc. already work
@@ -463,6 +492,14 @@ export default function DashboardPage() {
     return groups
   }, [filteredMenu])
 
+  const sortedGroupedMenuEntries = useMemo(() => {
+    return Object.entries(groupedMenu).sort(
+      ([a], [b]) => getStationSortIndex(a) - getStationSortIndex(b)
+    )
+  }, [groupedMenu])
+
+
+
   const handleToggleStationFilter = (station: string) => {
     setActiveStationFilters((prev) =>
       prev.includes(station) ? prev.filter((s) => s !== station) : [...prev, station]
@@ -754,17 +791,26 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap gap-2 pt-1">
                       {availableStations.map((station) => {
                         const isActive = activeStationFilters.includes(station)
+                        const [parentLabel, subLabel] = station.includes(' - ')
+                          ? station.split(' - ')
+                          : [null, station]
+
                         return (
                           <button
                             key={station}
                             type="button"
                             onClick={() => handleToggleStationFilter(station)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${isActive
+                            className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
                               ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
                               : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                               }`}
                           >
-                            {cleanStationName(station)}
+                            {parentLabel && (
+                              <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#6b5300]/70' : 'text-[#a1c9ff]'}`}>
+                                {parentLabel}
+                              </span>
+                            )}
+                            <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
                           </button>
                         )
                       })}
@@ -796,7 +842,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {Object.entries(groupedMenu).map(([stationRaw, entries]) => (
+                    {sortedGroupedMenuEntries.map(([stationRaw, entries]) => (
                       <div key={stationRaw} className="space-y-3">
                         <div className="flex items-center">
                           <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
