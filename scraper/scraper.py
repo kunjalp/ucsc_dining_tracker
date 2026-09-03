@@ -153,45 +153,6 @@ def get_meal_period_names(page) -> list[str]:
         """
     )
 
-
-def get_station_map(page, meal_names: list[str]) -> dict:
-    """Best-effort mapping of (meal_name, item_name_lowercased) -> station,
-    built by walking the menu listing page (the '-- Station --' headers
-    live here, not in the Nutrition Calculator report). If UCSC changes
-    their markup this may return an incomplete map; items simply end up
-    with a null station in that case, which is still valid per the schema."""
-    return page.evaluate(
-        """
-        (mealNames) => {
-            const leaves = Array.from(document.querySelectorAll('body *'))
-                .filter(el => el.children.length === 0 && el.textContent.trim() !== '');
-            const map = {};
-            let currentMeal = null;
-            let currentStation = null;
-            for (const el of leaves) {
-                const t = el.textContent.trim();
-                if (t === 'Nutrition Calculator') continue;
-                if (mealNames.includes(t)) {
-                    currentMeal = t;
-                    currentStation = null;
-                    continue;
-                }
-                if (t.startsWith('--') && t.endsWith('--') && t.length > 4) {
-                    currentStation = t.replace(/^-+\\s*/, '').replace(/\\s*-+$/, '').trim();
-                    continue;
-                }
-                if (currentMeal) {
-                    const key = currentMeal + '|' + t.toLowerCase();
-                    if (!(key in map)) map[key] = currentStation;
-                }
-            }
-            return map;
-        }
-        """,
-        meal_names,
-    )
-
-
 def fetch_meal_report_html(page, meal_index: int) -> str | None:
     """From a freshly-loaded hall menu page, click the Nth 'Nutrition
     Calculator' link (0-indexed, in document order == meal-period order),
@@ -264,14 +225,19 @@ def parse_report(html: str) -> list[dict]:
     results = []
     current_station = None
 
-    for row in soup.find_all("tr"):
-        row_text = row.get_text(strip=True)
-
-        if row_text.startswith("--") and row_text.endswith("--") and len(row_text) > 4:
-            current_station = row_text.replace("--", "").strip()
+    # Walk every tag in document order, not just <tr> rows, since station
+    # headers live in their own <div class="longmenucolmenucat"> elements
+    # that sit alongside (not inside) the item rows.
+    for tag in soup.find_all(True):
+        if tag.name == "div" and "longmenucolmenucat" in (tag.get("class") or []):
+            header_text = tag.get_text(strip=True)
+            current_station = header_text.replace("--", "").strip()
             continue
 
-        name_div = row.find("div", class_="nutrptnames")
+        if tag.name != "tr":
+            continue
+
+        name_div = tag.find("div", class_="nutrptnames")
         if not name_div:
             continue
 
@@ -289,10 +255,10 @@ def parse_report(html: str) -> list[dict]:
             continue
         item_id = vals[0]
 
-        portion_div = row.find("div", class_="nutrptportions")
+        portion_div = tag.find("div", class_="nutrptportions")
         portion = portion_div.get_text(strip=True).replace("\xa0", " ") if portion_div else "1 serving"
 
-        value_divs = row.find_all("div", class_="nutrptvalues")
+        value_divs = tag.find_all("div", class_="nutrptvalues")
         values = [to_float(v.get_text(strip=True)) for v in value_divs]
 
         if len(values) >= 5:
@@ -365,7 +331,6 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
 
     # Station headers live on this listing page, capture them before we
     # start navigating into calculator forms/report tabs.
-    station_map = get_station_map(page, meal_names)
 
     total_items = 0
     for i, meal_name in enumerate(meal_names):
@@ -384,12 +349,11 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
 
         rows = []
         for item in items:
-            station = station_map.get(f"{meal_name}|{item['name'].lower()}")
             rows.append({
                 "date": scrape_date,
                 "dining_hall": hall_name,
                 "meal_type": meal_name,
-                "station": station,
+                "station": item["station"],
                 "food_item_id": item["recipe_id"],
             })
 
