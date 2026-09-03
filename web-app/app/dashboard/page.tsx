@@ -87,15 +87,24 @@ const STATION_DISPLAY_ORDER = [
   'Fruit',
   'Dairy & Yogurt',
   'Nuts & Seeds',
-  'Condiments - Dressings, Oils & Vinegars',
-  'Condiments - Hot Sauces & Seasonings',
-  'Condiments - Sauces & Syrups',
-  'Condiments - Spreads & Butters',
+  'Condiments',
+]
+
+const CONDIMENT_SUB_ORDER = [
+  'Dressings, Oils & Vinegars',
+  'Hot Sauces & Seasonings',
+  'Sauces & Syrups',
+  'Spreads & Butters',
 ]
 
 const getStationSortIndex = (station: string): number => {
   const idx = STATION_DISPLAY_ORDER.indexOf(station)
-  return idx === -1 ? STATION_DISPLAY_ORDER.length : idx // unknown stations sort last
+  return idx === -1 ? STATION_DISPLAY_ORDER.length : idx
+}
+
+interface ParentGroup {
+  parent: string
+  subgroups: { sub: string | null; entries: MenuEntry[] }[]
 }
 
 const getEffectiveStation = (entry: MenuEntry): string => {
@@ -492,6 +501,39 @@ export default function DashboardPage() {
     return groups
   }, [filteredMenu])
 
+  const parentGroupedMenu = useMemo((): ParentGroup[] => {
+    const parents: Record<string, Record<string, MenuEntry[]>> = {}
+
+    Object.entries(groupedMenu).forEach(([station, entries]) => {
+      const [parent, sub] = station.includes(' - ') ? station.split(' - ') : [station, '']
+      if (!parents[parent]) parents[parent] = {}
+      const subKey = sub || '__none__'
+      if (!parents[parent][subKey]) parents[parent][subKey] = []
+      parents[parent][subKey].push(...entries)
+    })
+
+    const result: ParentGroup[] = Object.entries(parents).map(([parent, subs]) => {
+      const subgroups = Object.entries(subs).map(([subKey, entries]) => ({
+        sub: subKey === '__none__' ? null : subKey,
+        entries,
+      }))
+
+      subgroups.sort((a, b) => {
+        if (a.sub === null) return -1
+        if (b.sub === null) return 1
+        const aIdx = CONDIMENT_SUB_ORDER.indexOf(a.sub)
+        const bIdx = CONDIMENT_SUB_ORDER.indexOf(b.sub)
+        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx)
+      })
+
+      return { parent, subgroups }
+    })
+
+    result.sort((a, b) => getStationSortIndex(a.parent) - getStationSortIndex(b.parent))
+
+    return result
+  }, [groupedMenu])
+
   const sortedGroupedMenuEntries = useMemo(() => {
     return Object.entries(groupedMenu).sort(
       ([a], [b]) => getStationSortIndex(a) - getStationSortIndex(b)
@@ -842,74 +884,83 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {sortedGroupedMenuEntries.map(([stationRaw, entries]) => (
-                      <div key={stationRaw} className="space-y-3">
+                    {parentGroupedMenu.map(({ parent, subgroups }) => (
+                      <div key={parent} className="space-y-3">
                         <div className="flex items-center">
                           <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
-                            {cleanStationName(stationRaw)}
+                            {cleanStationName(parent)}
                           </span>
                           <div className="flex-1 h-px bg-white/10 ml-4" />
                         </div>
 
-                        <div className="divide-y divide-white/10">
-                          {entries.map((entry) => {
-                            const food = entry.food_items
-                            if (!food) return null
-                            return (
-                              <article
-                                key={food.recipe_id}
-                                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
-                              >
-                                <div>
-                                  <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
-                                  <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                                    Serving Size: {food.portion || '1 serving'}
-                                  </p>
-                                  <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
-                                    <span className="text-[#a1c9ff] bg-[#a1c9ff]/10 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
-                                    <span>P: {food.protein}g</span>
-                                    <span>C: {food.carbs}g</span>
-                                    <span>F: {food.fat}g</span>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                  <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
-                                    {[
-                                      { label: '1/4x', value: 0.25 },
-                                      { label: '1/2x', value: 0.5 },
-                                      { label: '1x', value: 1.0 },
-                                      { label: '1.5x', value: 1.5 },
-                                      { label: '2x', value: 2 }
-                                    ].map((opt) => {
-                                      const currentVal = servings[food.recipe_id] ?? 1.0
-                                      const isSelected = currentVal === opt.value
-                                      return (
-                                        <button
-                                          key={opt.label}
-                                          type="button"
-                                          onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
-                                            ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                                            : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                            }`}
-                                        >
-                                          {opt.label}
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                  <button
-                                    onClick={() => handleLogFood(food.recipe_id)}
-                                    className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                        {subgroups.map(({ sub, entries }) => (
+                          <div key={sub || 'none'} className="space-y-2">
+                            {sub && (
+                              <p className="font-['JetBrains_Mono'] text-[10px] font-bold tracking-wider text-[#c2c6d0]/70 uppercase pl-1">
+                                {sub}
+                              </p>
+                            )}
+                            <div className="divide-y divide-white/10">
+                              {entries.map((entry) => {
+                                const food = entry.food_items
+                                if (!food) return null
+                                return (
+                                  <article
+                                    key={food.recipe_id}
+                                    className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
                                   >
-                                    Log
-                                  </button>
-                                </div>
-                              </article>
-                            )
-                          })}
-                        </div>
+                                    <div>
+                                      <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
+                                      <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                                        Serving Size: {food.portion || '1 serving'}
+                                      </p>
+                                      <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
+                                        <span className="text-[#a1c9ff] bg-[#a1c9ff]/10 px-2 py-0.5 rounded-md">Cals: {food.calories}</span>
+                                        <span>P: {food.protein}g</span>
+                                        <span>C: {food.carbs}g</span>
+                                        <span>F: {food.fat}g</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
+                                        {[
+                                          { label: '1/4x', value: 0.25 },
+                                          { label: '1/2x', value: 0.5 },
+                                          { label: '1x', value: 1.0 },
+                                          { label: '1.5x', value: 1.5 },
+                                          { label: '2x', value: 2 }
+                                        ].map((opt) => {
+                                          const currentVal = servings[food.recipe_id] ?? 1.0
+                                          const isSelected = currentVal === opt.value
+                                          return (
+                                            <button
+                                              key={opt.label}
+                                              type="button"
+                                              onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
+                                              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
+                                                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                                                }`}
+                                            >
+                                              {opt.label}
+                                            </button>
+                                          )
+                                        })}
+                                      </div>
+                                      <button
+                                        onClick={() => handleLogFood(food.recipe_id)}
+                                        className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                                      >
+                                        Log
+                                      </button>
+                                    </div>
+                                  </article>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
