@@ -66,15 +66,9 @@ export default function AuthPage() {
     setRememberMe(rememberMe)
     setLoading(true)
     setMessage('')
-
     const redirectTo = Capacitor.isNativePlatform()
-      ? 'sammyspalate://auth-callback?next=/auth/update-password'
-      : `${getURL()}auth/callback?next=/auth/update-password`
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    })
-
+      ? 'sammyspalate://auth-callback'
+      : `${getURL()}auth/callback`
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -120,8 +114,10 @@ export default function AuthPage() {
     }
     setLoading(false)
   }
-  
+
   return (
+    
+    
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
