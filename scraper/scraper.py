@@ -259,12 +259,18 @@ def to_float(s: str) -> float:
     m = re.search(r"[-+]?\d*\.?\d+", s)
     return float(m.group()) if m else 0.0
 
-
 def parse_report(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     results = []
+    current_station = None
 
     for row in soup.find_all("tr"):
+        row_text = row.get_text(strip=True)
+
+        if row_text.startswith("--") and row_text.endswith("--") and len(row_text) > 4:
+            current_station = row_text.replace("--", "").strip()
+            continue
+
         name_div = row.find("div", class_="nutrptnames")
         if not name_div:
             continue
@@ -286,7 +292,6 @@ def parse_report(html: str) -> list[dict]:
         portion_div = row.find("div", class_="nutrptportions")
         portion = portion_div.get_text(strip=True).replace("\xa0", " ") if portion_div else "1 serving"
 
-        # nutrptvalues appear in fixed order: Cals, Prot, Carb, Sugar, Fat
         value_divs = row.find_all("div", class_="nutrptvalues")
         values = [to_float(v.get_text(strip=True)) for v in value_divs]
 
@@ -304,10 +309,10 @@ def parse_report(html: str) -> list[dict]:
             "carbs": carbs,
             "sugar": sugar,
             "fat": fat,
+            "station": current_station,
         })
 
     return results
-
 
 # ---------------------------------------------------------------------------
 # Database
