@@ -430,7 +430,7 @@ export default function DashboardPage() {
 
     // Keep Breakfast -> Lunch -> Dinner order when present; anything else
     // (e.g. "Menu", "ALL") gets appended after.
-    const preferredOrder = ['Breakfast', 'Lunch', 'Dinner']
+    const preferredOrder = ['Breakfast', 'Lunch', 'Dinner', 'Late Night']
     const ordered = [
       ...preferredOrder.filter((m) => found.includes(m)),
       ...found.filter((m) => !preferredOrder.includes(m)),
