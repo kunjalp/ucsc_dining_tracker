@@ -84,13 +84,13 @@ const STATION_DISPLAY_ORDER = [
   'Barista Station',
   'Beverages',
   'Bread & Bagels',
+  'Fruit',
+  'Dairy & Yogurt',
+  'Nuts & Seeds',
   'Condiments - Dressings, Oils & Vinegars',
   'Condiments - Hot Sauces & Seasonings',
   'Condiments - Sauces & Syrups',
   'Condiments - Spreads & Butters',
-  'Fruit',
-  'Dairy & Yogurt',
-  'Nuts & Seeds',
 ]
 
 const getStationSortIndex = (station: string): number => {
