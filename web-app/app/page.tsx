@@ -146,28 +146,6 @@ export default function AuthPage() {
             </p>
           </div>
         </div>
-        <div className="mb-4 flex justify-center bg-[#171f33] p-1 rounded-xl gap-1 w-fit mx-auto">
-          <button
-            type="button"
-            onClick={() => setIsSignUp(false)}
-            className={`px-3.5 py-1 text-sm font-bold rounded-lg transition-all ${!isSignUp
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-              }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSignUp(true)}
-            className={`px-3.5 py-1 text-sm font-bold rounded-lg transition-all ${isSignUp
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-              }`}
-          >
-            Sign Up
-          </button>
-        </div>
 
         <p className="mb-4 text-center text-sm text-[#c2c6d0]">
           {isSignUp ? 'Create your account to get started.' : 'Welcome back! Please sign in.'}
@@ -294,6 +272,29 @@ export default function AuthPage() {
           </svg>
           Sign in with Google
         </button>
+
+        <div className="mt-3 flex bg-[#171f33] p-1 rounded-xl gap-1">
+          <button
+            type="button"
+            onClick={() => setIsSignUp(false)}
+            className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${!isSignUp
+              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSignUp(true)}
+            className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${isSignUp
+              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              }`}
+          >
+            Sign Up
+          </button>
+        </div>
 
         {/* Dynamic Alert Message */}
         {message && (
