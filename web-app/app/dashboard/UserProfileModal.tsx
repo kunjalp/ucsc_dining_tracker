@@ -67,16 +67,54 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   // ---- Avatar upload ----
   const handleAvatarClick = () => fileInputRef.current?.click()
 
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const reader = new FileReader()
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+
+      img.onload = () => {
+        const MAX_SIZE = 800
+        let { width, height } = img
+
+        if (width > height && width > MAX_SIZE) {
+          height = (height / width) * MAX_SIZE
+          width = MAX_SIZE
+        } else if (height > MAX_SIZE) {
+          width = (width / height) * MAX_SIZE
+          height = MAX_SIZE
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob)
+            else reject(new Error('Compression failed'))
+          },
+          'image/jpeg',
+          0.85
+        )
+      }
+      img.onerror = reject
+    })
+  }
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
       setError('Please choose an image file.')
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be under 10MB.')
       return
     }
 
@@ -90,12 +128,20 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       return
     }
 
-    const ext = file.name.split('.').pop()
-    const filePath = `${user.id}/avatar.${ext}`
+    let uploadBlob: Blob
+    try {
+      uploadBlob = await compressImage(file)
+    } catch {
+      setUploadingAvatar(false)
+      setError('Could not process that image. Try a different one.')
+      return
+    }
+
+    const filePath = `${user.id}/avatar.jpg`
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file, { upsert: true })
+      .upload(filePath, uploadBlob, { upsert: true, contentType: 'image/jpeg' })
 
     if (uploadError) {
       setUploadingAvatar(false)
@@ -119,7 +165,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
     setAvatarUrl(freshUrl)
   }
-
   // ---- Sign out ----
   const handleSignOut = async () => {
     setSigningOut(true)
