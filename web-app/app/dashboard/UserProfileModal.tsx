@@ -50,6 +50,11 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+
   const emailChanged = email.trim().toLowerCase() !== currentProfile.email.trim().toLowerCase()
 
   const memberSinceLabel = currentProfile.memberSince
