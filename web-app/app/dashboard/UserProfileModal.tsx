@@ -133,6 +133,31 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     router.refresh()
   }
 
+  const handleChangePassword = async () => {
+    setPasswordMessage(null)
+
+    if (newPassword.length < 6) {
+      setPasswordMessage('Password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage('Passwords do not match.')
+      return
+    }
+
+    setChangingPassword(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setChangingPassword(false)
+
+    if (error) {
+      setPasswordMessage(`Error: ${error.message}`)
+    } else {
+      setPasswordMessage('Password updated successfully!')
+      setNewPassword('')
+      setConfirmNewPassword('')
+    }
+  }
+
   // ---- Dietary preferences ----
   const toggleDietaryPreference = (pref: string) => {
     setDietaryPreferences((prev) =>
@@ -325,6 +350,39 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             <LogOut size={14} />
             {signingOut ? 'Signing out...' : 'Sign out'}
           </button>
+
+          <div className="pt-1.5 border-t border-white/10 mt-2">
+            <p className="font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5 mt-2">
+              Change Password
+            </p>
+            <div className="space-y-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              />
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              />
+              {passwordMessage && (
+                <p className="text-[11px] font-semibold text-[#a1c9ff]">{passwordMessage}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={changingPassword}
+                className="w-full rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition disabled:opacity-60"
+              >
+                {changingPassword ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
+          </div>
 
           <div className="pt-1.5 border-t border-white/10">
             <p className="font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5 mt-2">
