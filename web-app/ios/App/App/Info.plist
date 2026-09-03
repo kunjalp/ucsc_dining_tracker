@@ -66,16 +66,20 @@
 	</array>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
+        <key>ITSAppUsesNonExemptEncryption</key>
+        <false/>
+        <key>CFBundleURLTypes</key>
+        <array>
+          <dict>
             <key>CFBundleURLSchemes</key>
             <array>
               <string>sammyspalate</string>
             </array>
-        </dict>
-    </array>
+          </dict>
+        </array>
+        <key>NSCameraUsageDescription</key>
+        <string>Sammy's Palate needs camera access so you can take a profile photo.</string>
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>Sammy's Palate needs photo library access so you can choose a profile photo.</string>
 </dict>
 </plist>
