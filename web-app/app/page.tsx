@@ -49,7 +49,7 @@ export default function AuthPage() {
       } else if (data.session) {
         router.push('/onboarding')
       } else {
-        setMessage('Success! Check your email for a confirmation link.')
+        setMessage('Success! Tap the confirmation link in your email on this device.')
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
