@@ -19,6 +19,7 @@ export default function AuthPage() {
   const [message, setMessage] = useState('')
   const router = useRouter()
   const [rememberMe, setRememberMeState] = useState(true)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -70,6 +71,23 @@ export default function AuthPage() {
       ? 'sammyspalate://auth-callback'
       : `${getURL()}auth/callback`
 
+    const handleForgotPassword = async (e: React.FormEvent) => {
+      e.preventDefault()
+      setLoading(true)
+      setMessage('')
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${getURL()}auth/callback?next=/auth/update-password`,
+      })
+
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else {
+        setMessage('Check your email for a password reset link.')
+      }
+      setLoading(false)
+    }
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -77,6 +95,7 @@ export default function AuthPage() {
         skipBrowserRedirect: true,
       },
     })
+
 
     if (error) {
       setMessage(`Google sign-in error: ${error.message}`)
@@ -130,8 +149,8 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(false)}
             className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${!isSignUp
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
               }`}
           >
             Sign In
@@ -140,8 +159,8 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(true)}
             className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${isSignUp
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
               }`}
           >
             Sign Up
@@ -153,59 +172,105 @@ export default function AuthPage() {
         </p>
 
         {/* Form */}
-        <form onSubmit={handleAuth} className="space-y-3">
-          <div>
-            <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="slug@ucsc.edu"
-              className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+        {showForgotPassword ? (
+          <form onSubmit={handleForgotPassword} className="space-y-3">
+            <div>
+              <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="slug@email.com"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
-              Password
-            </label>
-            <PasswordInput
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
 
-          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setRememberMeState(!rememberMe)}
-              className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
-                ? 'bg-[#d6b93a] border-[#d6b93a]'
-                : 'bg-[#171f33] border-white/20'
-                }`}
-              aria-label="Stay signed in"
+              onClick={() => { setShowForgotPassword(false); setMessage('') }}
+              className="w-full text-center text-xs font-medium text-[#c2c6d0] hover:text-[#ffe6ab] transition"
             >
-              {rememberMe && (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b5300" strokeWidth="3">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              )}
+              Back to sign in
             </button>
-            <span className="text-xs font-medium text-[#c2c6d0]">Stay signed in</span>
-          </div>
+          </form>
+        ) : (
+          <form onSubmit={handleAuth} className="space-y-3">
+            <div>
+              <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="slug@email.com"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
-          >
-            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
-          </button>
-        </form>
+            <div>
+              <label className="block font-['JetBrains_Mono'] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+                Password
+              </label>
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRememberMeState(!rememberMe)}
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
+                    ? 'bg-[#d6b93a] border-[#d6b93a]'
+                    : 'bg-[#171f33] border-white/20'
+                    }`}
+                  aria-label="Stay signed in"
+                >
+                  {rememberMe && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b5300" strokeWidth="3">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-xs font-medium text-[#c2c6d0]">Stay signed in</span>
+              </div>
+
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotPassword(true); setMessage('') }}
+                  className="text-xs font-medium text-[#a1c9ff] hover:text-[#dae2fd] transition"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] shadow-md shadow-[#d6b93a]/20 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            >
+              {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
+            </button>
+          </form>
+        )}
 
         <div className="mt-3 flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
