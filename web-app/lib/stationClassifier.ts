@@ -17,53 +17,6 @@ function register(station: string, items: string[]) {
     KNOWN_ITEM_STATIONS[item.toLowerCase()] = station
   }
 }
-
-register('Cereal', [
-  'Cinnamon Puffins Cereal',
-  'Cinnamon Toasters',
-  'Crunchy Maple Sunrise Cereal',
-  "Honey'd Corn Flakes",
-  "Kellogg's Rice Krispies",
-  "Leapin' Lemurs Organic Peanut Butter Chocolate Cereal",
-  'Marshmallow Mateys',
-  'Organic Mesa Sunrise',
-  'Raisin Bran',
-  'Sunrise Crunchy Cinnamon Cereal',
-  'Toasty Os',
-  'Tootie Frooties',
-])
-
-register('Bread & Bagels', [
-  // Breads
-  'Buttermilk Bread',
-  'Cinnamon Raisin Bread',
-  "Milton's Multigrain Bread",
-  'Mountain White Gluten Free Bread',
-  "Nature's Harvest Vegan Whole Wheat Bread",
-  'Rye Bread',
-  'Sliced White Bread',
-  "Udi's Gluten Free Cinnamon Raisin Bread",
-  "Udi's Gluten Free Multigrain Bread",
-  "Udi's Whole Grain Gluten Free Bread",
-
-  // Bagels
-  'Gluten Free Everything Bagel',
-  'Gluten Free Plain Bagel',
-  'Sara Lee Blueberry Bagel',
-  'Sara Lee Cinnamon Raisin Bagel',
-  'Sara Lee Everything Bagel',
-  'Sara Lee Onion Bagel',
-  'Sara Lee Plain Bagel',
-
-  // Other Buns, Muffins & Cakes
-  'Hamburger Bun',
-  'Hot Dog Bun',
-  'Large Sliced Sourdough',
-  'Salted Brown Rice Cakes',
-  'Sourdough English Muffin',
-  'Wild Rice Cake',
-])
-
 register('Barista Station', [
   '2% Lactose Free Milk',
   'Califia Original Almond Milk',
@@ -103,9 +56,48 @@ register('Beverages', [
   'Starry',
 ])
 
-register('Condiments', [
-  'A1 Steak Sauce',
-  'Almond Butter',
+register('Bread & Bagels', [
+  'Buttermilk Bread',
+  'Cinnamon Raisin Bread',
+  'Gluten Free Everything Bagel',
+  'Gluten Free Plain Bagel',
+  'Hamburger Bun',
+  'Hot Dog Bun',
+  'Large Sliced Sourdough',
+  "Milton's Multigrain Bread",
+  'Mountain White Gluten Free Bread',
+  "Nature's Harvest Vegan Whole Wheat Bread",
+  'Rye Bread',
+  'Salted Brown Rice Cakes',
+  'Sara Lee Blueberry Bagel',
+  'Sara Lee Cinnamon Raisin Bagel',
+  'Sara Lee Everything Bagel',
+  'Sara Lee Onion Bagel',
+  'Sara Lee Plain Bagel',
+  'Sliced White Bread',
+  'Sourdough English Muffin',
+  "Udi's Gluten Free Cinnamon Raisin Bread",
+  "Udi's Gluten Free Multigrain Bread",
+  "Udi's Whole Grain Gluten Free Bread",
+  'Wild Rice Cake',
+])
+
+register('Cereal', [
+  'Cinnamon Puffins Cereal',
+  'Cinnamon Toasters',
+  'Crunchy Maple Sunrise Cereal',
+  "Honey'd Corn Flakes",
+  "Kellogg's Rice Krispies",
+  "Leapin' Lemurs Organic Peanut Butter Chocolate Cereal",
+  'Marshmallow Mateys',
+  'Organic Mesa Sunrise',
+  'Raisin Bran',
+  'Sunrise Crunchy Cinnamon Cereal',
+  'Toasty Os',
+  'Tootie Frooties',
+])
+
+register('Condiments - Dressings, Oils & Vinegars', [
   "Annie's Balsamic Vinaigrette",
   "Annie's Organic French Dressing",
   "Annie's Sesame Ginger Dressing",
@@ -113,58 +105,149 @@ register('Condiments', [
   "Annie's Vegan Shiitake Sesame Dressing",
   'Balsamic Vinaigrette',
   'Balsamic Vinegar',
-  'Blackberry Jam',
-  'Cholula Chipotle Hot Sauce',
-  'Cholula',
   'Chunky Blue Cheese Dressing',
   'Creamy Caesar Dressing',
-  'Creamy Peanut Butter',
-  'Crushed Red Pepper Flakes',
   'Extra Virgin Olive Oil',
   'Follow Your Heart Vegan Caesar Dressing',
   'Follow Your Heart Vegan Ranch Dressing',
+  "Ken's Honey Mustard Dressing",
+  "Ken's Ranch Dressing",
+  'Low-Fat Italian Dressing',
+  'Thousand Island Dressing',
+])
+
+register('Condiments - Hot Sauces & Seasonings', [
+  'Cholula',
+  'Cholula Chipotle Hot Sauce',
+  'Crushed Red Pepper Flakes',
+  "Melinda's Mango Hot Sauce",
+  'Nutritional Yeast',
+  'Pepper Plant Hot Sauce',
+  'Pico de Gallo Salsa',
+  'Salsa Picante',
+  'Salsa Verde',
+  'Sriracha Hot Chili Sauce',
+  'Tabasco Green Pepper Sauce',
+  'Tabasco Pepper Sauce',
+  'Tajin Seasoning',
+  'Tapatio Salsa Picante',
+])
+
+register('Condiments - Sauces & Syrups', [
+  'A1 Steak Sauce',
   'Gluten Free Tamari Soy Sauce',
-  'Grape Jelly',
-  'Grated Parmesan Cheese',
-  'Guacamole',
   'Heinz BBQ Sauce',
   'Heinz Honey Mustard',
   'Heinz Ketchup',
   'Heinz Mustard',
   'Imitation Maple Syrup',
+  'Organic Agave Syrup',
+  'Strawberry Pancake Topping',
+  'Vegan Mayonnaise',
+])
+
+register('Condiments - Spreads & Butters', [
+  'Almond Butter',
+  'Blackberry Jam',
+  'Creamy Peanut Butter',
+  'Grape Jelly',
+  'Grated Parmesan Cheese',
+  'Guacamole',
   'Individual Cream Cheese',
   'Individual Grape Jelly Cup',
   'Individual Peanut Butter Cup',
   'Individual Salted Butter Pat',
   'Individual Strawberry Jelly Cup',
-  "Ken's Honey Mustard Dressing",
-  "Ken's Ranch Dressing",
-  'Low-Fat Italian Dressing',
-  "Melinda's Mango Hot Sauce",
   'Nutella',
-  'Nutritional Yeast',
   'Orange Marmalade',
-  'Organic Agave Syrup',
-  'Pepper Plant Hot Sauce',
-  'Pico de Gallo Salsa',
   'Plain Cream Cheese',
-  'Salsa Picante',
-  'Salsa Verde',
   'Salted Butter',
   'Sour Cream',
-  'Sriracha Hot Chili Sauce',
-  'Strawberry Pancake Topping',
   'Strawberry Preserves',
-  'Tabasco Green Pepper Sauce',
-  'Tabasco Pepper Sauce',
-  'Tajin Seasoning',
-  'Tapatio Salsa Picante',
-  'Thousand Island Dressing',
   'Unsalted Butter',
   'Vegan Butter Spread',
   'Vegan Cream Cheese',
   'Vegan Cream Cheese With Chives',
-  'Vegan Mayonnaise',
+])
+
+register('Dairy & Yogurt', [
+  'Cottage Cheese',
+  'Plain Soy Milk Yogurt',
+  'Plain Unsweetened Coconut Milk Yogurt',
+  'Plain Yogurt',
+  'Sweetened Shredded Coconut',
+  'Unsweetened Vanilla Coconut Milk Vegan Yogurt',
+  'Vanilla Cashew Milk Yogurt',
+  'Whole Milk Greek Yogurt',
+])
+
+register('Deli Bar', [
+  'American Cheese',
+  'Diced Chicken',
+  'Fresh Lettuce',
+  'Fresh Sliced Tomatoes',
+  'Fritos',
+  'Greek Pepperoncini Peppers',
+  'Hickory Tofurkey Slices',
+  'Italian Dry Salami',
+  'Kosher Dill Pickles',
+  'Nut-Free Basil Pesto',
+  'Oven Roasted Turkey Breast',
+  'Oyster Crackers',
+  'Peppered Tofurkey Slices',
+  'Pickled Jalapeno Peppers',
+  'Plain Hummus',
+  'Potato Chips',
+  'Sliced Beef Pastrami',
+  'Sliced Corned Beef',
+  'Sliced Ham',
+  'Sliced Mild Cheddar Cheese',
+  'Sliced Monterey Jack Cheese',
+  'Sliced Pepperjack Cheese',
+  'Sliced Red Onions',
+  'Sliced Roast Beef',
+  'Sliced Smoked Provolone Cheese',
+  'Sliced Swiss Cheese',
+  'Sweet Pickle Relish',
+  'Vegan Cheddar Slices',
+  'White Corn Tortilla Chips',
+  'Wild Caught Tuna',
+])
+
+register('Fruit', [
+  'Applesauce',
+  'Banana',
+  'Blueberries',
+  'Cantaloupe Melon',
+  'Dried Apricot',
+  'Dried Cranberries',
+  'Fresh Pear',
+  'Fresh Pineapple',
+  'Fuji Apples',
+  'Green Grapes',
+  'Honeydew Melon',
+  'Mandarins',
+  'Mango',
+  'Oranges',
+  'Organic Gala Apples',
+  'Pineapple Chunks',
+  'Raisins',
+  'Red Apples',
+  'Red Grapes',
+  'Ruby Red Grapefruit',
+  'Sliced Peaches',
+  'Sliced Pears',
+  'Strawberries',
+  'Tropical Fruit Salad',
+  'Watermelon',
+  'White Peach',
+  'Yellow Peach',
+])
+
+register('Nuts & Seeds', [
+  'Dry Roasted Peanuts',
+  'Sliced Almonds',
+  'Sunflower Seeds',
 ])
 
 register('Salad Bar', [
@@ -208,93 +291,6 @@ register('Salad Bar', [
   'Sliced Red Radish',
   'Steamed Broccolini',
   'Sunflower Sprouts',
-])
-
-register('Deli Bar', [
-  // Meats & Proteins
-  'Diced Chicken',
-  'Hickory Tofurkey Slices',
-  'Italian Dry Salami',
-  'Oven Roasted Turkey Breast',
-  'Peppered Tofurkey Slices',
-  'Sliced Beef Pastrami',
-  'Sliced Corned Beef',
-  'Sliced Ham',
-  'Sliced Roast Beef',
-  'Wild Caught Tuna',
-
-  // Cheeses
-  'American Cheese',
-  'Sliced Mild Cheddar Cheese',
-  'Sliced Monterey Jack Cheese',
-  'Sliced Pepperjack Cheese',
-  'Sliced Smoked Provolone Cheese',
-  'Sliced Swiss Cheese',
-  'Vegan Cheddar Slices',
-
-  // Veggies & Toppings
-  'Fresh Lettuce',
-  'Fresh Sliced Tomatoes',
-  'Greek Pepperoncini Peppers',
-  'Kosher Dill Pickles',
-  'Pickled Jalapeno Peppers',
-  'Sliced Red Onions',
-
-  // Spreads, Chips & Extras
-  'Fritos',
-  'Nut-Free Basil Pesto',
-  'Oyster Crackers',
-  'Plain Hummus',
-  'Potato Chips',
-  'Sweet Pickle Relish',
-  'White Corn Tortilla Chips',
-])
-
-register('Fruit', [
-  'Applesauce',
-  'Banana',
-  'Blueberries',
-  'Cantaloupe Melon',
-  'Fresh Pear',
-  'Fresh Pineapple',
-  'Fuji Apples',
-  'Green Grapes',
-  'Honeydew Melon',
-  'Mandarins',
-  'Mango',
-  'Oranges',
-  'Organic Gala Apples',
-  'Pineapple Chunks',
-  'Red Apples',
-  'Red Grapes',
-  'Ruby Red Grapefruit',
-  'Sliced Peaches',
-  'Sliced Pears',
-  'Strawberries',
-  'Tropical Fruit Salad',
-  'Watermelon',
-  'White Peach',
-  'Yellow Peach',
-  'Dried Apricot',
-  'Dried Cranberries',
-  'Raisins',
-])
-
-register('Dairy & Yogurt', [
-  'Cottage Cheese',
-  'Plain Soy Milk Yogurt',
-  'Plain Unsweetened Coconut Milk Yogurt',
-  'Plain Yogurt',
-  'Sweetened Shredded Coconut',
-  'Unsweetened Vanilla Coconut Milk Vegan Yogurt',
-  'Vanilla Cashew Milk Yogurt',
-  'Whole Milk Greek Yogurt',
-])
-
-register('Nuts & Seeds', [
-  'Dry Roasted Peanuts',
-  'Sliced Almonds',
-  'Sunflower Seeds',
 ])
 
 /**
