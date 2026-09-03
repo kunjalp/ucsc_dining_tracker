@@ -70,8 +70,8 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       setError('Please choose an image file.')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB.')
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be under 10MB.')
       return
     }
 
@@ -334,8 +334,8 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     type="button"
                     onClick={() => toggleDietaryPreference(pref)}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${isActive
-                        ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
-                        : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                      ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
+                      : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                       }`}
                   >
                     {isActive && <Check size={11} />}
