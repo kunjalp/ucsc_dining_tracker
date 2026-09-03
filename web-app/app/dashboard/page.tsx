@@ -687,19 +687,19 @@ export default function DashboardPage() {
         <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
           <div className="bg-white/5 p-3 rounded-xl text-center">
             <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#d8b61c] uppercase tracking-wider">Calories</p>
-            <p className="text-xl font-black mt-1">{Math.round(totals.calories)} kcal</p>
+            <p className="text-2xl font-black mt-1">{Math.round(totals.calories)} kcal</p>
           </div>
           <div className="bg-white/5 p-3 rounded-xl text-center">
             <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#5bb448] uppercase tracking-wider">Protein</p>
-            <p className="text-xl font-black mt-1">{Math.round(totals.protein)}g</p>
+            <p className="text-2xl font-black mt-1">{Math.round(totals.protein)}g</p>
           </div>
           <div className="bg-white/5 p-3 rounded-xl text-center">
             <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#bd5db8] uppercase tracking-wider">Carbs</p>
-            <p className="text-xl font-black mt-1">{Math.round(totals.carbs)}g</p>
+            <p className="text-2xl font-black mt-1">{Math.round(totals.carbs)}g</p>
           </div>
           <div className="bg-white/5 p-3 rounded-xl text-center">
             <p className="font-['JetBrains_Mono'] text-[10px] font-semibold text-[#fb7185] uppercase tracking-wider">Fat</p>
-            <p className="text-xl font-black mt-1">{Math.round(totals.fat)}g</p>
+            <p className="text-2xl font-black mt-1">{Math.round(totals.fat)}g</p>
           </div>
         </div>
 
