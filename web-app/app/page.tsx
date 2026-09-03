@@ -278,7 +278,7 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(false)}
             className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${!isSignUp
-              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              ? 'bg-[#2a3a5c] text-[#a1c9ff] shadow-sm'
               : 'text-[#c2c6d0] hover:text-[#dae2fd]'
               }`}
           >
@@ -288,7 +288,7 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(true)}
             className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${isSignUp
-              ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+              ? 'bg-[#2a3a5c] text-[#a1c9ff] shadow-sm'
               : 'text-[#c2c6d0] hover:text-[#dae2fd]'
               }`}
           >
