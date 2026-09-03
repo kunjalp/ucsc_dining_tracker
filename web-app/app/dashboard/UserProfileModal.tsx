@@ -249,7 +249,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-black/60 backdrop-blur-sm overflow-y-auto py-8">
-      <div className="w-full max-w-md max-h-[78vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-4 relative my-auto">
+      <div className="w-full max-w-sm max-h-[78vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-4 relative my-auto">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition"
