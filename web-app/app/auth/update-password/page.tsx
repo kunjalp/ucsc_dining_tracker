@@ -45,7 +45,7 @@ export default function UpdatePasswordPage() {
     >
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
-      <div className="w-full max-w-sm rounded-2xl p-6 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+      <div className="w-full max-w-[340px] rounded-2xl p-6 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
         <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] mb-2 text-center">
           Set a new password
         </h1>
