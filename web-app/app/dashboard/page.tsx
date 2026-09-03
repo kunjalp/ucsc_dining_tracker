@@ -797,7 +797,7 @@ export default function DashboardPage() {
                     {Object.entries(groupedMenu).map(([stationRaw, entries]) => (
                       <div key={stationRaw} className="space-y-3">
                         <div className="flex items-center">
-                          <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#a1c9ff] uppercase bg-[#003c6c]/40 border border-[#a1c9ff]/20 px-3 py-1 rounded-lg">
+                          <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
                             {cleanStationName(stationRaw)}
                           </span>
                           <div className="flex-1 h-px bg-white/10 ml-4" />

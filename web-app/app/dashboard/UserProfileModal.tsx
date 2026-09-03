@@ -384,31 +384,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             </div>
           </div>
 
-          <div className="pt-1.5 border-t border-white/10">
-            <p className="font-['JetBrains_Mono'] text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1.5 mt-2">
-              Dietary preferences
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {DIETARY_OPTIONS.map((pref) => {
-                const isActive = dietaryPreferences.includes(pref)
-                return (
-                  <button
-                    key={pref}
-                    type="button"
-                    onClick={() => toggleDietaryPreference(pref)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${isActive
-                      ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
-                      : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                      }`}
-                  >
-                    {isActive && <Check size={11} />}
-                    {pref}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
           <div className="flex gap-3 pt-1.5">
             <button
               type="button"
