@@ -68,8 +68,12 @@ export default function AuthPage() {
     setMessage('')
 
     const redirectTo = Capacitor.isNativePlatform()
-      ? 'sammyspalate://auth-callback'
-      : `${getURL()}auth/callback`
+      ? 'sammyspalate://auth-callback?next=/auth/update-password'
+      : `${getURL()}auth/callback?next=/auth/update-password`
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
