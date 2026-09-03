@@ -284,15 +284,15 @@ def parse_report(html: str) -> list[dict]:
 # Database
 # ---------------------------------------------------------------------------
 def upsert_food_items(items: list[dict]):
-    """Nutrition facts are essentially static per recipe_id, so a simple
-    upsert keyed on recipe_id is correct here. created_at only has a DB
-    default (only applies on insert), which matches the schema you're
-    using — this table isn't meant to track freshness, daily_menus is."""
     if not items:
         return
-    deduped = list({item["recipe_id"]: item for item in items}.values())
+    # Only keep columns that actually exist in the food_items table — items
+    # also carry a "station" field used for daily_menus, which food_items
+    # doesn't have and will reject.
+    FOOD_ITEM_COLUMNS = {"recipe_id", "name", "portion", "calories", "protein", "carbs", "sugar", "fat"}
+    cleaned = [{k: v for k, v in item.items() if k in FOOD_ITEM_COLUMNS} for item in items]
+    deduped = list({item["recipe_id"]: item for item in cleaned}.values())
     supabase.table("food_items").upsert(deduped, on_conflict="recipe_id").execute()
-
 
 def replace_daily_menus(hall_name: str, meal_type: str, scrape_date: str, rows: list[dict]):
     """Delete whatever was previously recorded for this hall+meal+date and
