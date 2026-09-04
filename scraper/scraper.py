@@ -225,19 +225,14 @@ def parse_report(html: str) -> list[dict]:
     results = []
     current_station = None
 
-    # Walk every tag in document order, not just <tr> rows, since station
-    # headers live in their own <div class="longmenucolmenucat"> elements
-    # that sit alongside (not inside) the item rows.
-    for tag in soup.find_all(True):
-        if tag.name == "div" and "longmenucolmenucat" in (tag.get("class") or []):
-            header_text = tag.get_text(strip=True)
-            current_station = header_text.replace("--", "").strip()
+    for row in soup.find_all("tr"):
+        row_text = row.get_text(strip=True)
+
+        if row_text.startswith("--") and row_text.endswith("--") and len(row_text) > 4:
+            current_station = row_text.replace("--", "").strip()
             continue
 
-        if tag.name != "tr":
-            continue
-
-        name_div = tag.find("div", class_="nutrptnames")
+        name_div = row.find("div", class_="nutrptnames")
         if not name_div:
             continue
 
@@ -255,10 +250,10 @@ def parse_report(html: str) -> list[dict]:
             continue
         item_id = vals[0]
 
-        portion_div = tag.find("div", class_="nutrptportions")
+        portion_div = row.find("div", class_="nutrptportions")
         portion = portion_div.get_text(strip=True).replace("\xa0", " ") if portion_div else "1 serving"
 
-        value_divs = tag.find_all("div", class_="nutrptvalues")
+        value_divs = row.find_all("div", class_="nutrptvalues")
         values = [to_float(v.get_text(strip=True)) for v in value_divs]
 
         if len(values) >= 5:
