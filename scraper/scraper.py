@@ -343,7 +343,6 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
         return 0
 
     meal_names = get_meal_period_names(page)
-    station_map = get_station_map(page, meal_names)
     if not meal_names:
         print("   ℹ️ No 'Nutrition Calculator' links found — likely a retail/no-nutrition-data location. Skipping.")
         return 0
@@ -351,6 +350,8 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
 
     # Station headers live on this listing page, capture them before we
     # start navigating into calculator forms/report tabs.
+    station_map = get_station_map(page, meal_names)
+    print(f"   🗺️ Station map has {len(station_map)} entries. Sample: {list(station_map.items())[:5]}")
 
     total_items = 0
     for i, meal_name in enumerate(meal_names):
@@ -369,6 +370,7 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
 
         rows = []
         for item in items:
+            station = station_map.get(f"{meal_name}|{item['name'].lower()}")
             rows.append({
                 "date": scrape_date,
                 "dining_hall": hall_name,
