@@ -220,18 +220,43 @@ def to_float(s: str) -> float:
     m = re.search(r"[-+]?\d*\.?\d+", s)
     return float(m.group()) if m else 0.0
 
+def get_station_map(page, meal_names: list[str]) -> dict:
+    return page.evaluate(
+        """
+        (mealNames) => {
+            const leaves = Array.from(document.querySelectorAll('body *'))
+                .filter(el => el.children.length === 0 && el.textContent.trim() !== '');
+            const map = {};
+            let currentMeal = null;
+            let currentStation = null;
+            for (const el of leaves) {
+                const t = el.textContent.trim();
+                if (t === 'Nutrition Calculator') continue;
+                if (mealNames.includes(t)) {
+                    currentMeal = t;
+                    currentStation = null;
+                    continue;
+                }
+                if (t.startsWith('--') && t.endsWith('--') && t.length > 4) {
+                    currentStation = t.replace(/^-+\\s*/, '').replace(/\\s*-+$/, '').trim();
+                    continue;
+                }
+                if (currentMeal) {
+                    const key = currentMeal + '|' + t.toLowerCase();
+                    if (!(key in map)) map[key] = currentStation;
+                }
+            }
+            return map;
+        }
+        """,
+        meal_names,
+    )
+
 def parse_report(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     results = []
-    current_station = None
 
     for row in soup.find_all("tr"):
-        row_text = row.get_text(strip=True)
-
-        if row_text.startswith("--") and row_text.endswith("--") and len(row_text) > 4:
-            current_station = row_text.replace("--", "").strip()
-            continue
-
         name_div = row.find("div", class_="nutrptnames")
         if not name_div:
             continue
@@ -270,7 +295,6 @@ def parse_report(html: str) -> list[dict]:
             "carbs": carbs,
             "sugar": sugar,
             "fat": fat,
-            "station": current_station,
         })
 
     return results
@@ -319,6 +343,7 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
         return 0
 
     meal_names = get_meal_period_names(page)
+    station_map = get_station_map(page, meal_names)
     if not meal_names:
         print("   ℹ️ No 'Nutrition Calculator' links found — likely a retail/no-nutrition-data location. Skipping.")
         return 0
@@ -348,7 +373,7 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
                 "date": scrape_date,
                 "dining_hall": hall_name,
                 "meal_type": meal_name,
-                "station": item["station"],
+                "station": station,
                 "food_item_id": item["recipe_id"],
             })
 
