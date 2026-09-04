@@ -74,9 +74,6 @@ export default function AuthPage() {
       options: {
         redirectTo,
         skipBrowserRedirect: true,
-        queryParams: {
-          prompt: 'select_account',
-        },
       },
     })
 
