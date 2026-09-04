@@ -123,6 +123,17 @@ export default function AuthPage() {
     >
       {/* Ambient background glow, matches dashboard */}
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
+      {/* Public landing content — visible without signing in */}
+      <div className="max-w-md text-center mb-8">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#ffe6ab] mb-2">
+          Sammy's Palate
+        </h1>
+        <p className="text-sm text-[#c2c6d0] leading-relaxed">
+          A macro and nutrition tracker built for UC Santa Cruz dining halls. Browse
+          today's menu, log meals in a couple of taps, and track your calories,
+          protein, carbs, and fat in real time.
+        </p>
+      </div>
 
       {/* Container Box */}
       <div className="w-full max-w-[340px] rounded-2xl p-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
