@@ -70,6 +70,7 @@ const DINING_HALLS = [
 ]
 
 const STATION_DISPLAY_ORDER = [
+  'Breakfast',
   'Clean Plate',
   'Soups',
   'Grill',
