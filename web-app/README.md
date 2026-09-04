@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sammy's Palate — Web App
 
-## Getting Started
+This is the Next.js frontend for [Sammy's Palate](../README.md), a macro and nutrition tracker for UC Santa Cruz dining halls.
 
-First, run the development server:
+For the full project overview — features, architecture, and the Python scraper — see the [main README](../README.md).
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file in this folder with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js** (App Router) + TypeScript
+- **Supabase** — auth, database, storage
+- **Tailwind CSS**
+- **Capacitor** — wraps this app as a native iOS app
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+app/
+  page.tsx              # Sign in / sign up
+  dashboard/             # Main app (menu, progress, logging)
+  onboarding/            # Post-signup target-setting flow
+  auth/                  # Auth callback, password reset
+  privacy/               # Privacy policy page
+lib/
+  supabase.ts             # Supabase client
+  diningHours.ts          # Instant open/closed status from published hours
+  stationClassifier.ts   # Name-based menu categorization fallback
+```
 
-## Deploy on Vercel
+## iOS Build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This app is wrapped as a native iOS app via Capacitor and built through Codemagic. See `codemagic.yaml` in the repo root for the CI/CD pipeline.
