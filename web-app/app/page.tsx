@@ -110,7 +110,7 @@ export default function AuthPage() {
     if (error) {
       setMessage(`Error: ${error.message}`)
     } else {
-      setMessage('Check your email for a password reset link.')
+      setMessage('Check your email on this device and tap the link to reset your password.')
     }
     setLoading(false)
   }
