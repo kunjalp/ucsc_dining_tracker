@@ -311,7 +311,7 @@ export default function AuthPage() {
         UC Santa Cruz • Dining Tracker
       </p>
       <p className="mt-2 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50 max-w-xs text-center leading-relaxed">
-          Built for UCSC dining. See the daily menu, log what you eat, track your macros.
+          Built for UCSC dining. See the daily menu, log what you eat, track detailed macros.
       </p>
     </div>
   )
