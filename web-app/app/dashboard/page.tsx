@@ -967,6 +967,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            </div>
             ) : (
             /* PROGRESS TAB */
             <div className="space-y-6">
