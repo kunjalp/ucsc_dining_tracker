@@ -914,11 +914,11 @@ export default function DashboardPage() {
                                       <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                                         Serving Size: {food.portion || '1 serving'}
                                       </p>
-                                      <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold text-[#c2c6d0]">
-                                        <span className="text-[#a1c9ff]">Cals: {food.calories}</span>
-                                        <span>P: {food.protein}g</span>
-                                        <span>C: {food.carbs}g</span>
-                                        <span>F: {food.fat}g</span>
+                                      <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold">
+                                        <span className="text-[#d8b61c]">Cals: {food.calories}</span>
+                                        <span className="text-[#5bb448]">P: {food.protein}g</span>
+                                        <span className="text-[#bd5db8]">C: {food.carbs}g</span>
+                                        <span className="text-[#fb7185]">F: {food.fat}g</span>
                                       </div>
                                     </div>
 
