@@ -42,7 +42,7 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 <td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
 </tr>
 <tr>
-<td align="center" width="100%"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
+<td align="center" colspan="2"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
 </tr>
 </table>
 
@@ -165,4 +165,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-Built by [Kunjal Purohit](https://github.com/kunjalp) — a project born out of frustration with the official UCSC nutrition calculator, and a want to build something people would actually use.
+Built by [Kunjal Purohit](https://github.com/kunjalp) — UCSC's official nutrition calculator is a pain to use, so I built my own.
