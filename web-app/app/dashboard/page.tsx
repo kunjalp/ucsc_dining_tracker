@@ -473,7 +473,8 @@ export default function DashboardPage() {
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
     const stations = menu.map((entry) => getEffectiveStation(entry))
-    return Array.from(new Set(stations))
+    const unique = Array.from(new Set(stations))
+    return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
 
   // 3. Filter raw items first by search input & clicked station pills
