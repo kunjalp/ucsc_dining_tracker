@@ -118,7 +118,7 @@ export default function AuthPage() {
   return (
 
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
+      className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 pt-12 text-[#dae2fd] relative overflow-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* Ambient background glow, matches dashboard */}
@@ -310,7 +310,7 @@ export default function AuthPage() {
       <p className="mt-8 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50">
         UC Santa Cruz • Dining Tracker
       </p>
-      <p className="mt-2 max-w-xs text-center text-[10px] text-[#c2c6d0]/40 leading-relaxed">
+      <p className="mt-2 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]/50 max-w-xs text-center leading-relaxed">
         A macro and nutrition tracker for UCSC dining halls — browse menus, log meals, and track macros in real time.
       </p>
     </div>
