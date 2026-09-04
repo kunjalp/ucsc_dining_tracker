@@ -753,10 +753,14 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95"
+            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 overflow-hidden"
             aria-label="Edit user profile"
           >
-            <User size={18} className="text-[#c2c6d0]" />
+            {userProfile.avatarUrl ? (
+              <img src={userProfile.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User size={18} className="text-[#c2c6d0]" />
+            )}
           </button>
         </div>
       </header>
@@ -1202,7 +1206,16 @@ export default function DashboardPage() {
       {isProfileModalOpen && (
         <UserProfileModal
           currentProfile={userProfile}
-          onClose={() => setIsProfileModalOpen(false)}
+          onClose={async () => {
+            setIsProfileModalOpen(false)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              setUserProfile((prev) => ({
+                ...prev,
+                avatarUrl: (user.user_metadata?.avatar_url as string) || null,
+              }))
+            }
+          }}
           onSave={handleSaveProfile}
         />
       )}
