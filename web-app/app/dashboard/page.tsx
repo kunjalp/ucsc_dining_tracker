@@ -802,7 +802,7 @@ export default function DashboardPage() {
                       <button
                         key={meal}
                         onClick={() => setSelectedMeal(meal)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${selectedMeal === meal
+                        className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedMeal === meal
                           ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
                           : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                           }`}
@@ -812,398 +812,397 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Search + station filter pills — hidden when the hall is closed */}
+                {!(hallStatus && !hallStatus.is_open) && (
+                  <div className="pt-4 border-t border-white/10 space-y-3">
+                    <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
+                    <div className="relative w-full">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Search today's items..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
+                      />
+                    </div>
+
+                    {availableStations.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {availableStations.map((station) => {
+                          const isActive = activeStationFilters.includes(station)
+                          const [parentLabel, subLabel] = station.includes(' - ')
+                            ? station.split(' - ')
+                            : [null, station]
+
+                          return (
+                            <button
+                              key={station}
+                              type="button"
+                              onClick={() => handleToggleStationFilter(station)}
+                              className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
+                                ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
+                                : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                                }`}
+                            >
+                              {parentLabel && (
+                                <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#6b5300]/70' : 'text-[#a1c9ff]'}`}>
+                                  {parentLabel}
+                                </span>
+                              )}
+                              <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Search + station filter pills — hidden when the hall is closed */}
+              {/* Dining hall closed banner */}
+              {hallStatus && !hallStatus.is_open && (
+                <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
+                  Dining Hall is Closed
+                </div>
+              )}
+
+              {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
               {!(hallStatus && !hallStatus.is_open) && (
-                <div className="pt-4 border-t border-white/10 space-y-3">
-                  <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
-                  <div className="relative w-full">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
-                    <input
-                      type="text"
-                      placeholder="Search today's items..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
-                    />
-                  </div>
+                <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+                  <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
 
-                  {availableStations.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {availableStations.map((station) => {
-                        const isActive = activeStationFilters.includes(station)
-                        const [parentLabel, subLabel] = station.includes(' - ')
-                          ? station.split(' - ')
-                          : [null, station]
+                  {loading ? (
+                    <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
+                  ) : Object.keys(groupedMenu).length === 0 ? (
+                    <div className="py-12 text-center text-[#c2c6d0] font-medium">
+                      {menu.length === 0
+                        ? "No items found for this meal period today."
+                        : "No menu items match your search or station filters."}
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {parentGroupedMenu.map(({ parent, subgroups }) => (
+                        <div key={parent} className="space-y-3">
+                          <div className="flex items-center">
+                            <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
+                              {cleanStationName(parent)}
+                            </span>
+                            <div className="flex-1 h-px bg-white/10 ml-4" />
+                          </div>
 
-                        return (
-                          <button
-                            key={station}
-                            type="button"
-                            onClick={() => handleToggleStationFilter(station)}
-                            className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
-                              ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
-                              : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                              }`}
-                          >
-                            {parentLabel && (
-                              <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#6b5300]/70' : 'text-[#a1c9ff]'}`}>
-                                {parentLabel}
-                              </span>
-                            )}
-                            <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
-                          </button>
-                        )
-                      })}
+                          {subgroups.map(({ sub, entries }) => (
+                            <div key={sub || 'none'} className="space-y-2">
+                              {sub && (
+                                <p className="inline-block font-['JetBrains_Mono'] text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-md">
+                                  {sub}
+                                </p>
+                              )}
+                              <div className="divide-y divide-white/10">
+                                {entries.map((entry) => {
+                                  const food = entry.food_items
+                                  if (!food) return null
+                                  return (
+                                    <article
+                                      key={food.recipe_id}
+                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
+                                    >
+                                      <div>
+                                        <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
+                                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                                          Serving Size: {food.portion || '1 serving'}
+                                        </p>
+                                        <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold">
+                                          <span className="text-[#d8b61c]">Cals: {food.calories}</span>
+                                          <span className="text-[#5bb448]">P: {food.protein}g</span>
+                                          <span className="text-[#bd5db8]">C: {food.carbs}g</span>
+                                          <span className="text-[#fb7185]">F: {food.fat}g</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
+                                          {[
+                                            { label: '1/4x', value: 0.25 },
+                                            { label: '1/2x', value: 0.5 },
+                                            { label: '1x', value: 1.0 },
+                                            { label: '1.5x', value: 1.5 },
+                                            { label: '2x', value: 2 }
+                                          ].map((opt) => {
+                                            const currentVal = servings[food.recipe_id] ?? 1.0
+                                            const isSelected = currentVal === opt.value
+                                            return (
+                                              <button
+                                                key={opt.label}
+                                                type="button"
+                                                onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
+                                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
+                                                  ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                                  : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                                                  }`}
+                                              >
+                                                {opt.label}
+                                              </button>
+                                            )
+                                          })}
+                                        </div>
+                                        <button
+                                          onClick={() => handleLogFood(food.recipe_id)}
+                                          className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                                        >
+                                          Log
+                                        </button>
+                                      </div>
+                                    </article>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
             </div>
-
-            {/* Dining hall closed banner */}
-            {hallStatus && !hallStatus.is_open && (
-              <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
-                Dining Hall is Closed
-              </div>
-            )}
-
-            {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
-            {!(hallStatus && !hallStatus.is_open) && (
+            ) : (
+            /* PROGRESS TAB */
+            <div className="space-y-6">
               <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-                <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight">
+                      {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
+                    </h2>
+                    <p
+                      className={
+                        showCalendar
+                          ? 'text-xs text-[#c2c6d0]/70 mt-0.5'
+                          : `text-sm font-bold mt-0.5 ${goalMode === 'recommended' ? 'text-[#a1c9ff]' : 'text-[#ffe6ab]'}`
+                      }
+                    >
+                      {showCalendar
+                        ? 'Toggle metrics to analyze historical streaks'
+                        : goalMode === 'recommended'
+                          ? 'Recommended Target'
+                          : 'Target Amount'}
+                    </p>
+                  </div>
 
-                {loading ? (
-                  <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
-                ) : Object.keys(groupedMenu).length === 0 ? (
-                  <div className="py-12 text-center text-[#c2c6d0] font-medium">
-                    {menu.length === 0
-                      ? "No items found for this meal period today."
-                      : "No menu items match your search or station filters."}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowCalendar(!showCalendar)}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${showCalendar
+                        ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
+                        : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                        }`}
+                    >
+                      <Calendar size={14} />
+                      {showCalendar ? "View Today's Rings" : 'History Calendar'}
+                    </button>
+
+                    {/* Set Targets button now opens the SetTargetsModal */}
+                    <button
+                      onClick={() => setIsTargetsModalOpen(true)}
+                      className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition border border-gray-700"
+                    >
+                      Set Targets
+                    </button>
+                  </div>
+                </div>
+
+                {!showCalendar ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <ProgressRing value={totals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
+                    <ProgressRing value={totals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
+                    <ProgressRing value={totals.carbs} goal={goalCarbs} strokeColor="#bd5db8" labelColor="#bd5db8" label="Carbs" unit="g" />
+                    <ProgressRing value={totals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {parentGroupedMenu.map(({ parent, subgroups }) => (
-                      <div key={parent} className="space-y-3">
-                        <div className="flex items-center">
-                          <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
-                            {cleanStationName(parent)}
-                          </span>
-                          <div className="flex-1 h-px bg-white/10 ml-4" />
+                  <div className="space-y-6">
+                    <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto">
+                      {[
+                        { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
+                        { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
+                        { key: 'carbs', label: 'Carbs', color: '#bd5db8', text: '#612f5e' },
+                        { key: 'fat', label: 'Fat', color: '#fb7185', text: '#4c0519' }
+                      ].map((macro) => (
+                        <button
+                          key={macro.key}
+                          type="button"
+                          onClick={() => setCalendarMacro(macro.key as any)}
+                          className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all whitespace-nowrap"
+                          style={
+                            calendarMacro === macro.key
+                              ? { backgroundColor: macro.color, color: macro.text }
+                              : { color: '#c2c6d0' }
+                          }
+                        >
+                          {macro.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <button
+                          type="button"
+                          onClick={goToPreviousMonth}
+                          className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition"
+                          aria-label="Previous month"
+                        >
+                          <ChevronLeft size={16} strokeWidth={2.5} />
+                        </button>
+
+                        <p className="font-['JetBrains_Mono'] text-sm font-black text-[#dae2fd] uppercase tracking-wider">
+                          {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={goToNextMonth}
+                          disabled={isCurrentMonth}
+                          className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          aria-label="Next month"
+                        >
+                          <ChevronRight size={16} strokeWidth={2.5} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-2 mb-2 text-center font-['JetBrains_Mono'] text-xs font-extrabold text-[#c2c6d0]/70">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-2">
+                        {getCalendarDays().map((cell, index) => {
+                          if (!cell.dayNum || !cell.dateString) {
+                            return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
+                          }
+
+                          const dayStats = getHistoricalSumForDate(cell.dateString)
+
+                          let actualVal = 0
+                          let targetedGoal = 1
+                          let ringColor = '#a1c9ff'
+                          let unit = 'kcal'
+
+                          if (calendarMacro === 'calories') {
+                            actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = '#d8b61c'; unit = 'kcal'
+                          } else if (calendarMacro === 'protein') {
+                            actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = '#5bb448'; unit = 'g'
+                          } else if (calendarMacro === 'carbs') {
+                            actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#bd5db8'; unit = 'g'
+                          } else if (calendarMacro === 'fat') {
+                            actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = '#fb7185'; unit = 'g'
+                          }
+
+                          return (
+                            <div
+                              key={cell.dateString}
+                              className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
+                            >
+                              <span className="text-xs font-black text-[#c2c6d0]">{cell.dayNum}</span>
+                              <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
+                              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
+                                {Math.round(actualVal)} / {targetedGoal} {unit}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Meal history */}
+              <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+                <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
+
+                {loggedMeals.length === 0 ? (
+                  <div className="py-12 text-center text-[#c2c6d0] font-medium">
+                    You haven't logged any foods today yet. Go back to Log Menu to add meals!
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/10">
+                    {loggedMeals.map((log) => (
+                      <div key={log.id} className="py-4 flex items-center justify-between gap-4">
+                        <div>
+                          <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
+                          <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                            {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings}x serving(s)
+                          </p>
+                          <div className="flex gap-2 mt-1 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]">
+                            <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
+                            <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
+                            <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
+                            <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
+                          </div>
                         </div>
 
-                        {subgroups.map(({ sub, entries }) => (
-                          <div key={sub || 'none'} className="space-y-2">
-                            {sub && (
-                              <p className="inline-block font-['JetBrains_Mono'] text-[10px] font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-md">
-                                {sub}
-                              </p>
-                            )}
-                            <div className="divide-y divide-white/10">
-                              {entries.map((entry) => {
-                                const food = entry.food_items
-                                if (!food) return null
-                                return (
-                                  <article
-                                    key={food.recipe_id}
-                                    className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
-                                  >
-                                    <div>
-                                      <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
-                                      <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                                        Serving Size: {food.portion || '1 serving'}
-                                      </p>
-                                      <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold">
-                                        <span className="text-[#d8b61c]">Cals: {food.calories}</span>
-                                        <span className="text-[#5bb448]">P: {food.protein}g</span>
-                                        <span className="text-[#bd5db8]">C: {food.carbs}g</span>
-                                        <span className="text-[#fb7185]">F: {food.fat}g</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
-                                        {[
-                                          { label: '1/4x', value: 0.25 },
-                                          { label: '1/2x', value: 0.5 },
-                                          { label: '1x', value: 1.0 },
-                                          { label: '1.5x', value: 1.5 },
-                                          { label: '2x', value: 2 }
-                                        ].map((opt) => {
-                                          const currentVal = servings[food.recipe_id] ?? 1.0
-                                          const isSelected = currentVal === opt.value
-                                          return (
-                                            <button
-                                              key={opt.label}
-                                              type="button"
-                                              onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isSelected
-                                                ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                                                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                                }`}
-                                            >
-                                              {opt.label}
-                                            </button>
-                                          )
-                                        })}
-                                      </div>
-                                      <button
-                                        onClick={() => handleLogFood(food.recipe_id)}
-                                        className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
-                                      >
-                                        Log
-                                      </button>
-                                    </div>
-                                  </article>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                        <button
+                          onClick={() => handleDeleteLog(log.id)}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 px-3 py-1.5 rounded-lg transition active:scale-95"
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ) : (
-          /* PROGRESS TAB */
-          <div className="space-y-6">
-            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight">
-                    {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
-                  </h2>
-                  <p
-                    className={
-                      showCalendar
-                        ? 'text-xs text-[#c2c6d0]/70 mt-0.5'
-                        : `text-sm font-bold mt-0.5 ${goalMode === 'recommended' ? 'text-[#a1c9ff]' : 'text-[#ffe6ab]'}`
-                    }
-                  >
-                    {showCalendar
-                      ? 'Toggle metrics to analyze historical streaks'
-                      : goalMode === 'recommended'
-                        ? 'Recommended Target'
-                        : 'Target Amount'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${showCalendar
-                      ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
-                      : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                      }`}
-                  >
-                    <Calendar size={14} />
-                    {showCalendar ? "View Today's Rings" : 'History Calendar'}
-                  </button>
-
-                  {/* Set Targets button now opens the SetTargetsModal */}
-                  <button
-                    onClick={() => setIsTargetsModalOpen(true)}
-                    className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition border border-gray-700"
-                  >
-                    Set Targets
-                  </button>
-                </div>
-              </div>
-
-              {!showCalendar ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <ProgressRing value={totals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
-                  <ProgressRing value={totals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
-                  <ProgressRing value={totals.carbs} goal={goalCarbs} strokeColor="#bd5db8" labelColor="#bd5db8" label="Carbs" unit="g" />
-                  <ProgressRing value={totals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto">
-                    {[
-                      { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
-                      { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
-                      { key: 'carbs', label: 'Carbs', color: '#bd5db8', text: '#612f5e' },
-                      { key: 'fat', label: 'Fat', color: '#fb7185', text: '#4c0519' }
-                    ].map((macro) => (
-                      <button
-                        key={macro.key}
-                        type="button"
-                        onClick={() => setCalendarMacro(macro.key as any)}
-                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all whitespace-nowrap"
-                        style={
-                          calendarMacro === macro.key
-                            ? { backgroundColor: macro.color, color: macro.text }
-                            : { color: '#c2c6d0' }
-                        }
-                      >
-                        {macro.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <button
-                        type="button"
-                        onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition"
-                        aria-label="Previous month"
-                      >
-                        <ChevronLeft size={16} strokeWidth={2.5} />
-                      </button>
-
-                      <p className="font-['JetBrains_Mono'] text-sm font-black text-[#dae2fd] uppercase tracking-wider">
-                        {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={goToNextMonth}
-                        disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                        aria-label="Next month"
-                      >
-                        <ChevronRight size={16} strokeWidth={2.5} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center font-['JetBrains_Mono'] text-xs font-extrabold text-[#c2c6d0]/70">
-                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2">
-                      {getCalendarDays().map((cell, index) => {
-                        if (!cell.dayNum || !cell.dateString) {
-                          return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
-                        }
-
-                        const dayStats = getHistoricalSumForDate(cell.dateString)
-
-                        let actualVal = 0
-                        let targetedGoal = 1
-                        let ringColor = '#a1c9ff'
-                        let unit = 'kcal'
-
-                        if (calendarMacro === 'calories') {
-                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = '#d8b61c'; unit = 'kcal'
-                        } else if (calendarMacro === 'protein') {
-                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = '#5bb448'; unit = 'g'
-                        } else if (calendarMacro === 'carbs') {
-                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#bd5db8'; unit = 'g'
-                        } else if (calendarMacro === 'fat') {
-                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = '#fb7185'; unit = 'g'
-                        }
-
-                        return (
-                          <div
-                            key={cell.dateString}
-                            className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
-                          >
-                            <span className="text-xs font-black text-[#c2c6d0]">{cell.dayNum}</span>
-                            <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
-                              {Math.round(actualVal)} / {targetedGoal} {unit}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* Meal history */}
-            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-              <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
-
-              {loggedMeals.length === 0 ? (
-                <div className="py-12 text-center text-[#c2c6d0] font-medium">
-                  You haven't logged any foods today yet. Go back to Log Menu to add meals!
-                </div>
-              ) : (
-                <div className="divide-y divide-white/10">
-                  {loggedMeals.map((log) => (
-                    <div key={log.id} className="py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
-                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                          {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings}x serving(s)
-                        </p>
-                        <div className="flex gap-2 mt-1 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]">
-                          <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
-                          <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
-                          <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
-                          <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteLog(log.id)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 px-3 py-1.5 rounded-lg transition active:scale-95"
-                      >
-                        <Trash2 size={12} />
-                        Delete
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
         )}
-      </main>
+          </main>
 
       {/* Sticky bottom nav */}
-      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
-        <div className="max-w-md mx-auto flex justify-around">
-          <button
-            onClick={() => setActiveTab('log')}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
-              }`}
-          >
-            <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
-          </button>
+        <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
+          <div className="max-w-md mx-auto flex justify-around">
+            <button
+              onClick={() => setActiveTab('log')}
+              className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+                }`}
+            >
+              <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
+              <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('progress')}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
-              }`}
-          >
-            <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('progress')}
+              className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+                }`}
+            >
+              <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
+              <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Set Targets Modal */}
-      {isTargetsModalOpen && (
-        <SetTargetsModal
-          currentTargets={{
-            calories: goalCalories,
-            protein: goalProtein,
-            carbs: goalCarbs,
-            fat: goalFat,
-          }}
-          onClose={() => setIsTargetsModalOpen(false)}
-          onSave={handleSaveGoals}
-        />
-      )}
+        {/* Set Targets Modal */}
+        {isTargetsModalOpen && (
+          <SetTargetsModal
+            currentTargets={{
+              calories: goalCalories,
+              protein: goalProtein,
+              carbs: goalCarbs,
+              fat: goalFat,
+            }}
+            onClose={() => setIsTargetsModalOpen(false)}
+            onSave={handleSaveGoals}
+          />
+        )}
 
-      {/* Edit User Profile Modal */}
-      {isProfileModalOpen && (
-        <UserProfileModal
-          currentProfile={userProfile}
-          onClose={() => setIsProfileModalOpen(false)}
-          onSave={handleSaveProfile}
-        />
-      )}
+        {/* Edit User Profile Modal */}
+        {isProfileModalOpen && (
+          <UserProfileModal
+            currentProfile={userProfile}
+            onClose={() => setIsProfileModalOpen(false)}
+            onSave={handleSaveProfile}
+          />
+        )}
     </div>
   )
 }
