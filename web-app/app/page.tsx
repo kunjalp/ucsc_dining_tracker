@@ -132,7 +132,7 @@ export default function AuthPage() {
           <img
             src="/sammy-logo-transparent.png"
             alt="Sammy's Palate"
-            className="h-20 w-20 object-contain shrink-0"
+            className="h-16 w-16 object-contain shrink-0"
           />
 
           <div className="h-11 w-px bg-white/15" />
