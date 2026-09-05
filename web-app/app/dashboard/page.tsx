@@ -288,10 +288,16 @@ export default function DashboardPage() {
     const fetchProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+
         setUserProfile({
           nickname: (user.user_metadata?.nickname as string) || '',
           email: user.email || '',
-          avatarUrl: (user.user_metadata?.avatar_url as string) || null,
+          avatarUrl: profileRow?.avatar_url || (user.user_metadata?.avatar_url as string) || null,
           memberSince: user.created_at || null,
           dietaryPreferences: (user.user_metadata?.dietary_preferences as string[]) || [],
         })
@@ -1210,9 +1216,14 @@ export default function DashboardPage() {
             setIsProfileModalOpen(false)
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+              const { data: profileRow } = await supabase
+                .from('profiles')
+                .select('avatar_url')
+                .eq('user_id', user.id)
+                .maybeSingle()
               setUserProfile((prev) => ({
                 ...prev,
-                avatarUrl: (user.user_metadata?.avatar_url as string) || null,
+                avatarUrl: profileRow?.avatar_url || (user.user_metadata?.avatar_url as string) || null,
               }))
             }
           }}

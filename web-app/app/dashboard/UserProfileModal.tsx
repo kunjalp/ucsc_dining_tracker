@@ -152,14 +152,14 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
     const freshUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
 
-    const { error: metaError } = await supabase.auth.updateUser({
-      data: { avatar_url: freshUrl },
-    })
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ user_id: user.id, avatar_url: freshUrl }, { onConflict: 'user_id' })
 
     setUploadingAvatar(false)
 
-    if (metaError) {
-      setError(`Could not save photo: ${metaError.message}`)
+    if (profileError) {
+      setError(`Could not save photo: ${profileError.message}`)
       return
     }
 
