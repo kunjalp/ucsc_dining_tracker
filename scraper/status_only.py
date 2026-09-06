@@ -9,6 +9,8 @@ def main():
             statuses = scrape_hall_statuses(page)
             upsert_hall_statuses(statuses)
             print(f"✅ Updated status for {len(statuses)} hall(s).")
+        except Exception as e:
+            print(f"⚠️ Status scrape failed this cycle: {e}")
         finally:
             browser.close()
 

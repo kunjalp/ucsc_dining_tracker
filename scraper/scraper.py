@@ -400,7 +400,7 @@ STATUS_HALL_LABELS = {
 }
 
 def scrape_hall_statuses(page) -> list[dict]:
-    page.goto(STATUS_URL, wait_until="networkidle")
+    page.goto(STATUS_URL, wait_until="domcontentloaded", timeout=45000)
     # Status text loads async and replaces "Loading…" — wait it out
     page.wait_for_timeout(3000)
     try:
