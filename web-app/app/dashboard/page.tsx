@@ -949,7 +949,7 @@ export default function DashboardPage() {
                                                 key={opt.label}
                                                 type="button"
                                                 onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                                className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-all ${isSelected
+                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${isSelected
                                                   ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
                                                   : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                                                   }`}
@@ -961,7 +961,7 @@ export default function DashboardPage() {
                                         </div>
                                         <button
                                           onClick={() => handleLogFood(food.recipe_id)}
-                                          className="rounded-lg bg-[#d6b93a] px-4 py-2 text-sm font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                                          className="rounded-lg bg-[#d6b93a] px-3.5 py-1.5 text-xs font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
                                         >
                                           Log
                                         </button>
