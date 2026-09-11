@@ -113,7 +113,7 @@ def goto_hall_menu(page, hall_name: str) -> bool:
     """Navigate fresh to the homepage and open a given dining hall's menu.
     Returns False if the hall link can't be found (name typo / retired hall)."""
     page.goto(BASE_URL, wait_until="networkidle")
-    hall_locator = page.locator(f'a:text-is("{hall_name}")').first
+    hall_locator = page.locator(f'a:has-text("{hall_name}")').first
     try:
         hall_locator.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
     except Exception:
