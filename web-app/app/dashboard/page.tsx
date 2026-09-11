@@ -882,7 +882,7 @@ export default function DashboardPage() {
 
               {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
               {!(hallStatus && !hallStatus.is_open) && (
-                <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+                <div>
                   <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
 
                   {loading ? (
