@@ -3,13 +3,14 @@
 A macro and nutrition tracker built specifically for UC Santa Cruz dining halls — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
 
 [![Live App](https://img.shields.io/badge/demo-live-brightgreen)](https://ucsc-dining-tracker.vercel.app)
+[![App Store](https://img.shields.io/badge/App%20Store-download-0D96F6?logo=apple)](https://apps.apple.com/app/sammys-palate/id6806954658)
 ![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=next.js)
 ![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3ECF8E?logo=supabase)
 ![Python](https://img.shields.io/badge/scraper-Python-3776AB?logo=python)
 ![iOS](https://img.shields.io/badge/iOS-Capacitor-000000?logo=apple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up and try it out. Also available as a native iOS app (TestFlight, App Store submission in progress).
+**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up and try it out. Also **[available on the App Store](https://apps.apple.com/app/sammys-palate/id6806954658)** for iPhone.
 
 ---
 
