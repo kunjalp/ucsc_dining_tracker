@@ -19,6 +19,7 @@ import {
   ChevronRight,
   User,
   Trash2,
+  Check,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -223,7 +224,8 @@ export default function DashboardPage() {
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
-  const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
+  // Briefly shows a checkmark on a food's Log button right after it's logged
+  const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})  const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
@@ -433,16 +435,16 @@ export default function DashboardPage() {
   // Real dining halls have Breakfast/Lunch/Dinner; cafes/markets may only have
   // one value like "Menu" or "ALL"; retail spots with no scraped data at all
   // (e.g. Merrill Market) get an empty array so the tab row hides entirely.
-const fetchMealTypesForHall = async (hall: string) => {
-  const hardcoded = getCoffeeShopMealTypes(hall)
-  if (hardcoded) {
-    setAvailableMealTypes(hardcoded)
-    return hardcoded
-  }
+  const fetchMealTypesForHall = async (hall: string) => {
+    const hardcoded = getCoffeeShopMealTypes(hall)
+    if (hardcoded) {
+      setAvailableMealTypes(hardcoded)
+      return hardcoded
+    }
 
-  const todayStr = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Los_Angeles'
-  })
+    const todayStr = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'America/Los_Angeles'
+    })
 
     const { data, error } = await supabase
       .from('daily_menus')
@@ -670,7 +672,14 @@ const fetchMealTypesForHall = async (hall: string) => {
     if (error) {
       alert(`Logging failed: ${error.message}`)
     } else {
-      alert('Food logged successfully!')
+      setJustLogged(prev => ({ ...prev, [foodId]: true }))
+      setTimeout(() => {
+        setJustLogged(prev => {
+          const next = { ...prev }
+          delete next[foodId]
+          return next
+        })
+      }, 1400)
       fetchTodayTotals()
     }
   }
@@ -983,9 +992,17 @@ const fetchMealTypesForHall = async (hall: string) => {
                                         </div>
                                         <button
                                           onClick={() => handleLogFood(food.recipe_id)}
-                                          className="rounded-lg bg-[#d6b93a] px-3.5 py-1.5 text-xs font-bold text-[#6b5300] transition hover:brightness-105 active:scale-95 shadow-md shadow-[#d6b93a]/20"
+                                          disabled={!!justLogged[food.recipe_id]}
+                                          className={`flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
+                                              ? 'bg-[#5bb448] text-white shadow-[#5bb448]/25'
+                                              : 'bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105'
+                                            }`}
                                         >
-                                          Log
+                                          {justLogged[food.recipe_id] ? (
+                                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
+                                          ) : (
+                                            'Log'
+                                          )}
                                         </button>
                                       </div>
                                     </article>
