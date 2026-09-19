@@ -880,13 +880,13 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-[#171f33] p-2 rounded-xl gap-1 border border-white/10">
+              <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 border border-white/10">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
                     type="button"
                     onClick={() => setSelectedDayOffset(offset)}
-                    className={`flex-1 px-2 py-2.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedDayOffset === offset
+                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedDayOffset === offset
                       ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
                       : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                       }`}
