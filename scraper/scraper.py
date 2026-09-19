@@ -526,8 +526,8 @@ def main():
             print("\n📡 Scraping hall open/closed statuses...")
             try:
                 statuses = scrape_hall_statuses(page)
-                upsert_hall_statuses(statuses)
                 statuses += compute_hardcoded_statuses()
+                upsert_hall_statuses(statuses)
                 print(f"   ✅ Updated status for {len(statuses)} hall(s).")
             except Exception as e:
                 print(f"   💥 Status scrape failed: {e}")
