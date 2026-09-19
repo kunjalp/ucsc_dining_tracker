@@ -140,6 +140,21 @@ def goto_hall_menu(page, hall_name: str, target_date: date | None = None) -> boo
         if not loc_num:
             print(f"   ⚠️ No known locationNum for '{hall_name}' — can't jump to a future date, skipping.")
             return False
+
+        # IMPORTANT: this site is an ASP.NET WebForms app. In a cold browser
+        # context (no prior visit — exactly what GitHub Actions' fresh
+        # Playwright browser starts with, unlike a real logged-in Chrome
+        # profile that's already been to the site before) hitting
+        # shortmenu.aspx directly, with no ASP.NET session cookie yet
+        # established, silently returns a page with no menu content — no
+        # error, just zero "Nutrition Calculator" links. Visiting the
+        # homepage first establishes that session/cookie before we jump to
+        # the deep link. This is cheap (one extra request) and is the fix
+        # for "0 item-row(s) upserted" runs in Actions while the same
+        # dtdate URL worked fine when tested interactively in a real browser.
+        page.goto(BASE_URL, wait_until="networkidle")
+        page.wait_for_timeout(500)
+
         dt_str = f"{target_date.month}/{target_date.day}/{target_date.year}"
         url = (
             f"{BASE_URL}shortmenu.aspx?sName=UC+Santa+Cruz+Dining"
@@ -149,6 +164,13 @@ def goto_hall_menu(page, hall_name: str, target_date: date | None = None) -> boo
         )
         page.goto(url, wait_until="networkidle")
         page.wait_for_timeout(800)
+
+        # Debug breadcrumb: if this still comes up with 0 calculator links
+        # downstream, this line in the Action log will tell us whether the
+        # deep link actually landed on a menu page at all (vs. a redirect
+        # to the homepage/an error page, which would mean the session-cookie
+        # theory above was wrong and something else is going on).
+        print(f"      🔗 Landed on: {page.url}")
         return True
 
     page.goto(BASE_URL, wait_until="networkidle")
