@@ -225,7 +225,8 @@ export default function DashboardPage() {
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
   // Briefly shows a checkmark on a food's Log button right after it's logged
-  const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})  const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
+  const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})  
+  const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
