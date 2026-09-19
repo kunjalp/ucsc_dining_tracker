@@ -302,6 +302,66 @@ def parse_report(html: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Hardcoded hours (for locations not covered by the dining.ucsc.edu status
+# page scrape, e.g. coffee houses)
+# ---------------------------------------------------------------------------
+HARDCODED_HOURS = {
+    "Stevenson Coffee House": {
+        0: ("08:00", "20:00"),  # Monday
+        1: ("08:00", "20:00"),  # Tuesday
+        2: ("08:00", "20:00"),  # Wednesday
+        3: ("08:00", "20:00"),  # Thursday
+        4: ("08:00", "20:00"),  # Friday
+        5: None,                # Saturday - Closed
+        6: None,                # Sunday - Closed
+    },
+    "Perk Coffee Bar": {
+        0: ("08:00", "18:00"),  # Monday
+        1: ("08:00", "18:00"),  # Tuesday
+        2: ("08:00", "18:00"),  # Wednesday
+        3: ("08:00", "18:00"),  # Thursday
+        4: ("08:00", "17:00"),  # Friday
+        5: None,                # Saturday - Closed
+        6: None,                # Sunday - Closed
+    },
+}
+
+
+def compute_hardcoded_statuses() -> list[dict]:
+    """Compute open/closed for hardcoded-hours locations based on the
+    current time in Pacific time, rather than scraping a status page."""
+    now = datetime.now(ZoneInfo("America/Los_Angeles"))
+    weekday = now.weekday()  # Monday = 0 ... Sunday = 6
+    results = []
+
+    for hall_name, week_hours in HARDCODED_HOURS.items():
+        today_hours = week_hours.get(weekday)
+        if today_hours is None:
+            is_open = False
+            status_text = "CLOSED"
+        else:
+            open_str, close_str = today_hours
+            open_time = datetime.strptime(open_str, "%H:%M").time()
+            close_time = datetime.strptime(close_str, "%H:%M").time()
+            current_time = now.time()
+            is_open = open_time <= current_time < close_time
+            status_text = (
+                f"OPEN · {open_str}–{close_str}" if is_open
+                else f"CLOSED · Opens {open_str}" if current_time < open_time
+                else "CLOSED"
+            )
+
+        results.append({
+            "dining_hall": hall_name,
+            "is_open": is_open,
+            "status_text": status_text,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    return results
+
 def upsert_food_items(items: list[dict]):
     if not items:
         return
@@ -467,6 +527,7 @@ def main():
             try:
                 statuses = scrape_hall_statuses(page)
                 upsert_hall_statuses(statuses)
+                statuses += compute_hardcoded_statuses()
                 print(f"   ✅ Updated status for {len(statuses)} hall(s).")
             except Exception as e:
                 print(f"   💥 Status scrape failed: {e}")
