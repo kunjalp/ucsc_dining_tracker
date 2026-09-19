@@ -303,28 +303,30 @@ def parse_report(html: str) -> list[dict]:
 # Database
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Hardcoded hours (for locations not covered by the dining.ucsc.edu status
-# page scrape, e.g. coffee houses)
-# ---------------------------------------------------------------------------
 HARDCODED_HOURS = {
+    ...
+}
+
+# Exact-date overrides for the fall transition week, straight from each
+# location's "Upcoming special hours" listing on dining.ucsc.edu. A value of
+# None means closed that day regardless of the regular weekly schedule above;
+# a tuple overrides the regular hours for that one date. Stevenson doesn't
+# open at all until 9/24/2026, so every date through 9/23 is forced closed
+# even though its regular Mon-Fri schedule would otherwise say open.
+HARDCODED_SPECIAL_DATES = {
     "Stevenson Coffee House": {
-        0: ("08:00", "20:00"),  # Monday
-        1: ("08:00", "20:00"),  # Tuesday
-        2: ("08:00", "20:00"),  # Wednesday
-        3: ("08:00", "20:00"),  # Thursday
-        4: ("08:00", "20:00"),  # Friday
-        5: None,                # Saturday - Closed
-        6: None,                # Sunday - Closed
+        "2026-09-19": None,
+        "2026-09-20": None,
+        "2026-09-21": None,
+        "2026-09-22": None,
+        "2026-09-23": None,
     },
     "Perk Coffee Bar": {
-        0: ("08:00", "18:00"),  # Monday
-        1: ("08:00", "18:00"),  # Tuesday
-        2: ("08:00", "18:00"),  # Wednesday
-        3: ("08:00", "18:00"),  # Thursday
-        4: ("08:00", "17:00"),  # Friday
-        5: None,                # Saturday - Closed
-        6: None,                # Sunday - Closed
+        "2026-09-19": None,
+        "2026-09-20": None,
+        "2026-09-21": ("08:00", "15:00"),
+        "2026-09-22": ("08:00", "15:00"),
+        "2026-09-23": ("08:00", "15:00"),
     },
 }
 
@@ -334,10 +336,15 @@ def compute_hardcoded_statuses() -> list[dict]:
     current time in Pacific time, rather than scraping a status page."""
     now = datetime.now(ZoneInfo("America/Los_Angeles"))
     weekday = now.weekday()  # Monday = 0 ... Sunday = 6
+    date_str = now.strftime("%Y-%m-%d")
     results = []
 
     for hall_name, week_hours in HARDCODED_HOURS.items():
-        today_hours = week_hours.get(weekday)
+        special_dates = HARDCODED_SPECIAL_DATES.get(hall_name, {})
+        if date_str in special_dates:
+            today_hours = special_dates[date_str]
+        else:
+            today_hours = week_hours.get(weekday)
         if today_hours is None:
             is_open = False
             status_text = "CLOSED"
