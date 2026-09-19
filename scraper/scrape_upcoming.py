@@ -26,7 +26,7 @@ from playwright.sync_api import sync_playwright
 
 from scraper import DINING_HALLS, HALL_LOCATION_NUMS, scrape_hall
 
-DAYS_AHEAD = 3  # scrape today + this many days into the future
+DAYS_AHEAD = 2  # scrape today + this many days into the future (matches DAY_OFFSETS in dashboard/page.tsx: today, tomorrow, +2)
 
 
 def main():

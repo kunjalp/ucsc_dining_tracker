@@ -81,7 +81,7 @@ const getDayOffsetLabel = (offsetDays: number): string => {
 
 // How many days ahead the app lets students browse — matches DAYS_AHEAD in
 // scraper/scrape_upcoming.py, which is what actually populates these dates.
-const DAY_OFFSETS = [0, 1, 2, 3]
+const DAY_OFFSETS = [0, 1, 2]
 
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
