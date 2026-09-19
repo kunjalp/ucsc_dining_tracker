@@ -248,7 +248,9 @@ export default function DashboardPage() {
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
   // Briefly shows a checkmark on a food's Log button right after it's logged
-  const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})  
+  const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
+  // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
+  const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})
   const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
@@ -725,8 +727,13 @@ export default function DashboardPage() {
     if (error) {
       alert(`Could not delete log: ${error.message}`)
     } else {
-      fetchTodayTotals()
-      if (showCalendar) fetchHistoricalLogs() // Also sync up calendar dynamically
+      // Show the checkmark briefly before the row actually disappears,
+      // same pattern as the Log button's confirmation.
+      setJustDeleted(prev => ({ ...prev, [logId]: true }))
+      setTimeout(() => {
+        fetchTodayTotals()
+        if (showCalendar) fetchHistoricalLogs() // Also sync up calendar dynamically
+      }, 350)
     }
   }
 
@@ -1244,10 +1251,21 @@ export default function DashboardPage() {
 
                       <button
                         onClick={() => handleDeleteLog(log.id)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 px-3 py-1.5 rounded-lg transition active:scale-95"
+                        disabled={!!justDeleted[log.id]}
+                        className={`flex min-w-[76px] items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-300 active:scale-95 ${
+                          justDeleted[log.id]
+                            ? 'bg-[#ffb4ab] text-[#5c1a13]'
+                            : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
+                        }`}
                       >
-                        <Trash2 size={12} />
-                        Delete
+                        {justDeleted[log.id] ? (
+                          <Check size={14} strokeWidth={3} className="animate-check-pop" />
+                        ) : (
+                          <>
+                            <Trash2 size={12} />
+                            Delete
+                          </>
+                        )}
                       </button>
                     </div>
                   ))}
