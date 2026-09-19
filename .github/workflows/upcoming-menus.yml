@@ -1,0 +1,35 @@
+name: Upcoming Menus Scraper
+on:
+  schedule:
+    # Runs once a day at 14:30 UTC (6:30 AM PST / 7:30 AM PDT) — offset 30
+    # minutes after the main daily scraper (scrape.yml, 14:00 UTC) so they
+    # don't hit the site at the same time.
+    - cron: '30 14 * * *'
+  workflow_dispatch: # Allows you to run it manually from the Actions tab
+
+jobs:
+  scrape-upcoming:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./scraper
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Run upcoming-menus scraper
+        run: python scrape_upcoming.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

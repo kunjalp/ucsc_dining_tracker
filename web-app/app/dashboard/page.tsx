@@ -61,6 +61,28 @@ interface HallStatus {
   status_text: string | null
 }
 
+// Returns the Pacific-time calendar date, offset by N days from today, as
+// "YYYY-MM-DD" — matches the format daily_menus.date is stored/queried in.
+const getDateStrForOffset = (offsetDays: number): string => {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+}
+
+// Human label for a day offset, e.g. 0 -> "Today", 1 -> "Tomorrow",
+// 2+ -> the weekday name ("Wednesday").
+const getDayOffsetLabel = (offsetDays: number): string => {
+  if (offsetDays === 0) return 'Today'
+  if (offsetDays === 1) return 'Tomorrow'
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long' })
+}
+
+// How many days ahead the app lets students browse — matches DAYS_AHEAD in
+// scraper/scrape_upcoming.py, which is what actually populates these dates.
+const DAY_OFFSETS = [0, 1, 2, 3]
+
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
   "Cowell & Stevenson Dining Hall",
@@ -221,6 +243,7 @@ export default function DashboardPage() {
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
   const [selectedMeal, setSelectedMeal] = useState('Breakfast')
+  const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
@@ -312,20 +335,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchTodayMenu()
+  }, [selectedHall, selectedMeal, selectedDayOffset])
+
+  // Today's logged totals only ever reflect what was actually eaten today,
+  // regardless of which day's menu is being browsed — not tied to selectedDayOffset.
+  useEffect(() => {
     fetchTodayTotals()
   }, [selectedHall, selectedMeal])
 
-  // Sync available meal-type tabs and the open/closed status whenever the hall changes
+  // Sync available meal-type tabs and the open/closed status whenever the hall
+  // or browsed day changes
   useEffect(() => {
     const syncMealTypes = async () => {
-      const types = await fetchMealTypesForHall(selectedHall)
+      const types = await fetchMealTypesForHall(selectedHall, selectedDayOffset)
       if (types.length > 0 && !types.includes(selectedMeal)) {
         setSelectedMeal(types[0])
       }
     }
     syncMealTypes()
     fetchHallStatus(selectedHall)
-  }, [selectedHall])
+  }, [selectedHall, selectedDayOffset])
 
   // Fetch all history whenever the calendar view gets activated
   useEffect(() => {
@@ -410,9 +439,7 @@ export default function DashboardPage() {
       return
     }
 
-    const todayStr = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Los_Angeles'
-    })
+    const dateStr = getDateStrForOffset(selectedDayOffset)
 
     const { data, error } = await supabase
       .from('daily_menus')
@@ -422,7 +449,7 @@ export default function DashboardPage() {
           recipe_id, name, portion, calories, protein, carbs, sugar, fat
         )
       `)
-      .eq('date', todayStr)
+      .eq('date', dateStr)
       .eq('dining_hall', selectedHall)
       .eq('meal_type', selectedMeal)
 
@@ -432,26 +459,24 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  // Fetch which meal_type values actually exist for this hall today.
+  // Fetch which meal_type values actually exist for this hall on the given day.
   // Real dining halls have Breakfast/Lunch/Dinner; cafes/markets may only have
   // one value like "Menu" or "ALL"; retail spots with no scraped data at all
   // (e.g. Merrill Market) get an empty array so the tab row hides entirely.
-  const fetchMealTypesForHall = async (hall: string) => {
+  const fetchMealTypesForHall = async (hall: string, dayOffset: number = 0) => {
     const hardcoded = getCoffeeShopMealTypes(hall)
     if (hardcoded) {
       setAvailableMealTypes(hardcoded)
       return hardcoded
     }
 
-    const todayStr = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Los_Angeles'
-    })
+    const dateStr = getDateStrForOffset(dayOffset)
 
     const { data, error } = await supabase
       .from('daily_menus')
       .select('meal_type')
       .eq('dining_hall', hall)
-      .eq('date', todayStr)
+      .eq('date', dateStr)
 
     if (error || !data || data.length === 0) {
       setAvailableMealTypes([])
@@ -500,6 +525,11 @@ export default function DashboardPage() {
     if (!rawName) return 'General'
     return rawName.replace(/--/g, '').trim()
   }
+
+  // Live open/closed status only ever describes "right now" — it doesn't
+  // apply when browsing a future day's menu, so only let it hide/gate the
+  // menu UI when Today is selected.
+  const isClosedNow = selectedDayOffset === 0 && !!hallStatus && !hallStatus.is_open
 
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
@@ -840,7 +870,7 @@ export default function DashboardPage() {
                   {DINING_HALLS.map(hall => <option key={hall} value={hall}>{hall}</option>)}
                 </select>
 
-                {availableMealTypes.length > 0 && !(hallStatus && !hallStatus.is_open) && (
+                {availableMealTypes.length > 0 && !isClosedNow && (
                   <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                     {availableMealTypes.map(meal => (
                       <button
@@ -857,8 +887,8 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Search + station filter pills — hidden when the hall is closed */}
-                {!(hallStatus && !hallStatus.is_open) && (
+                {/* Search + station filter pills — hidden when the hall is closed right now */}
+                {!isClosedNow && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
                     <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
                     <div className="relative w-full">
@@ -905,24 +935,41 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Dining hall closed banner */}
-              {hallStatus && !hallStatus.is_open && (
+              {/* Day selector — lets students browse published upcoming menus */}
+              <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 border border-white/10">
+                {DAY_OFFSETS.map(offset => (
+                  <button
+                    key={offset}
+                    type="button"
+                    onClick={() => setSelectedDayOffset(offset)}
+                    className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedDayOffset === offset
+                      ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
+                      : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                      }`}
+                  >
+                    {getDayOffsetLabel(offset)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Dining hall closed banner — only meaningful for Today, since it's live status */}
+              {isClosedNow && (
                 <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
                   Dining Hall is Closed
                 </div>
               )}
 
-              {/* Menu items — hidden entirely when the hall is closed with no scraped data */}
-              {!(hallStatus && !hallStatus.is_open) && (
+              {/* Menu items — hidden entirely when the hall is closed right now with no scraped data */}
+              {!isClosedNow && (
                 <div>
-                  <h2 className="text-lg font-bold mb-5 tracking-tight">Today's Menu ({selectedMeal})</h2>
+                  <h2 className="text-lg font-bold mb-5 tracking-tight">{getDayOffsetLabel(selectedDayOffset)}'s Menu ({selectedMeal})</h2>
 
                   {loading ? (
                     <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
                   ) : Object.keys(groupedMenu).length === 0 ? (
                     <div className="py-12 text-center text-[#c2c6d0] font-medium">
                       {menu.length === 0
-                        ? "No items found for this meal period today."
+                        ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
                         : "No menu items match your search or station filters."}
                     </div>
                   ) : (
