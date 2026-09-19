@@ -7,6 +7,7 @@ import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
 import { getHallOpenStatus } from '@/lib/diningHours'
 import { classifyByName } from '@/lib/stationClassifier'
+import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
 import {
   History,
@@ -391,6 +392,21 @@ export default function DashboardPage() {
   // 1. Fetch items scraped for today matching selected Hall & Meal
   const fetchTodayMenu = async () => {
     setLoading(true)
+
+    if (isHardcodedCoffeeShop(selectedHall)) {
+      const items = getCoffeeShopMenu(selectedHall) || []
+      const mealType = getCoffeeShopMealTypes(selectedHall)?.[0] || 'Menu'
+      setMenu(items.map((item) => ({
+        food_item_id: item.recipe_id,
+        dining_hall: selectedHall,
+        meal_type: mealType,
+        station: item.station,
+        food_items: item,
+      })))
+      setLoading(false)
+      return
+    }
+
     const todayStr = new Date().toLocaleDateString('en-CA', {
       timeZone: 'America/Los_Angeles'
     })
@@ -417,10 +433,16 @@ export default function DashboardPage() {
   // Real dining halls have Breakfast/Lunch/Dinner; cafes/markets may only have
   // one value like "Menu" or "ALL"; retail spots with no scraped data at all
   // (e.g. Merrill Market) get an empty array so the tab row hides entirely.
-  const fetchMealTypesForHall = async (hall: string) => {
-    const todayStr = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Los_Angeles'
-    })
+const fetchMealTypesForHall = async (hall: string) => {
+  const hardcoded = getCoffeeShopMealTypes(hall)
+  if (hardcoded) {
+    setAvailableMealTypes(hardcoded)
+    return hardcoded
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Los_Angeles'
+  })
 
     const { data, error } = await supabase
       .from('daily_menus')
