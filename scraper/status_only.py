@@ -1,4 +1,4 @@
-from scraper import scrape_hall_statuses, upsert_hall_statuses, compute_hardcoded_statuses
+from scraper import scrape_hall_statuses, upsert_hall_statuses
 from playwright.sync_api import sync_playwright
 
 def main():
@@ -7,7 +7,6 @@ def main():
         page = browser.new_page()
         try:
             statuses = scrape_hall_statuses(page)
-            statuses += compute_hardcoded_statuses()
             upsert_hall_statuses(statuses)
             print(f"✅ Updated status for {len(statuses)} hall(s).")
         except Exception as e:

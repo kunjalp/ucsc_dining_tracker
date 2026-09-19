@@ -153,6 +153,52 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       ['07:00', '20:00'], // Sat
     ],
   },
+
+  // Coffee houses used to be computed server-side by the scraper (from a
+  // HARDCODED_HOURS dict) and stored in the hall_status table, which meant
+  // the app's "closed" state depended on the 30-min status cron having both
+  // run AND succeeded since the last hours change. Moving them here makes
+  // them instant and cron-independent, exactly like the dining halls above.
+  'Stevenson Coffee House': {
+    specialDates: {
+      // Doesn't open at all until 9/24/2026, overriding what would
+      // otherwise be a normal Mon-Fri open day below.
+      '2026-09-19': [],
+      '2026-09-20': [],
+      '2026-09-21': [],
+      '2026-09-22': [],
+      '2026-09-23': [],
+    },
+    regularHours: [
+      null,                  // Sun - Closed
+      ['08:00', '20:00'],    // Mon
+      ['08:00', '20:00'],    // Tue
+      ['08:00', '20:00'],    // Wed
+      ['08:00', '20:00'],    // Thu
+      ['08:00', '20:00'],    // Fri
+      null,                  // Sat - Closed
+    ],
+  },
+
+  'Perk Coffee Bar': {
+    specialDates: {
+      '2026-09-19': [],
+      '2026-09-20': [],
+      // Shortened hours for its first few open days
+      '2026-09-21': [['08:00', '15:00']],
+      '2026-09-22': [['08:00', '15:00']],
+      '2026-09-23': [['08:00', '15:00']],
+    },
+    regularHours: [
+      null,                  // Sun - Closed
+      ['08:00', '18:00'],    // Mon
+      ['08:00', '18:00'],    // Tue
+      ['08:00', '18:00'],    // Wed
+      ['08:00', '18:00'],    // Thu
+      ['08:00', '17:00'],    // Fri
+      null,                  // Sat - Closed
+    ],
+  },
 }
 
 function getPacificParts(now: Date) {

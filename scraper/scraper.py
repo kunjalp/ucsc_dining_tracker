@@ -60,7 +60,7 @@ import os
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from zoneinfo import ZoneInfo
 from bs4 import BeautifulSoup
@@ -105,13 +105,52 @@ DINING_HALLS = [
 
 NAV_TIMEOUT_MS = 20000
 
+# nutrition.sa.ucsc.edu's stable per-location ID (the "locationNum" query
+# param). These don't change even though the on-page link text does (e.g.
+# "Perk Coffee Bar" becomes "Perk Coffee Bar - open 9/21" as that date
+# approaches/passes). Used to jump straight to a specific hall+date via URL
+# instead of clicking through from the homepage, which only ever shows today.
+HALL_LOCATION_NUMS = {
+    "John R. Lewis & College Nine Dining Hall": "40",
+    "Cowell & Stevenson Dining Hall": "05",
+    "Crown & Merrill Dining Hall": "20",
+    "Porter & Kresge Dining Hall": "25",
+    "Rachel Carson & Oakes Dining Hall": "30",
+    "Stevenson Coffee House": "26",
+    "Perk Coffee Bar": "22",
+}
+
 
 # ---------------------------------------------------------------------------
 # Core Scraping Logic
 # ---------------------------------------------------------------------------
-def goto_hall_menu(page, hall_name: str) -> bool:
-    """Navigate fresh to the homepage and open a given dining hall's menu.
-    Returns False if the hall link can't be found (name typo / retired hall)."""
+def goto_hall_menu(page, hall_name: str, target_date: date | None = None) -> bool:
+    """Navigate to a given dining hall's menu.
+
+    With no target_date, behaves as before: goes to the homepage (which
+    always shows today) and clicks through by link text.
+
+    With a target_date, jumps directly to that date's menu via the site's
+    own "dtdate" URL parameter (discovered from its date-picker dropdown,
+    which encodes each date as a direct link rather than a form postback) —
+    no dropdown interaction needed. Requires hall_name to be in
+    HALL_LOCATION_NUMS; returns False otherwise."""
+    if target_date is not None:
+        loc_num = HALL_LOCATION_NUMS.get(hall_name)
+        if not loc_num:
+            print(f"   ⚠️ No known locationNum for '{hall_name}' — can't jump to a future date, skipping.")
+            return False
+        dt_str = f"{target_date.month}/{target_date.day}/{target_date.year}"
+        url = (
+            f"{BASE_URL}shortmenu.aspx?sName=UC+Santa+Cruz+Dining"
+            f"&locationNum={loc_num}&locationName={quote(hall_name)}&naFlag=1"
+            f"&WeeksMenus=UCSC+-+This+Week%27s+Menus&myaction=read"
+            f"&dtdate={quote(dt_str, safe='')}"
+        )
+        page.goto(url, wait_until="networkidle")
+        page.wait_for_timeout(800)
+        return True
+
     page.goto(BASE_URL, wait_until="networkidle")
     hall_locator = page.locator(f'a:has-text("{hall_name}")').first
     try:
@@ -303,72 +342,6 @@ def parse_report(html: str) -> list[dict]:
 # Database
 # ---------------------------------------------------------------------------
 
-HARDCODED_HOURS = {
-    ...
-}
-
-# Exact-date overrides for the fall transition week, straight from each
-# location's "Upcoming special hours" listing on dining.ucsc.edu. A value of
-# None means closed that day regardless of the regular weekly schedule above;
-# a tuple overrides the regular hours for that one date. Stevenson doesn't
-# open at all until 9/24/2026, so every date through 9/23 is forced closed
-# even though its regular Mon-Fri schedule would otherwise say open.
-HARDCODED_SPECIAL_DATES = {
-    "Stevenson Coffee House": {
-        "2026-09-19": None,
-        "2026-09-20": None,
-        "2026-09-21": None,
-        "2026-09-22": None,
-        "2026-09-23": None,
-    },
-    "Perk Coffee Bar": {
-        "2026-09-19": None,
-        "2026-09-20": None,
-        "2026-09-21": ("08:00", "15:00"),
-        "2026-09-22": ("08:00", "15:00"),
-        "2026-09-23": ("08:00", "15:00"),
-    },
-}
-
-
-def compute_hardcoded_statuses() -> list[dict]:
-    """Compute open/closed for hardcoded-hours locations based on the
-    current time in Pacific time, rather than scraping a status page."""
-    now = datetime.now(ZoneInfo("America/Los_Angeles"))
-    weekday = now.weekday()  # Monday = 0 ... Sunday = 6
-    date_str = now.strftime("%Y-%m-%d")
-    results = []
-
-    for hall_name, week_hours in HARDCODED_HOURS.items():
-        special_dates = HARDCODED_SPECIAL_DATES.get(hall_name, {})
-        if date_str in special_dates:
-            today_hours = special_dates[date_str]
-        else:
-            today_hours = week_hours.get(weekday)
-        if today_hours is None:
-            is_open = False
-            status_text = "CLOSED"
-        else:
-            open_str, close_str = today_hours
-            open_time = datetime.strptime(open_str, "%H:%M").time()
-            close_time = datetime.strptime(close_str, "%H:%M").time()
-            current_time = now.time()
-            is_open = open_time <= current_time < close_time
-            status_text = (
-                f"OPEN · {open_str}–{close_str}" if is_open
-                else f"CLOSED · Opens {open_str}" if current_time < open_time
-                else "CLOSED"
-            )
-
-        results.append({
-            "dining_hall": hall_name,
-            "is_open": is_open,
-            "status_text": status_text,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        })
-
-    return results
-
 def upsert_food_items(items: list[dict]):
     if not items:
         return
@@ -404,9 +377,9 @@ def replace_daily_menus(hall_name: str, meal_type: str, scrape_date: str, rows: 
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
-def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
+def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None = None) -> int:
     print(f"\n🏢 {hall_name}")
-    if not goto_hall_menu(page, hall_name):
+    if not goto_hall_menu(page, hall_name, target_date=target_date):
         return 0
 
     meal_names = get_meal_period_names(page)
@@ -424,7 +397,7 @@ def scrape_hall(page, hall_name: str, scrape_date: str) -> int:
     for i, meal_name in enumerate(meal_names):
         # Re-navigate fresh for each meal period so link indices don't shift
         # after a prior report/tab was opened.
-        if not goto_hall_menu(page, hall_name):
+        if not goto_hall_menu(page, hall_name, target_date=target_date):
             continue
         print(f"   🍽️ Scraping '{meal_name}'...")
         html = fetch_meal_report_html(page, i)
@@ -533,7 +506,6 @@ def main():
             print("\n📡 Scraping hall open/closed statuses...")
             try:
                 statuses = scrape_hall_statuses(page)
-                statuses += compute_hardcoded_statuses()
                 upsert_hall_statuses(statuses)
                 print(f"   ✅ Updated status for {len(statuses)} hall(s).")
             except Exception as e:
