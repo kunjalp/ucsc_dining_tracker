@@ -258,6 +258,17 @@ export interface HallOpenStatus {
   status_text: string
 }
 
+// Shared by getHallOpenStatus (today, live) and getHallStatusForDate (any
+// day, e.g. Tomorrow/Monday tabs) so both read from the same source of truth.
+function resolveWindows(schedule: HallScheduleData, dateStr: string, dayOfWeek: number): TimeWindow[] {
+  return dateStr in schedule.specialDates
+    ? schedule.specialDates[dateStr]
+    : (() => {
+        const reg = schedule.regularHours[dayOfWeek]
+        return reg ? [reg] : []
+      })()
+}
+
 /**
  * Returns instant open/closed status for a hall based on published hours,
  * or null if we don't have schedule data for this hall (caller should fall
@@ -268,14 +279,7 @@ export function getHallOpenStatus(hallName: string, now: Date = new Date()): Hal
   if (!schedule) return null
 
   const { dateStr, dayOfWeek, minutesSinceMidnight } = getPacificParts(now)
-
-  const windows: TimeWindow[] =
-    dateStr in schedule.specialDates
-      ? schedule.specialDates[dateStr]
-      : (() => {
-          const reg = schedule.regularHours[dayOfWeek]
-          return reg ? [reg] : []
-        })()
+  const windows = resolveWindows(schedule, dateStr, dayOfWeek)
 
   for (const [start, end] of windows) {
     const startMin = timeToMinutes(start)
@@ -291,4 +295,30 @@ export function getHallOpenStatus(hallName: string, now: Date = new Date()): Hal
     is_open: false,
     status_text: nextWindow ? `Closed — opens at ${formatTime(nextWindow[0])}` : 'Closed',
   }
+}
+
+/**
+ * Same idea as getHallOpenStatus, but for browsing a specific future date
+ * (the Tomorrow/Monday tabs) rather than "right now" — so it only asks
+ * "does this hall have any hours at all on this date", not "is it open at
+ * this exact minute". dateStr must be "YYYY-MM-DD" (Pacific-time calendar
+ * date, matching getDateStrForOffset in dashboard/page.tsx). Returns null
+ * if we don't have schedule data for this hall (caller should skip gating
+ * the UI in that case, same as getHallOpenStatus returning null).
+ */
+export function getHallStatusForDate(hallName: string, dateStr: string): HallOpenStatus | null {
+  const schedule = SCHEDULES[hallName]
+  if (!schedule) return null
+
+  // Parse at noon local, not midnight UTC, so this can't drift a day off
+  // depending on the browser's timezone.
+  const dayOfWeek = new Date(`${dateStr}T12:00:00`).getDay()
+  const windows = resolveWindows(schedule, dateStr, dayOfWeek)
+
+  if (windows.length === 0) {
+    return { is_open: false, status_text: 'Closed' }
+  }
+
+  const [start, end] = windows[0]
+  return { is_open: true, status_text: `Open ${formatTime(start)} – ${formatTime(end)}` }
 }
