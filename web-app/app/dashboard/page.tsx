@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { getHallOpenStatus } from '@/lib/diningHours'
+import { getHallOpenStatus, getHallStatusForDate } from '@/lib/diningHours'
 import { classifyByName } from '@/lib/stationClassifier'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
@@ -528,10 +528,22 @@ export default function DashboardPage() {
     return rawName.replace(/--/g, '').trim()
   }
 
-  // Live open/closed status only ever describes "right now" — it doesn't
-  // apply when browsing a future day's menu, so only let it hide/gate the
-  // menu UI when Today is selected.
-  const isClosedNow = selectedDayOffset === 0 && !!hallStatus && !hallStatus.is_open
+  // For Today, use the live "is it open right now" status. For Tomorrow/
+  // Monday/etc., check whether the hall has any published hours at all on
+  // that specific date — a hall can be scraped to have menu items sitting
+  // in daily_menus for a date it's actually closed (the scraper doesn't
+  // check hours), so this is what actually gates the banner/menu for those
+  // days instead of silently showing food for a closed day.
+  const futureDayStatus = useMemo(() => {
+    if (selectedDayOffset === 0) return null
+    const dateStr = getDateStrForOffset(selectedDayOffset)
+    return getHallStatusForDate(selectedHall, dateStr)
+  }, [selectedHall, selectedDayOffset])
+
+  const isClosedNow =
+    selectedDayOffset === 0
+      ? !!hallStatus && !hallStatus.is_open
+      : !!futureDayStatus && !futureDayStatus.is_open
 
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
@@ -962,10 +974,12 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Dining hall closed banner — only meaningful for Today, since it's live status */}
+              {/* Dining hall closed banner — live status for Today, published hours for other days */}
               {isClosedNow && (
                 <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
-                  Dining Hall is Closed
+                  {selectedDayOffset === 0
+                    ? 'Dining Hall is Closed'
+                    : `Dining Hall is Closed ${getDayOffsetLabel(selectedDayOffset)}`}
                 </div>
               )}
 
