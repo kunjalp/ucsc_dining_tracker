@@ -83,6 +83,9 @@ const getDayOffsetLabel = (offsetDays: number): string => {
 // scraper/scrape_upcoming.py, which is what actually populates these dates.
 const DAY_OFFSETS = [0, 1, 2]
 
+const DINING_HALL_NAMES = DINING_HALLS.slice(0, 5) // the 5 real dining halls
+const locationLabel = DINING_HALL_NAMES.includes(selectedHall) ? 'Dining Hall' : 'Location'
+
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
   "Cowell & Stevenson Dining Hall",
@@ -257,7 +260,7 @@ export default function DashboardPage() {
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
-  const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})  
+  const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})
   const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
@@ -990,8 +993,8 @@ export default function DashboardPage() {
               {isClosedNow && (
                 <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
                   {selectedDayOffset === 0
-                    ? 'Dining Hall is Closed'
-                    : `Dining Hall is Closed ${getDayOffsetLabel(selectedDayOffset)}`}
+                    ? `${locationLabel} is Closed`
+                    : `${locationLabel} is Closed ${getDayOffsetLabel(selectedDayOffset)}`}
                 </div>
               )}
 
@@ -1078,8 +1081,8 @@ export default function DashboardPage() {
                                           onClick={() => handleLogFood(food.recipe_id)}
                                           disabled={!!justLogged[food.recipe_id]}
                                           className={`flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                              ? 'bg-[#5bb448] text-white shadow-[#5bb448]/25'
-                                              : 'bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105'
+                                            ? 'bg-[#5bb448] text-white shadow-[#5bb448]/25'
+                                            : 'bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105'
                                             }`}
                                         >
                                           {justLogged[food.recipe_id] ? (
@@ -1281,11 +1284,10 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handleDeleteLog(log.id)}
                         disabled={!!justDeleted[log.id]}
-                        className={`flex min-w-[76px] items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-300 active:scale-95 ${
-                          justDeleted[log.id]
+                        className={`flex min-w-[76px] items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
                             ? 'bg-[#ffb4ab] text-[#5c1a13]'
                             : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
-                        }`}
+                          }`}
                       >
                         {justDeleted[log.id] ? (
                           <Check size={14} strokeWidth={3} className="animate-check-pop" />
