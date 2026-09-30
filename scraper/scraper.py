@@ -467,6 +467,14 @@ def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None
 
 STATUS_URL = "https://dining.ucsc.edu/locations-hours/"
 
+# Match against a normalized copy of the link text with any slash-like
+# character (regular "/", U+2044 fraction slash, U+2215 division slash)
+# folded to a plain "/" first — UCSC's site has silently swapped some of
+# these labels to the fraction-slash glyph, which broke plain substring
+# matching against "Porter/Kresge..."/"Rachel Carson/Oakes..." and left
+# those two halls stuck on stale status data.
+SLASH_VARIANTS = ("⁄", "∕")  # fraction slash, division slash
+
 STATUS_HALL_LABELS = {
     "College Nine and John R. Lewis Dining Hall": "John R. Lewis & College Nine Dining Hall",
     "Cowell/Stevenson Dining Hall": "Cowell & Stevenson Dining Hall",
@@ -474,6 +482,11 @@ STATUS_HALL_LABELS = {
     "Porter/Kresge Dining Hall": "Porter & Kresge Dining Hall",
     "Rachel Carson/Oakes Dining Hall": "Rachel Carson & Oakes Dining Hall",
 }
+
+def _normalize_slashes(s: str) -> str:
+    for variant in SLASH_VARIANTS:
+        s = s.replace(variant, "/")
+    return s
 
 def scrape_hall_statuses(page) -> list[dict]:
     page.goto(STATUS_URL, wait_until="domcontentloaded", timeout=45000)
@@ -508,11 +521,12 @@ def scrape_hall_statuses(page) -> list[dict]:
     results = []
     for row in rows:
         text = row["text"]
-        matched_label = next((k for k in STATUS_HALL_LABELS if k in text), None)
+        normalized_text = _normalize_slashes(text)
+        matched_label = next((k for k in STATUS_HALL_LABELS if k in normalized_text), None)
         if not matched_label:
             continue
         db_name = STATUS_HALL_LABELS[matched_label]
-        status_part = text.replace(matched_label, "").strip(" ›").strip()
+        status_part = normalized_text.replace(matched_label, "").strip(" ›").strip()
         is_open = status_part.upper().startswith("OPEN")
         results.append({
             "dining_hall": db_name,
