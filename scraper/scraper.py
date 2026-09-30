@@ -58,7 +58,7 @@ To get "what's on the menu right now at hall X for meal Y":
 
 import os
 import re
-import threading
+import signal
 from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
@@ -467,39 +467,47 @@ def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None
     return total_items
 
 
-# Three runs in a row observed Daily Menu Scraper wedge indefinitely right
-# after Perk Coffee Bar, on Banana Joe's, with no exception ever raised (so
-# main()'s per-hall try/except never triggers) — the run just sits
-# "In progress" for hours. Root cause not confirmed (manual reproduction of
-# the same click sequence outside Playwright/CI worked fine), so rather than
-# keep guessing, each hall now gets a hard wall-clock budget. If a hall
-# exceeds it, we treat it as hung: the worker thread is abandoned (daemon
-# thread, so it can never block process exit even if it never returns) and
-# the browser is killed and relaunched so whatever's wedging the Playwright
-# connection can't take the rest of the run down with it.
+# Multiple runs in a row observed Daily Menu Scraper wedge indefinitely
+# right after Perk Coffee Bar, on Banana Joe's, with no exception ever
+# raised (so main()'s per-hall try/except never triggers) — the run just
+# sits "In progress" for hours. Root cause not confirmed (manual
+# reproduction of the same click sequence outside Playwright/CI worked
+# fine), so each hall now gets a hard wall-clock budget as a backstop.
+#
+# IMPORTANT: Playwright's sync API is single-threaded — it's built on
+# greenlets tied to whichever OS thread called sync_playwright(), and
+# calling page/browser methods from a different thread raises "Cannot
+# switch to a different thread". So this CANNOT be a worker-thread +
+# join(timeout=...) pattern (that was tried and immediately broke every
+# hall). Instead it uses SIGALRM, which interrupts the *same* thread —
+# safe for Playwright, but Unix-only, so on platforms without SIGALRM
+# (Windows) it just runs without a timeout guard.
 HALL_TIMEOUT_SECONDS = 180  # generous: full successful runs average ~20-25s/hall
 
 
+class _HallTimeout(Exception):
+    pass
+
+
+def _alarm_handler(signum, frame):
+    raise _HallTimeout()
+
+
 def scrape_hall_with_timeout(browser_holder: dict, hall_name: str, scrape_date: str, target_date: date | None = None) -> int:
-    """Same as scrape_hall, but runs it in a daemon thread with a hard
-    timeout. browser_holder is a mutable dict with "playwright", "browser",
+    """Same as scrape_hall, but bounded by a hard wall-clock timeout via
+    SIGALRM. browser_holder is a mutable dict with "playwright", "browser",
     "page" keys — mutated in place so the caller's next iteration picks up
     a fresh browser/page if this hall had to be force-killed."""
-    result_holder = {"total": 0}
+    has_alarm = hasattr(signal, "SIGALRM")
+    if has_alarm:
+        old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
+        signal.alarm(HALL_TIMEOUT_SECONDS)
 
-    def _run():
-        try:
-            result_holder["total"] = scrape_hall(browser_holder["page"], hall_name, scrape_date, target_date=target_date)
-        except Exception as e:
-            print(f"      💥 Error scraping '{hall_name}': {e}")
-
-    worker = threading.Thread(target=_run, daemon=True)
-    worker.start()
-    worker.join(timeout=HALL_TIMEOUT_SECONDS)
-
-    if worker.is_alive():
+    try:
+        return scrape_hall(browser_holder["page"], hall_name, scrape_date, target_date=target_date)
+    except _HallTimeout:
         print(f"   ⏱️ '{hall_name}' exceeded {HALL_TIMEOUT_SECONDS}s — treating as hung. "
-              f"Abandoning it and restarting the browser so the rest of the run isn't blocked.")
+              f"Restarting the browser so the rest of the run isn't blocked.")
         try:
             browser_holder["browser"].close()
         except Exception:
@@ -507,8 +515,10 @@ def scrape_hall_with_timeout(browser_holder: dict, hall_name: str, scrape_date: 
         browser_holder["browser"] = browser_holder["playwright"].chromium.launch(headless=True)
         browser_holder["page"] = browser_holder["browser"].new_page()
         return 0
-
-    return result_holder["total"]
+    finally:
+        if has_alarm:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
 STATUS_URL = "https://dining.ucsc.edu/locations-hours/"
 
