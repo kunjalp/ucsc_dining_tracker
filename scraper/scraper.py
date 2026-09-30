@@ -101,6 +101,13 @@ DINING_HALLS = [
     "Rachel Carson & Oakes Dining Hall",
     "Stevenson Coffee House",
     "Perk Coffee Bar",
+    "Banana Joe's",
+    "Oakes Cafe",
+    "Global Village Cafe",
+    "Owl's Nest Cafe",
+    "UCen Coffee Bar",
+    "Porter Market",
+    "Merrill Market",
 ]
 
 NAV_TIMEOUT_MS = 20000
@@ -486,7 +493,7 @@ def scrape_hall_statuses(page) -> list[dict]:
         }
         """
     )
-    
+
     print("   🔍 DEBUG raw status link texts:")
     for r in rows:
         print(f"      '{r['text']}'")
@@ -509,12 +516,90 @@ def scrape_hall_statuses(page) -> list[dict]:
     return results
 
 
+# ---------------------------------------------------------------------------
+# Hardcoded hours (for locations not covered by the dining.ucsc.edu status
+# page scrape, e.g. coffee houses, cafes, and markets)
+# ---------------------------------------------------------------------------
+HARDCODED_HOURS = {
+    "Stevenson Coffee House": {
+        0: ("08:00", "20:00"), 1: ("08:00", "20:00"), 2: ("08:00", "20:00"),
+        3: ("08:00", "20:00"), 4: ("08:00", "20:00"), 5: None, 6: None,
+    },
+    "Perk Coffee Bar": {
+        0: ("08:00", "18:00"), 1: ("08:00", "18:00"), 2: ("08:00", "18:00"),
+        3: ("08:00", "18:00"), 4: ("08:00", "17:00"), 5: None, 6: None,
+    },
+    "Banana Joe's": {
+        0: ("20:00", "23:00"), 1: ("20:00", "23:00"), 2: ("20:00", "23:00"),
+        3: ("20:00", "23:00"), 4: ("20:00", "23:00"), 5: None, 6: None,
+    },
+    "Oakes Cafe": {
+        0: ("10:00", "21:00"), 1: ("10:00", "21:00"), 2: ("10:00", "21:00"),
+        3: ("10:00", "21:00"), 4: ("10:00", "21:00"), 5: None, 6: None,
+    },
+    "Global Village Cafe": {
+        0: ("08:00", "18:00"), 1: ("08:00", "18:00"), 2: ("08:00", "18:00"),
+        3: ("08:00", "18:00"), 4: ("08:00", "18:00"), 5: None, 6: None,
+    },
+    "Owl's Nest Cafe": {
+        0: ("08:00", "18:00"), 1: ("08:00", "18:00"), 2: ("08:00", "18:00"),
+        3: ("08:00", "18:00"), 4: ("08:00", "18:00"), 5: None, 6: None,
+    },
+    "UCen Coffee Bar": {
+        0: ("08:00", "16:00"), 1: ("08:00", "16:00"), 2: ("08:00", "16:00"),
+        3: ("08:00", "16:00"), 4: ("08:00", "14:00"), 5: None, 6: None,
+    },
+    "Porter Market": {
+        0: ("08:00", "20:00"), 1: ("08:00", "20:00"), 2: ("08:00", "20:00"),
+        3: ("08:00", "20:00"), 4: ("08:00", "20:00"), 5: None, 6: None,
+    },
+    "Merrill Market": {
+        0: ("09:00", "20:00"), 1: ("09:00", "20:00"), 2: ("09:00", "20:00"),
+        3: ("09:00", "20:00"), 4: ("09:00", "20:00"), 5: None, 6: None,
+    },
+}
+
+
+def compute_hardcoded_statuses() -> list[dict]:
+    """Compute open/closed for hardcoded-hours locations based on the
+    current time in Pacific time, rather than scraping a status page."""
+    now = datetime.now(ZoneInfo("America/Los_Angeles"))
+    weekday = now.weekday()  # Monday = 0 ... Sunday = 6
+    results = []
+
+    for hall_name, week_hours in HARDCODED_HOURS.items():
+        today_hours = week_hours.get(weekday)
+        if today_hours is None:
+            is_open = False
+            status_text = "CLOSED"
+        else:
+            open_str, close_str = today_hours
+            open_time = datetime.strptime(open_str, "%H:%M").time()
+            close_time = datetime.strptime(close_str, "%H:%M").time()
+            current_time = now.time()
+            is_open = open_time <= current_time < close_time
+            status_text = (
+                f"OPEN · {open_str}–{close_str}" if is_open
+                else f"CLOSED · Opens {open_str}" if current_time < open_time
+                else "CLOSED"
+            )
+
+        results.append({
+            "dining_hall": hall_name,
+            "is_open": is_open,
+            "status_text": status_text,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    return results
+
+
 def upsert_hall_statuses(statuses: list[dict]):
     if not statuses:
         return
     deduped = list({s["dining_hall"]: s for s in statuses}.values())
     supabase.table("hall_status").upsert(deduped, on_conflict="dining_hall").execute()
-    
+
 
 def main():
     print("🚀 Running UCSC Dining database update pipeline...")
@@ -528,6 +613,7 @@ def main():
             print("\n📡 Scraping hall open/closed statuses...")
             try:
                 statuses = scrape_hall_statuses(page)
+                statuses += compute_hardcoded_statuses()
                 upsert_hall_statuses(statuses)
                 print(f"   ✅ Updated status for {len(statuses)} hall(s).")
             except Exception as e:
