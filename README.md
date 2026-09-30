@@ -1,6 +1,6 @@
 # Sammy's Palate — UCSC Macro Tracker
 
-A macro and nutrition tracker built specifically for UC Santa Cruz dining halls — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
+A macro and nutrition tracker built specifically for UC Santa Cruz dining halls, cafes, and markets — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
 
 [![Live App](https://img.shields.io/badge/demo-live-brightgreen)](https://ucsc-dining-tracker.vercel.app)
 [![App Store](https://img.shields.io/badge/App%20Store-download-0D96F6?logo=apple)](https://apps.apple.com/app/sammys-palate/id6806954658)
@@ -29,7 +29,7 @@ A macro and nutrition tracker built specifically for UC Santa Cruz dining halls 
 
 UCSC's official dining hall nutrition calculator technically has the data I need, but using it is a pain: the interface makes it slow to find items, there's no way to search or filter by station, and — most importantly — **it doesn't save anything**. Every day starts from zero, with no history of what you've eaten or how close you are to your goals.
 
-Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current menu for every UCSC dining hall and coffee shop. The web app turns that data into a fast, searchable menu you can log meals from in seconds, with your daily macro totals, progress rings, and history saved automatically. It's also shipped as a native iOS app.
+Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current menu for every UCSC dining hall, cafe, and market. The web app turns that data into a fast, searchable menu you can log meals from in seconds, with your daily macro totals, progress rings, and history saved automatically. It's also shipped as a native iOS app.
 
 ## Screenshots
 
@@ -50,7 +50,7 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 ## Features
 
 **Menu browsing**
-- Live menu pulled daily for every UCSC dining hall and coffee shop
+- Live menu pulled daily for every UCSC dining hall, cafe, and market
 - Filter by meal period (Breakfast/Lunch/Dinner/Late Night) and by station (Entrees, Grill, Hot Bars, Soups, Cereal, Condiments, and more)
 - Free-text search across today's items
 - Instant open/closed status per dining hall, computed from published hours — no scraping delay
@@ -103,7 +103,7 @@ flowchart LR
     H --> D
 ```
 
-Every morning, a scheduled GitHub Action runs `scraper.py`, which pulls the day's menu for each dining hall and writes it to Supabase. A second, more frequent workflow keeps hall open/closed status current. The Next.js app reads menu data from Supabase at request time and handles auth, food logging, and progress tracking through the same database. The iOS app is a Capacitor-wrapped shell that loads the same live web app.
+Every morning, a scheduled GitHub Action runs `scraper.py`, which pulls the day's menu for every dining hall, cafe, and market and writes it to Supabase. A second, more frequent workflow keeps hall open/closed status current. The Next.js app reads menu data from Supabase at request time and handles auth, food logging, and progress tracking through the same database. The iOS app is a Capacitor-wrapped shell that loads the same live web app.
 
 ## Getting Started
 
