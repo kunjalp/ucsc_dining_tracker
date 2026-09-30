@@ -923,7 +923,10 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {availableMealTypes.length > 0 && !isClosedNow && (
+              {/* Only worth showing as tabs when there's an actual choice to make —
+                  cafes/markets with a single period (e.g. "Menu", "ALL") skip straight
+                  to the items instead of showing a single, un-clickable-feeling tab. */}
+              {availableMealTypes.length > 1 && !isClosedNow && (
                 <div className="flex bg-[#171f33] p-2 rounded-xl gap-1">
                   {availableMealTypes.map(meal => (
                     <button
