@@ -1004,7 +1004,10 @@ export default function DashboardPage() {
               {/* Menu items — hidden entirely when the hall is closed right now with no scraped data */}
               {!isClosedNow && (
                 <div>
-                  <h2 className="text-lg font-bold mb-5 tracking-tight">{getDayOffsetLabel(selectedDayOffset)}'s Menu ({selectedMeal})</h2>
+                  <h2 className="text-lg font-bold mb-5 tracking-tight">
+                    {getDayOffsetLabel(selectedDayOffset)}'s Menu
+                    {availableMealTypes.length > 1 && ` (${selectedMeal})`}
+                  </h2>
 
                   {loading ? (
                     <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
