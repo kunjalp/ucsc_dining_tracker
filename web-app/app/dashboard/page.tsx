@@ -91,6 +91,13 @@ const DINING_HALLS = [
   "Rachel Carson & Oakes Dining Hall",
   "Stevenson Coffee House",
   "Perk Coffee Bar",
+  "Banana Joe's",
+  "Oakes Cafe",
+  "Global Village Cafe",
+  "Owl's Nest Cafe",
+  "UCen Coffee Bar",
+  "Porter Market",
+  "Merrill Market",
 ]
 
 const STATION_DISPLAY_ORDER = [
@@ -886,7 +893,12 @@ export default function DashboardPage() {
                   onChange={(e) => setSelectedHall(e.target.value)}
                   className="flex-1 rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 >
-                  {DINING_HALLS.map(hall => <option key={hall} value={hall}>{hall}</option>)}
+                  <optgroup label="Dining Halls">
+                    {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
+                  </optgroup>
+                  <optgroup label="Cafes & Markets">
+                    {DINING_HALLS.slice(5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
+                  </optgroup>
                 </select>
               </div>
 
