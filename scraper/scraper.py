@@ -125,6 +125,13 @@ HALL_LOCATION_NUMS = {
     "Rachel Carson & Oakes Dining Hall": "30",
     "Stevenson Coffee House": "26",
     "Perk Coffee Bar": "22",
+    "Banana Joe's": "21",
+    "Oakes Cafe": "23",
+    "Global Village Cafe": "46",
+    "Owl's Nest Cafe": "24",
+    "UCen Coffee Bar": "45",
+    "Porter Market": "50",
+    "Merrill Market": "47",
 }
 
 
