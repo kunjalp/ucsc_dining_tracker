@@ -10,9 +10,11 @@
 //   2. regularHours: the steady-state weekly schedule that applies once a
 //      date isn't found in specialDates (index 0 = Sunday ... 6 = Saturday).
 //
-// A hall with no entry in SCHEDULES falls back to null, signaling the
-// caller to use the scraped hall_status table instead (e.g. coffee shops
-// where we don't have published hours).
+// Covers both the 5 main dining halls and the 9 cafes/coffee bars/markets
+// (the latter ported from scraper.py's HARDCODED_HOURS). A hall with no
+// entry in SCHEDULES falls back to null, signaling the caller to use the
+// scraped hall_status table instead (only relevant now for locations we
+// truly have no published hours for).
 
 type TimeWindow = [string, string] // ["HH:MM", "HH:MM"], 24-hour, Pacific time
 
@@ -51,23 +53,16 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       '2026-09-14': SEPT_10_16_LONGDAY,
       '2026-09-15': SEPT_10_16_LONGDAY,
       '2026-09-16': SEPT_10_16_LONGDAY,
-      // Straight from dining.ucsc.edu's "Upcoming special hours" for JRL/C9
-      '2026-09-19': [['09:00', '20:00']],
-      '2026-09-20': [['09:00', '20:00']],
-      '2026-09-21': [['08:00', '20:00']],
-      '2026-09-22': [['08:00', '22:00']],
-      '2026-09-23': [['08:00', '22:00']],
     },
-    // Sun, Mon, Tue, Wed, Thu, Fri, Sat — steady-state hours once no special
-    // date override applies (i.e. from 9/24/2026 onward)
+    // Sun, Mon, Tue, Wed, Thu, Fri, Sat
     regularHours: [
-      ['09:00', '20:00'], // Sun
-      ['08:00', '20:00'], // Mon
-      ['08:00', '22:00'], // Tue
-      ['08:00', '22:00'], // Wed
-      ['08:00', '22:00'], // Thu
-      ['08:00', '22:00'], // Fri
-      ['09:00', '22:00'], // Sat
+      ['07:00', '20:00'],
+      ['07:00', '20:00'],
+      ['07:00', '23:00'],
+      ['07:00', '23:00'],
+      ['07:00', '23:00'],
+      ['07:00', '23:00'],
+      ['07:00', '23:00'],
     ],
   },
 
@@ -89,20 +84,15 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       '2026-09-14': SEPT_10_16_LONGDAY,
       '2026-09-15': SEPT_10_16_LONGDAY,
       '2026-09-16': SEPT_10_16_LONGDAY,
-      '2026-09-19': [['09:00', '20:00']],
-      '2026-09-20': [['09:00', '22:00']],
-      '2026-09-21': [['08:00', '22:00']],
-      '2026-09-22': [['08:00', '22:00']],
-      '2026-09-23': [['08:00', '22:00']],
     },
     regularHours: [
-      ['09:00', '22:00'], // Sun
-      ['08:00', '22:00'], // Mon
-      ['08:00', '22:00'], // Tue
-      ['08:00', '22:00'], // Wed
-      ['08:00', '22:00'], // Thu
-      ['08:00', '20:00'], // Fri
-      ['09:00', '20:00'], // Sat
+      ['07:00', '23:00'], // Sun
+      ['07:00', '23:00'], // Mon
+      ['07:00', '23:00'], // Tue
+      ['07:00', '23:00'], // Wed
+      ['07:00', '23:00'], // Thu
+      ['07:00', '20:00'], // Fri
+      ['07:00', '20:00'], // Sat
     ],
   },
 
@@ -112,11 +102,6 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       '2026-09-05': [], '2026-09-06': [], '2026-09-07': [], '2026-09-08': [],
       '2026-09-09': [], '2026-09-10': [], '2026-09-11': [], '2026-09-12': [],
       '2026-09-13': [], '2026-09-14': [], '2026-09-15': [], '2026-09-16': [],
-      '2026-09-19': [],
-      '2026-09-20': [],
-      '2026-09-21': [['07:00', '20:00']],
-      '2026-09-22': [['07:00', '20:00']],
-      '2026-09-23': [['07:00', '20:00']],
     },
     regularHours: [
       null, // Sun - closed
@@ -135,11 +120,6 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       '2026-09-05': [], '2026-09-06': [], '2026-09-07': [], '2026-09-08': [],
       '2026-09-09': [], '2026-09-10': [], '2026-09-11': [], '2026-09-12': [],
       '2026-09-13': [], '2026-09-14': [], '2026-09-15': [], '2026-09-16': [],
-      '2026-09-19': [],
-      '2026-09-20': [],
-      '2026-09-21': [['07:00', '19:00']],
-      '2026-09-22': [['07:00', '19:00']],
-      '2026-09-23': [['07:00', '19:00']],
     },
     regularHours: [
       null, // Sun - closed
@@ -164,66 +144,134 @@ const SCHEDULES: Record<string, HallScheduleData> = {
       '2026-09-14': SEPT_10_16_LONGDAY,
       '2026-09-15': SEPT_10_16_LONGDAY,
       '2026-09-16': SEPT_10_16_LONGDAY,
-      '2026-09-19': [['09:00', '20:00']],
-      '2026-09-20': [['09:00', '22:00']],
-      '2026-09-21': [['08:00', '22:00']],
-      '2026-09-22': [['08:00', '22:00']],
-      '2026-09-23': [['08:00', '22:00']],
     },
     regularHours: [
-      ['09:00', '22:00'], // Sun
-      ['08:00', '22:00'], // Mon
-      ['08:00', '22:00'], // Tue
-      ['08:00', '22:00'], // Wed
-      ['08:00', '22:00'], // Thu
-      ['08:00', '20:00'], // Fri
-      ['09:00', '20:00'], // Sat
+      ['07:00', '23:00'], // Sun
+      ['07:00', '23:00'], // Mon
+      ['07:00', '23:00'], // Tue
+      ['07:00', '23:00'], // Wed
+      ['07:00', '23:00'], // Thu
+      ['07:00', '20:00'], // Fri
+      ['07:00', '20:00'], // Sat
     ],
   },
 
-  // Coffee houses used to be computed server-side by the scraper (from a
-  // HARDCODED_HOURS dict) and stored in the hall_status table, which meant
-  // the app's "closed" state depended on the 30-min status cron having both
-  // run AND succeeded since the last hours change. Moving them here makes
-  // them instant and cron-independent, exactly like the dining halls above.
+  // Cafes, coffee bars, and markets — no special-date overrides; these run
+  // steady weekly hours (ported from scraper.py's HARDCODED_HOURS).
   'Stevenson Coffee House': {
-    specialDates: {
-      // Doesn't open at all until 9/24/2026, overriding what would
-      // otherwise be a normal Mon-Fri open day below.
-      '2026-09-19': [],
-      '2026-09-20': [],
-      '2026-09-21': [],
-      '2026-09-22': [],
-      '2026-09-23': [],
-    },
+    specialDates: {},
     regularHours: [
-      null,                  // Sun - Closed
-      ['08:00', '20:00'],    // Mon
-      ['08:00', '20:00'],    // Tue
-      ['08:00', '20:00'],    // Wed
-      ['08:00', '20:00'],    // Thu
-      ['08:00', '20:00'],    // Fri
-      null,                  // Sat - Closed
+      null, // Sun
+      ['08:00', '20:00'], // Mon
+      ['08:00', '20:00'], // Tue
+      ['08:00', '20:00'], // Wed
+      ['08:00', '20:00'], // Thu
+      ['08:00', '20:00'], // Fri
+      null, // Sat
     ],
   },
 
   'Perk Coffee Bar': {
-    specialDates: {
-      '2026-09-19': [],
-      '2026-09-20': [],
-      // Shortened hours for its first few open days
-      '2026-09-21': [['08:00', '15:00']],
-      '2026-09-22': [['08:00', '15:00']],
-      '2026-09-23': [['08:00', '15:00']],
-    },
+    specialDates: {},
     regularHours: [
-      null,                  // Sun - Closed
-      ['08:00', '18:00'],    // Mon
-      ['08:00', '18:00'],    // Tue
-      ['08:00', '18:00'],    // Wed
-      ['08:00', '18:00'],    // Thu
-      ['08:00', '17:00'],    // Fri
-      null,                  // Sat - Closed
+      null, // Sun
+      ['08:00', '18:00'], // Mon
+      ['08:00', '18:00'], // Tue
+      ['08:00', '18:00'], // Wed
+      ['08:00', '18:00'], // Thu
+      ['08:00', '17:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  "Banana Joe's": {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['20:00', '23:00'], // Mon
+      ['20:00', '23:00'], // Tue
+      ['20:00', '23:00'], // Wed
+      ['20:00', '23:00'], // Thu
+      ['20:00', '23:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  'Oakes Cafe': {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['10:00', '21:00'], // Mon
+      ['10:00', '21:00'], // Tue
+      ['10:00', '21:00'], // Wed
+      ['10:00', '21:00'], // Thu
+      ['10:00', '21:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  'Global Village Cafe': {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['08:00', '18:00'], // Mon
+      ['08:00', '18:00'], // Tue
+      ['08:00', '18:00'], // Wed
+      ['08:00', '18:00'], // Thu
+      ['08:00', '18:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  "Owl's Nest Cafe": {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['08:00', '18:00'], // Mon
+      ['08:00', '18:00'], // Tue
+      ['08:00', '18:00'], // Wed
+      ['08:00', '18:00'], // Thu
+      ['08:00', '18:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  'UCen Coffee Bar': {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['08:00', '16:00'], // Mon
+      ['08:00', '16:00'], // Tue
+      ['08:00', '16:00'], // Wed
+      ['08:00', '16:00'], // Thu
+      ['08:00', '14:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  'Porter Market': {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['08:00', '20:00'], // Mon
+      ['08:00', '20:00'], // Tue
+      ['08:00', '20:00'], // Wed
+      ['08:00', '20:00'], // Thu
+      ['08:00', '20:00'], // Fri
+      null, // Sat
+    ],
+  },
+
+  'Merrill Market': {
+    specialDates: {},
+    regularHours: [
+      null, // Sun
+      ['09:00', '20:00'], // Mon
+      ['09:00', '20:00'], // Tue
+      ['09:00', '20:00'], // Wed
+      ['09:00', '20:00'], // Thu
+      ['09:00', '20:00'], // Fri
+      null, // Sat
     ],
   },
 }
@@ -258,17 +306,6 @@ export interface HallOpenStatus {
   status_text: string
 }
 
-// Shared by getHallOpenStatus (today, live) and getHallStatusForDate (any
-// day, e.g. Tomorrow/Monday tabs) so both read from the same source of truth.
-function resolveWindows(schedule: HallScheduleData, dateStr: string, dayOfWeek: number): TimeWindow[] {
-  return dateStr in schedule.specialDates
-    ? schedule.specialDates[dateStr]
-    : (() => {
-        const reg = schedule.regularHours[dayOfWeek]
-        return reg ? [reg] : []
-      })()
-}
-
 /**
  * Returns instant open/closed status for a hall based on published hours,
  * or null if we don't have schedule data for this hall (caller should fall
@@ -279,7 +316,14 @@ export function getHallOpenStatus(hallName: string, now: Date = new Date()): Hal
   if (!schedule) return null
 
   const { dateStr, dayOfWeek, minutesSinceMidnight } = getPacificParts(now)
-  const windows = resolveWindows(schedule, dateStr, dayOfWeek)
+
+  const windows: TimeWindow[] =
+    dateStr in schedule.specialDates
+      ? schedule.specialDates[dateStr]
+      : (() => {
+          const reg = schedule.regularHours[dayOfWeek]
+          return reg ? [reg] : []
+        })()
 
   for (const [start, end] of windows) {
     const startMin = timeToMinutes(start)
@@ -298,27 +342,34 @@ export function getHallOpenStatus(hallName: string, now: Date = new Date()): Hal
 }
 
 /**
- * Same idea as getHallOpenStatus, but for browsing a specific future date
- * (the Tomorrow/Monday tabs) rather than "right now" — so it only asks
- * "does this hall have any hours at all on this date", not "is it open at
- * this exact minute". dateStr must be "YYYY-MM-DD" (Pacific-time calendar
- * date, matching getDateStrForOffset in dashboard/page.tsx). Returns null
- * if we don't have schedule data for this hall (caller should skip gating
- * the UI in that case, same as getHallOpenStatus returning null).
+ * Returns whether a hall has any published hours at all on a specific future
+ * calendar date (not "is it open right now" — there is no "now" for a future
+ * date). Used to gate the menu/banner for Tomorrow and other upcoming days,
+ * since a hall can have menu rows scraped into daily_menus for a date it's
+ * actually closed on. Returns null if we don't have schedule data for this
+ * hall (caller should fall back to the scraped hall_status table).
  */
 export function getHallStatusForDate(hallName: string, dateStr: string): HallOpenStatus | null {
   const schedule = SCHEDULES[hallName]
   if (!schedule) return null
 
-  // Parse at noon local, not midnight UTC, so this can't drift a day off
-  // depending on the browser's timezone.
-  const dayOfWeek = new Date(`${dateStr}T12:00:00`).getDay()
-  const windows = resolveWindows(schedule, dateStr, dayOfWeek)
+  const windows: TimeWindow[] =
+    dateStr in schedule.specialDates
+      ? schedule.specialDates[dateStr]
+      : (() => {
+          // Calendar dates have a fixed weekday regardless of timezone, so
+          // parse as UTC to avoid the local-server-timezone edge cases that
+          // `new Date(dateStr)` alone can hit.
+          const [y, m, d] = dateStr.split('-').map(Number)
+          const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+          const reg = schedule.regularHours[dayOfWeek]
+          return reg ? [reg] : []
+        })()
 
   if (windows.length === 0) {
     return { is_open: false, status_text: 'Closed' }
   }
 
   const [start, end] = windows[0]
-  return { is_open: true, status_text: `Open ${formatTime(start)} – ${formatTime(end)}` }
+  return { is_open: true, status_text: `Open ${formatTime(start)}–${formatTime(end)}` }
 }

@@ -83,9 +83,6 @@ const getDayOffsetLabel = (offsetDays: number): string => {
 // scraper/scrape_upcoming.py, which is what actually populates these dates.
 const DAY_OFFSETS = [0, 1, 2]
 
-const DINING_HALL_NAMES = DINING_HALLS.slice(0, 5) // the 5 real dining halls
-const locationLabel = DINING_HALL_NAMES.includes(selectedHall) ? 'Dining Hall' : 'Location'
-
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
   "Cowell & Stevenson Dining Hall",
@@ -102,6 +99,8 @@ const DINING_HALLS = [
   "Porter Market",
   "Merrill Market",
 ]
+
+const DINING_HALL_NAMES = DINING_HALLS.slice(0, 5) // the 5 real dining halls
 
 const STATION_DISPLAY_ORDER = [
   'Breakfast',
@@ -252,6 +251,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
+  const locationLabel = DINING_HALL_NAMES.includes(selectedHall) ? 'Dining Hall' : 'Location'
   const [selectedMeal, setSelectedMeal] = useState('Breakfast')
   const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
