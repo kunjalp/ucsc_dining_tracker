@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { getHallOpenStatus, getHallStatusForDate } from '@/lib/diningHours'
+import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown } from '@/lib/diningHours'
 import { classifyByName } from '@/lib/stationClassifier'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
@@ -293,6 +293,23 @@ export default function DashboardPage() {
   // Daily logs and totals tracking state
   const [loggedMeals, setLoggedMeals] = useState<MealLog[]>([])
   const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 })
+
+  // Ticks once a minute so the "X until Lunch/Dinner/Closing" countdown
+  // below stays current without needing a page refresh.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Minutes left until the next meal-period milestone (Breakfast/Lunch/
+  // Dinner/Late Night/Closing) for the selected dining hall, today only —
+  // there's no "now" to count down from for a future day. Returns null for
+  // cafes/markets (no meal-period breakdown) or once today's service ends.
+  const mealCountdown = useMemo(() => {
+    if (selectedDayOffset !== 0) return null
+    return getMealCountdown(selectedHall, now)
+  }, [selectedHall, selectedDayOffset, now])
 
   // Show scrollbar on Log Menu, hide it on Progress
   useEffect(() => {
@@ -993,6 +1010,14 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
+                  Dinner/Late Night/Closing) — dining halls only, today only. */}
+              {mealCountdown && (
+                <p className="text-center text-sm font-semibold text-[#fb7185]">
+                  {formatCountdown(mealCountdown.minutesUntil)} until {mealCountdown.label}
+                </p>
+              )}
 
               {/* Dining hall closed banner — live status for Today, published hours for other days */}
               {isClosedNow && (

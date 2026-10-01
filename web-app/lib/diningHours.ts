@@ -276,6 +276,249 @@ const SCHEDULES: Record<string, HallScheduleData> = {
   },
 }
 
+// ---------------------------------------------------------------------------
+// Meal period countdown (Breakfast/Lunch/Dinner/Brunch/Late Night -> Closing)
+//
+// The hours above only track whole-hall open/close windows, not the
+// boundaries between meal periods within a day. This is separate, more
+// granular published-hours data (dining hall services only — cafes/markets
+// run a single continuous window with no meal-period breakdown) used to
+// power a "X left until Lunch" style countdown. "Continuous Dining" windows
+// between named periods are intentionally omitted here: they don't get their
+// own countdown target, so the gap between e.g. Breakfast ending and Lunch
+// starting just counts down to Lunch.
+// ---------------------------------------------------------------------------
+
+interface MealPeriod {
+  label: string
+  start: string // "HH:MM", 24-hour, Pacific time
+  end: string
+}
+
+// index 0 = Sunday ... 6 = Saturday, null = no dining-hall service that day
+const MEAL_PERIOD_SCHEDULES: Record<string, (MealPeriod[] | null)[]> = {
+  'John R. Lewis & College Nine Dining Hall': [
+    [ // Sun
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Mon
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Tue
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Wed
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Thu
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Fri
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Sat
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+  ],
+
+  'Cowell & Stevenson Dining Hall': [
+    [ // Sun
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Mon
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Tue
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Wed
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Thu
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Fri
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Sat
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+  ],
+
+  'Crown & Merrill Dining Hall': [
+    null, // Sun - closed
+    [ // Mon
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Tue
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Wed
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Thu
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Fri
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    null, // Sat - closed
+  ],
+
+  'Porter & Kresge Dining Hall': [
+    null, // Sun - closed
+    [ // Mon
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '19:00' },
+    ],
+    [ // Tue
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '19:00' },
+    ],
+    [ // Wed
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '19:00' },
+    ],
+    [ // Thu
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '19:00' },
+    ],
+    [ // Fri
+      { label: 'Breakfast', start: '07:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '19:00' },
+    ],
+    null, // Sat - closed
+  ],
+
+  'Rachel Carson & Oakes Dining Hall': [
+    [ // Sun
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Mon
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Tue
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Wed
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Thu
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+      { label: 'Late Night', start: '20:00', end: '22:00' },
+    ],
+    [ // Fri
+      { label: 'Breakfast', start: '08:00', end: '11:00' },
+      { label: 'Lunch', start: '11:30', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+    [ // Sat
+      { label: 'Brunch', start: '09:00', end: '14:00' },
+      { label: 'Dinner', start: '17:00', end: '20:00' },
+    ],
+  ],
+}
+
+export interface MealCountdown {
+  label: string // e.g. "Lunch", "Dinner", "Late Night", "Closing"
+  minutesUntil: number
+}
+
+/**
+ * Returns the next upcoming meal-period milestone for a dining hall ("X
+ * minutes until Lunch"), or "Closing" once we're into the day's last named
+ * period. Returns null if we don't have a meal-period breakdown for this
+ * hall (cafes/markets, or a hall with no schedule data) or if the day's
+ * service is already entirely over.
+ */
+export function getMealCountdown(hallName: string, now: Date = new Date()): MealCountdown | null {
+  const schedule = MEAL_PERIOD_SCHEDULES[hallName]
+  if (!schedule) return null
+
+  const { dayOfWeek, minutesSinceMidnight } = getPacificParts(now)
+  const periods = schedule[dayOfWeek]
+  if (!periods || periods.length === 0) return null
+
+  const milestones = periods.map((p) => ({ label: p.label, minutes: timeToMinutes(p.start) }))
+  const lastPeriod = periods[periods.length - 1]
+  milestones.push({ label: 'Closing', minutes: timeToMinutes(lastPeriod.end) })
+
+  const next = milestones.find((m) => m.minutes > minutesSinceMidnight)
+  if (!next) return null // today's service is over
+
+  return { label: next.label, minutesUntil: next.minutes - minutesSinceMidnight }
+}
+
+/** Formats a minute count as "2h 15m" or "45m". */
+export function formatCountdown(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours <= 0) return `${minutes}m`
+  return `${hours}h ${minutes}m`
+}
+
 function getPacificParts(now: Date) {
   // en-CA gives YYYY-MM-DD directly, which is exactly what we need as a key
   const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
