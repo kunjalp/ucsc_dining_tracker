@@ -1014,7 +1014,7 @@ export default function DashboardPage() {
               {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
                   Dinner/Late Night/Closing) — dining halls only, today only. */}
               {mealCountdown && (
-                <p className="text-center text-sm font-semibold text-[#fb7185]">
+                <p className="text-left text-sm font-semibold text-[#fb7185]">
                   {formatCountdown(mealCountdown.minutesUntil)} until {mealCountdown.label}
                 </p>
               )}
