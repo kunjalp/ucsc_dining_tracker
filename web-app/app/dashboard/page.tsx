@@ -962,6 +962,14 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
+                  Dinner/Late Night/Closing) — dining halls only, today only. */}
+              {mealCountdown && (
+                <p className="text-left text-sm font-semibold text-[#fb7185]">
+                  {formatCountdown(mealCountdown.minutesUntil)} until {mealCountdown.label}
+                </p>
+              )}
+
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {!isClosedNow && (
@@ -1010,14 +1018,6 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-
-              {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
-                  Dinner/Late Night/Closing) — dining halls only, today only. */}
-              {mealCountdown && (
-                <p className="text-left text-sm font-semibold text-[#fb7185]">
-                  {formatCountdown(mealCountdown.minutesUntil)} until {mealCountdown.label}
-                </p>
-              )}
 
               {/* Dining hall closed banner — live status for Today, published hours for other days */}
               {isClosedNow && (
