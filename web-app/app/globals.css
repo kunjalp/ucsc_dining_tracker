@@ -63,6 +63,36 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Pulsing glow for the day track's filled (gold) portion. */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(214, 185, 58, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 11px 3px rgba(214, 185, 58, 0.8);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* Slow continuous spin for the day track's slug marker — separate element
+   from its position wrapper so the rotation doesn't fight the translate()
+   used to center/place it. */
+@keyframes slug-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-slug-spin {
+  animation: slug-spin 7s linear infinite;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

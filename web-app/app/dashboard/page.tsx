@@ -1070,7 +1070,7 @@ export default function DashboardPage() {
                   crosses into the next period. */}
               {dayTrack && (
                 <div className="space-y-1.5 pt-1 pb-1">
-                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex">
+                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex animate-glow-pulse">
                     {dayTrack.segments.map((seg, i) => (
                       <div
                         key={`${seg.label}-${i}`}
@@ -1081,16 +1081,22 @@ export default function DashboardPage() {
                         className="h-full border-r border-[#060e20] last:border-r-0 transition-[background] duration-1000 ease-linear first:rounded-l-full last:rounded-r-full"
                       />
                     ))}
-                    {/* The marker is Sammy himself, crawling across the day instead of a plain dot */}
+                    {/* The marker is Sammy himself, crawling across the day instead of a plain
+                        dot. Position/centering lives on this outer wrapper; the spin animation
+                        lives on the inner one so the two transforms don't fight each other. */}
                     <div
                       className="absolute top-1/2 transition-[left] duration-1000 ease-linear"
                       style={{
                         left: `${dayTrack.markerPct}%`,
                         transform: 'translate(-50%, -50%)',
-                        filter: 'drop-shadow(0 0 4px rgba(214,185,58,0.65))',
                       }}
                     >
-                      <SlugMarker size={22} />
+                      <div
+                        className="animate-slug-spin"
+                        style={{ filter: 'drop-shadow(0 0 4px rgba(214,185,58,0.65))' }}
+                      >
+                        <SlugMarker size={22} />
+                      </div>
                     </div>
                   </div>
                   <div className="flex">
