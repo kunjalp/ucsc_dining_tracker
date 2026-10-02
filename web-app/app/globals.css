@@ -90,7 +90,7 @@ body.hide-scrollbar::-webkit-scrollbar {
 }
 
 .animate-slug-spin {
-  animation: slug-spin 7s linear infinite;
+  animation: slug-spin 16s linear infinite;
 }
 
 body {

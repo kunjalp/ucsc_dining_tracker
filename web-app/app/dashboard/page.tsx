@@ -1070,7 +1070,14 @@ export default function DashboardPage() {
                   crosses into the next period. */}
               {dayTrack && (
                 <div className="space-y-1.5 pt-1 pb-1">
-                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex animate-glow-pulse">
+                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex">
+                    {/* Glow layer — sized to exactly how far the elapsed (gold)
+                        portion reaches, so only the already-highlighted part of
+                        the bar glows, not the whole track. */}
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full animate-glow-pulse pointer-events-none"
+                      style={{ width: `${dayTrack.markerPct}%`, transition: 'width 1000ms linear' }}
+                    />
                     {dayTrack.segments.map((seg, i) => (
                       <div
                         key={`${seg.label}-${i}`}
