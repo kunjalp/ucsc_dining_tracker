@@ -1,11 +1,12 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown } from '@/lib/diningHours'
+import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack } from '@/lib/diningHours'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
@@ -310,6 +311,53 @@ export default function DashboardPage() {
     if (selectedDayOffset !== 0) return null
     return getMealCountdown(selectedHall, now)
   }, [selectedHall, selectedDayOffset, now])
+
+  // Today's "day track" — the dining hall's scheduled periods laid out
+  // proportionally to their real length, with a live "now" marker. Same
+  // today-only scope as the countdown above.
+  const dayTrack = useMemo(() => {
+    if (selectedDayOffset !== 0) return null
+    return getDayTrack(selectedHall, now)
+  }, [selectedHall, selectedDayOffset, now])
+
+  // A light haptic tap when the day track crosses from one meal period
+  // into the next (e.g. Breakfast -> Lunch) — a quiet "something changed"
+  // cue. Skipped on the very first render for a hall (nothing "changed"
+  // yet) and reset silently on hall switches so jumping between halls
+  // doesn't fire a spurious buzz.
+  const prevTrackKeyRef = useRef<string | null>(null)
+  const prevActiveIndexRef = useRef<number | null>(null)
+  useEffect(() => {
+    const trackKey = selectedHall
+    if (prevTrackKeyRef.current !== trackKey) {
+      prevTrackKeyRef.current = trackKey
+      prevActiveIndexRef.current = dayTrack?.activeIndex ?? null
+      return
+    }
+    const prevIndex = prevActiveIndexRef.current
+    const nextIndex = dayTrack?.activeIndex ?? null
+    if (prevIndex !== null && nextIndex !== null && prevIndex !== nextIndex) {
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+    }
+    prevActiveIndexRef.current = nextIndex
+  }, [selectedHall, dayTrack?.activeIndex])
+
+  // A firmer haptic tap once, the moment the hall enters its last 15
+  // minutes of service for the day — the one countdown moment actually
+  // worth noticing. Resets itself once that window passes (mode changes
+  // or minutesLeft climbs back up, e.g. after a hall switch).
+  const closingSoonFiredRef = useRef(false)
+  useEffect(() => {
+    const isClosingSoon = mealCountdown?.mode === 'closes' && mealCountdown.minutesLeft <= 15
+    if (isClosingSoon) {
+      if (!closingSoonFiredRef.current) {
+        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
+        closingSoonFiredRef.current = true
+      }
+    } else {
+      closingSoonFiredRef.current = false
+    }
+  }, [selectedHall, mealCountdown])
 
   // Show scrollbar on Log Menu, hide it on Progress
   useEffect(() => {
@@ -982,6 +1030,46 @@ export default function DashboardPage() {
                   {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
                   {mealCountdown.mode === 'closes' && `Closing at ${mealCountdown.time}`}
                 </p>
+              )}
+
+              {/* "Day track" — today's meal periods laid out proportionally to
+                  their real length, with a live marker showing where "now"
+                  sits across the whole day at a glance (not just time left in
+                  the current period). Segments fill in behind the marker as
+                  each one elapses; a soft haptic tap marks the moment it
+                  crosses into the next period. */}
+              {dayTrack && (
+                <div className="space-y-1.5">
+                  <div className="relative h-2 rounded-full bg-white/5 overflow-hidden flex">
+                    {dayTrack.segments.map((seg, i) => (
+                      <div
+                        key={`${seg.label}-${i}`}
+                        style={{
+                          width: `${seg.widthPct}%`,
+                          background: `linear-gradient(to right, rgba(251,113,133,0.45) ${seg.fillFraction * 100}%, rgba(255,255,255,0.06) ${seg.fillFraction * 100}%)`,
+                        }}
+                        className="h-full border-r border-[#060e20] last:border-r-0 transition-[background] duration-1000 ease-linear"
+                      />
+                    ))}
+                    <div
+                      className="absolute top-1/2 h-3 w-3 rounded-full bg-[#fb7185] shadow-[0_0_8px_2px_rgba(251,113,133,0.55)] transition-[left] duration-1000 ease-linear"
+                      style={{ left: `${dayTrack.markerPct}%`, transform: 'translate(-50%, -50%)' }}
+                    />
+                  </div>
+                  <div className="flex">
+                    {dayTrack.segments.map((seg, i) => (
+                      <div
+                        key={`${seg.label}-label-${i}`}
+                        style={{ width: `${seg.widthPct}%` }}
+                        className={`text-center font-['JetBrains_Mono'] text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
+                          i === dayTrack.activeIndex ? 'text-[#fb7185]' : 'text-[#c2c6d0]/40'
+                        }`}
+                      >
+                        {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
 
               <div className="flex flex-col md:flex-row gap-3">

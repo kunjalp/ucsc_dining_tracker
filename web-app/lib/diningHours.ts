@@ -484,7 +484,7 @@ const MEAL_PERIOD_SCHEDULES: Record<string, (MealPeriod[] | null)[]> = {
 export type MealCountdown =
   | { mode: 'until'; label: string; minutesUntil: number } // e.g. "37m until Lunch"
   | { mode: 'opens'; label: string; time: string } // before today's first period — "Opens at 8:00 AM"
-  | { mode: 'closes'; label: string; time: string } // during the day's last named period — "Closing at 8:00 PM"
+  | { mode: 'closes'; label: string; time: string; minutesLeft: number } // during the day's last named period — "Closing at 8:00 PM"
 
 /**
  * Returns the current meal-period status for a dining hall:
@@ -523,7 +523,7 @@ export function getMealCountdown(hallName: string, now: Date = new Date()): Meal
 
   if (minutesSinceMidnight >= lastStart) {
     if (minutesSinceMidnight < lastEnd) {
-      return { mode: 'closes', label: last.label, time: formatTime(last.end) }
+      return { mode: 'closes', label: last.label, time: formatTime(last.end), minutesLeft: lastEnd - minutesSinceMidnight }
     }
     return null // today's service is fully over
   }
@@ -540,6 +540,71 @@ export function formatCountdown(totalMinutes: number): string {
   const minutes = totalMinutes % 60
   if (hours <= 0) return `${minutes}m`
   return `${hours}h ${minutes}m`
+}
+
+/**
+ * A segment of today's "day track" — the dining hall's scheduled periods
+ * laid out proportionally to their real duration (not evenly divided),
+ * so e.g. a 2-hour Breakfast block is visually shorter than a 3-hour
+ * Dinner block. fillFraction tracks how much of that specific segment
+ * has already elapsed (0 = hasn't started, 1 = fully in the past), which
+ * drives a left-to-right fill rather than one blunt overall percentage.
+ */
+export interface DayTrackSegment {
+  label: string
+  startPct: number // 0-100, position within the full track
+  widthPct: number // 0-100, width within the full track
+  fillFraction: number // 0-1, how much of this segment is in the past
+}
+
+export interface DayTrack {
+  segments: DayTrackSegment[]
+  markerPct: number // 0-100, clamped to the track's start/end
+  activeIndex: number // index of the segment "now" falls inside, or -1
+}
+
+/**
+ * Builds today's day track for a dining hall: the full span from the
+ * first period's start to the last period's end, broken into real,
+ * proportionally-sized segments with a "now" marker position. Returns
+ * null for halls without meal-period data, or on a day with none
+ * scheduled (track has nothing meaningful to show either way).
+ */
+export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack | null {
+  const schedule = MEAL_PERIOD_SCHEDULES[hallName]
+  if (!schedule) return null
+
+  const { dayOfWeek, minutesSinceMidnight } = getPacificParts(now)
+  const periods = schedule[dayOfWeek]
+  if (!periods || periods.length === 0) return null
+
+  const dayStart = timeToMinutes(periods[0].start)
+  const dayEnd = timeToMinutes(periods[periods.length - 1].end)
+  const span = dayEnd - dayStart
+  if (span <= 0) return null
+
+  const segments: DayTrackSegment[] = periods.map((p) => {
+    const s = timeToMinutes(p.start)
+    const e = timeToMinutes(p.end)
+    const fillFraction = e <= s ? 0 : Math.min(Math.max((minutesSinceMidnight - s) / (e - s), 0), 1)
+    return {
+      label: p.label,
+      startPct: ((s - dayStart) / span) * 100,
+      widthPct: ((e - s) / span) * 100,
+      fillFraction,
+    }
+  })
+
+  const clampedNow = Math.min(Math.max(minutesSinceMidnight, dayStart), dayEnd)
+  const markerPct = ((clampedNow - dayStart) / span) * 100
+
+  const activeIndex = periods.findIndex((p) => {
+    const s = timeToMinutes(p.start)
+    const e = timeToMinutes(p.end)
+    return minutesSinceMidnight >= s && minutesSinceMidnight < e
+  })
+
+  return { segments, markerPct, activeIndex }
 }
 
 function getPacificParts(now: Date) {
