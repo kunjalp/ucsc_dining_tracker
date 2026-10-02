@@ -149,6 +149,31 @@ const getEffectiveStation = (entry: MenuEntry): string => {
   return byName || 'General'
 }
 
+// Tiny version of the Sammy's Palate logo (a banana slug curled into a
+// shell) used as the day track's moving marker — same gold/navy/light-blue
+// palette as the real logo and the rest of the app, not a generic dot.
+function SlugMarker({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
+      <circle cx="50" cy="50" r="44" fill="none" stroke="#a1c9ff" strokeWidth="3" />
+      <circle
+        cx="50" cy="50" r="34"
+        fill="none"
+        stroke="#d6b93a"
+        strokeWidth="18"
+        strokeDasharray="177 37"
+        transform="rotate(231 50 50)"
+      />
+      <circle cx="50" cy="50" r="18" fill="#0b1326" />
+      <circle cx="8.7" cy="34.9" r="9" fill="#d6b93a" stroke="#0b1326" strokeWidth="2" />
+      <line x1="6" y1="28" x2="2" y2="17" stroke="#d6b93a" strokeWidth="3" strokeLinecap="round" />
+      <line x1="14" y1="28" x2="17" y2="18" stroke="#d6b93a" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="2" cy="15" r="2.5" fill="#d6b93a" />
+      <circle cx="17.5" cy="16" r="2.5" fill="#d6b93a" />
+    </svg>
+  )
+}
+
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
   value: number
@@ -1044,22 +1069,29 @@ export default function DashboardPage() {
                   each one elapses; a soft haptic tap marks the moment it
                   crosses into the next period. */}
               {dayTrack && (
-                <div className="space-y-1.5">
-                  <div className="relative h-2 rounded-full bg-white/5 overflow-hidden flex">
+                <div className="space-y-1.5 pt-1 pb-1">
+                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex">
                     {dayTrack.segments.map((seg, i) => (
                       <div
                         key={`${seg.label}-${i}`}
                         style={{
                           width: `${seg.widthPct}%`,
-                          background: `linear-gradient(to right, rgba(251,113,133,0.45) ${seg.fillFraction * 100}%, rgba(255,255,255,0.06) ${seg.fillFraction * 100}%)`,
+                          background: `linear-gradient(to right, rgba(214,185,58,0.5) ${seg.fillFraction * 100}%, rgba(255,255,255,0.06) ${seg.fillFraction * 100}%)`,
                         }}
-                        className="h-full border-r border-[#060e20] last:border-r-0 transition-[background] duration-1000 ease-linear"
+                        className="h-full border-r border-[#060e20] last:border-r-0 transition-[background] duration-1000 ease-linear first:rounded-l-full last:rounded-r-full"
                       />
                     ))}
+                    {/* The marker is Sammy himself, crawling across the day instead of a plain dot */}
                     <div
-                      className="absolute top-1/2 h-3 w-3 rounded-full bg-[#fb7185] shadow-[0_0_8px_2px_rgba(251,113,133,0.55)] transition-[left] duration-1000 ease-linear"
-                      style={{ left: `${dayTrack.markerPct}%`, transform: 'translate(-50%, -50%)' }}
-                    />
+                      className="absolute top-1/2 transition-[left] duration-1000 ease-linear"
+                      style={{
+                        left: `${dayTrack.markerPct}%`,
+                        transform: 'translate(-50%, -50%)',
+                        filter: 'drop-shadow(0 0 4px rgba(214,185,58,0.65))',
+                      }}
+                    >
+                      <SlugMarker size={22} />
+                    </div>
                   </div>
                   <div className="flex">
                     {dayTrack.segments.map((seg, i) => (
@@ -1067,7 +1099,7 @@ export default function DashboardPage() {
                         key={`${seg.label}-label-${i}`}
                         style={{ width: `${seg.widthPct}%` }}
                         className={`text-center font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
-                          i === dayTrack.activeIndex ? 'text-[#fb7185]' : 'text-[#c2c6d0]/40'
+                          i === dayTrack.activeIndex ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
                         {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
