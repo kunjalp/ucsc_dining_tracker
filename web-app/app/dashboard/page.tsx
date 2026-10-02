@@ -802,6 +802,8 @@ export default function DashboardPage() {
     if (error) {
       alert(`Logging failed: ${error.message}`)
     } else {
+      // Quick, light confirmation tap — this is a frequent, low-stakes action.
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
       setJustLogged(prev => ({ ...prev, [foodId]: true }))
       setTimeout(() => {
         setJustLogged(prev => {
@@ -824,6 +826,9 @@ export default function DashboardPage() {
     if (error) {
       alert(`Could not delete log: ${error.message}`)
     } else {
+      // Firmer tap than logging — deleting is the more deliberate, less
+      // frequent action, so it gets a touch more weight.
+      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
       // Show the checkmark briefly before the row actually disappears,
       // same pattern as the Log button's confirmation.
       setJustDeleted(prev => ({ ...prev, [logId]: true }))
