@@ -561,6 +561,7 @@ export interface DayTrack {
   segments: DayTrackSegment[]
   markerPct: number // 0-100, clamped to the track's start/end
   activeIndex: number // index of the segment "now" falls inside, or -1
+  opensAt: string // short clock time the first period starts, e.g. "8am"
   closesAt: string // short clock time the last period ends, e.g. "10pm"
 }
 
@@ -660,7 +661,13 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
     }
   }
 
-  return { segments, markerPct, activeIndex, closesAt: formatTimeShort(periods[periods.length - 1].end) }
+  return {
+    segments,
+    markerPct,
+    activeIndex,
+    opensAt: formatTimeShort(periods[0].start),
+    closesAt: formatTimeShort(periods[periods.length - 1].end),
+  }
 }
 
 function getPacificParts(now: Date) {

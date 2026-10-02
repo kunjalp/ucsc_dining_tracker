@@ -152,9 +152,11 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 // Tiny version of the Sammy's Palate logo (a banana slug curled into a
 // shell) used as the day track's moving marker — same gold/navy/light-blue
 // palette as the real logo and the rest of the app, not a generic dot.
-function SlugMarker({ size = 24 }: { size?: number }) {
+// x/y let it be placed as a nested <svg> inside the day track's own SVG,
+// centered on a point along the curved path.
+function SlugMarker({ size = 24, x = 0, y = 0 }: { size?: number; x?: number; y?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
+    <svg x={x} y={y} width={size} height={size} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
       <circle cx="50" cy="50" r="44" fill="none" stroke="#a1c9ff" strokeWidth="3" />
       <circle
         cx="50" cy="50" r="34"
@@ -173,6 +175,30 @@ function SlugMarker({ size = 24 }: { size?: number }) {
     </svg>
   )
 }
+
+// The day track's curved path — a gentle arc echoing the inner curl of
+// Sammy's shell, instead of a straight slider-style bar. A quadratic bezier
+// is enough: start, a raised control point, end. These pure helpers turn a
+// 0-1 position along it into an (x, y) point or a tangent angle (so the
+// marker can tilt to face the direction it's crawling).
+type Point = [number, number]
+
+function bezierPoint(t: number, p0: Point, p1: Point, p2: Point): Point {
+  const x = (1 - t) * (1 - t) * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0]
+  const y = (1 - t) * (1 - t) * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]
+  return [x, y]
+}
+
+function bezierTangentAngle(t: number, p0: Point, p1: Point, p2: Point): number {
+  const dx = 2 * (1 - t) * (p1[0] - p0[0]) + 2 * t * (p2[0] - p1[0])
+  const dy = 2 * (1 - t) * (p1[1] - p0[1]) + 2 * t * (p2[1] - p1[1])
+  return (Math.atan2(dy, dx) * 180) / Math.PI
+}
+
+const DAY_TRACK_P0: Point = [10, 40]
+const DAY_TRACK_P1: Point = [150, 16]
+const DAY_TRACK_P2: Point = [290, 40]
+const DAY_TRACK_PATH = `M ${DAY_TRACK_P0[0]} ${DAY_TRACK_P0[1]} Q ${DAY_TRACK_P1[0]} ${DAY_TRACK_P1[1]} ${DAY_TRACK_P2[0]} ${DAY_TRACK_P2[1]}`
 
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
@@ -1070,42 +1096,51 @@ export default function DashboardPage() {
                   crosses into the next period. */}
               {dayTrack && (
                 <div className="space-y-1.5 pt-1 pb-1">
-                  <div className="relative h-2 rounded-full bg-white/5 overflow-visible flex">
-                    {/* Glow layer — sized to exactly how far the elapsed (gold)
-                        portion reaches, so only the already-highlighted part of
-                        the bar glows, not the whole track. */}
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full animate-glow-pulse pointer-events-none"
-                      style={{ width: `${dayTrack.markerPct}%`, transition: 'width 1000ms linear' }}
+                  {/* A gentle arc instead of a straight slider — echoes the curl of
+                      Sammy's shell. Elapsed time is a glowing gold stroke drawn up to
+                      "now" using the path's own declared length (pathLength=100), so
+                      the dash math lines up directly with dayTrack.markerPct with no
+                      arc-length calculation needed. Sammy rides the curve itself,
+                      tilted to its tangent, with a slow independent spin layered on
+                      top — like a wheel rolling along the path. */}
+                  <svg viewBox="0 0 300 56" className="w-full" style={{ height: 52, overflow: 'visible' }}>
+                    <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
+                    <path
+                      d={DAY_TRACK_PATH}
+                      fill="none"
+                      stroke="#d6b93a"
+                      strokeOpacity="0.75"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      pathLength={100}
+                      strokeDasharray={100}
+                      strokeDashoffset={100 - dayTrack.markerPct}
+                      className="animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
-                    {dayTrack.segments.map((seg, i) => (
-                      <div
-                        key={`${seg.label}-${i}`}
-                        style={{
-                          width: `${seg.widthPct}%`,
-                          background: `linear-gradient(to right, rgba(214,185,58,0.5) ${seg.fillFraction * 100}%, rgba(255,255,255,0.06) ${seg.fillFraction * 100}%)`,
-                        }}
-                        className="h-full border-r border-[#060e20] last:border-r-0 transition-[background] duration-1000 ease-linear first:rounded-l-full last:rounded-r-full"
-                      />
-                    ))}
-                    {/* The marker is Sammy himself, crawling across the day instead of a plain
-                        dot. Position/centering lives on this outer wrapper; the spin animation
-                        lives on the inner one so the two transforms don't fight each other. */}
-                    <div
-                      className="absolute top-1/2 transition-[left] duration-1000 ease-linear"
-                      style={{
-                        left: `${dayTrack.markerPct}%`,
-                        transform: 'translate(-50%, -50%)',
-                      }}
-                    >
-                      <div
-                        className="animate-slug-spin"
-                        style={{ filter: 'drop-shadow(0 0 4px rgba(214,185,58,0.65))' }}
-                      >
-                        <SlugMarker size={22} />
-                      </div>
-                    </div>
-                  </div>
+                    {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
+                      const [tx, ty] = bezierPoint(pct / 100, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
+                      return <circle key={i} cx={tx} cy={ty} r="2" fill="#a1c9ff" fillOpacity="0.6" />
+                    })}
+                    {(() => {
+                      const t = dayTrack.markerPct / 100
+                      const [mx, my] = bezierPoint(t, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
+                      const angle = bezierTangentAngle(t, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
+                      return (
+                        <g style={{ transition: 'transform 1000ms linear' }} transform={`translate(${mx} ${my}) rotate(${angle})`}>
+                          <g
+                            className="animate-slug-spin"
+                            style={{
+                              filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.65))',
+                              transformBox: 'fill-box',
+                              transformOrigin: 'center',
+                            }}
+                          >
+                            <SlugMarker x={-11} y={-11} size={22} />
+                          </g>
+                        </g>
+                      )
+                    })()}
+                  </svg>
                   <div className="flex">
                     {dayTrack.segments.map((seg, i) => (
                       <div
@@ -1119,9 +1154,12 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  {/* Closing time, right under the bar's right edge */}
-                  <div className="flex justify-end">
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#fb7185]">
+                  {/* Open / close times, sky blue to match the logo's accent color */}
+                  <div className="flex justify-between">
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#a1c9ff]">
+                      {dayTrack.opensAt}
+                    </span>
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#a1c9ff]">
                       {dayTrack.closesAt}
                     </span>
                   </div>
