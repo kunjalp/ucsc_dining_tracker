@@ -84,6 +84,17 @@ const getDayOffsetLabel = (offsetDays: number): string => {
 // scraper/scrape_upcoming.py, which is what actually populates these dates.
 const DAY_OFFSETS = [0, 1, 2]
 
+// Whichever meal period a dining hall is actually serving (or, during a
+// Continuous Dining gap, most recently served) right now — e.g. "Lunch" at
+// 1pm — so the app can open straight to that instead of always defaulting
+// to Breakfast. Returns null for cafes/markets (no meal-period schedule) or
+// before the hall's first period starts today.
+function getCurrentMealPeriodLabel(hallName: string): string | null {
+  const track = getDayTrack(hallName, new Date())
+  if (!track || track.activeIndex === -1) return null
+  return track.segments[track.activeIndex]?.label ?? null
+}
+
 const DINING_HALLS = [
   "John R. Lewis & College Nine Dining Hall",
   "Cowell & Stevenson Dining Hall",
@@ -304,7 +315,7 @@ export default function DashboardPage() {
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
   const locationLabel = DINING_HALL_NAMES.includes(selectedHall) ? 'Dining Hall' : 'Location'
-  const [selectedMeal, setSelectedMeal] = useState('Breakfast')
+  const [selectedMeal, setSelectedMeal] = useState(() => getCurrentMealPeriodLabel(DINING_HALLS[0]) || 'Breakfast')
   const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
@@ -477,7 +488,11 @@ export default function DashboardPage() {
     const syncMealTypes = async () => {
       const types = await fetchMealTypesForHall(selectedHall, selectedDayOffset)
       if (types.length > 0 && !types.includes(selectedMeal)) {
-        setSelectedMeal(types[0])
+        // Prefer whichever period is live right now (today only) over just
+        // falling back to the first tab, so switching to a hall you haven't
+        // viewed yet still opens on "now" instead of always Breakfast.
+        const current = selectedDayOffset === 0 ? getCurrentMealPeriodLabel(selectedHall) : null
+        setSelectedMeal(current && types.includes(current) ? current : types[0])
       }
     }
     syncMealTypes()
