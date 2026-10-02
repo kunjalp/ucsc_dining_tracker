@@ -481,17 +481,28 @@ const MEAL_PERIOD_SCHEDULES: Record<string, (MealPeriod[] | null)[]> = {
   ],
 }
 
-export interface MealCountdown {
-  label: string // e.g. "Lunch", "Dinner", "Late Night", "Closing"
-  minutesUntil: number
-}
+export type MealCountdown =
+  | { mode: 'until'; label: string; minutesUntil: number } // e.g. "37m until Lunch"
+  | { mode: 'opens'; label: string; time: string } // before today's first period — "Opens at 8:00 AM"
+  | { mode: 'closes'; label: string; time: string } // during the day's last named period — "Closing at 8:00 PM"
 
 /**
- * Returns the next upcoming meal-period milestone for a dining hall ("X
- * minutes until Lunch"), or "Closing" once we're into the day's last named
- * period. Returns null if we don't have a meal-period breakdown for this
- * hall (cafes/markets, or a hall with no schedule data) or if the day's
- * service is already entirely over.
+ * Returns the current meal-period status for a dining hall:
+ *  - 'opens'  — before today's first period has started (e.g. checking at
+ *    2 AM before an 8 AM Breakfast). Today's calendar date already governs
+ *    the schedule lookup, so this naturally resolves correctly even late at
+ *    night/early morning — no separate "day rollover" logic needed.
+ *  - 'until'  — service is running and hasn't reached the day's last named
+ *    period yet — counts down to the next period (Breakfast -> Lunch,
+ *    Lunch -> Dinner, or Dinner -> Late Night on days that have one).
+ *    "Continuous Dining" gaps between named periods aren't their own
+ *    milestone — the countdown just keeps counting to the next named one.
+ *  - 'closes' — currently in the day's LAST named period (whichever one
+ *    that is: Dinner on a no-late-night day, Late Night when present) —
+ *    shows the clock time service ends instead of a duration.
+ * Returns null if we don't have a meal-period breakdown for this hall
+ * (cafes/markets, or a hall with no schedule data) or once today's service
+ * is entirely over (past the last period's end, before midnight).
  */
 export function getMealCountdown(hallName: string, now: Date = new Date()): MealCountdown | null {
   const schedule = MEAL_PERIOD_SCHEDULES[hallName]
@@ -501,14 +512,26 @@ export function getMealCountdown(hallName: string, now: Date = new Date()): Meal
   const periods = schedule[dayOfWeek]
   if (!periods || periods.length === 0) return null
 
-  const milestones = periods.map((p) => ({ label: p.label, minutes: timeToMinutes(p.start) }))
-  const lastPeriod = periods[periods.length - 1]
-  milestones.push({ label: 'Closing', minutes: timeToMinutes(lastPeriod.end) })
+  const first = periods[0]
+  if (minutesSinceMidnight < timeToMinutes(first.start)) {
+    return { mode: 'opens', label: first.label, time: formatTime(first.start) }
+  }
 
-  const next = milestones.find((m) => m.minutes > minutesSinceMidnight)
-  if (!next) return null // today's service is over
+  const last = periods[periods.length - 1]
+  const lastStart = timeToMinutes(last.start)
+  const lastEnd = timeToMinutes(last.end)
 
-  return { label: next.label, minutesUntil: next.minutes - minutesSinceMidnight }
+  if (minutesSinceMidnight >= lastStart) {
+    if (minutesSinceMidnight < lastEnd) {
+      return { mode: 'closes', label: last.label, time: formatTime(last.end) }
+    }
+    return null // today's service is fully over
+  }
+
+  // Before the last period starts — count down to the next named milestone
+  const next = periods.find((p) => timeToMinutes(p.start) > minutesSinceMidnight)
+  if (!next) return null // shouldn't happen given the checks above
+  return { mode: 'until', label: next.label, minutesUntil: timeToMinutes(next.start) - minutesSinceMidnight }
 }
 
 /** Formats a minute count as "2h 15m" or "45m". */

@@ -572,6 +572,16 @@ export default function DashboardPage() {
       ? !!hallStatus && !hallStatus.is_open
       : !!futureDayStatus && !futureDayStatus.is_open
 
+  // Closed overnight before today's first meal period has started (e.g.
+  // checking at 2 AM before an 8 AM Breakfast) is a different situation than
+  // closed-for-the-day: the hall is still "closed", but today's menu has
+  // already been scraped and is worth previewing, so we show it instead of
+  // hiding everything behind the closed banner. The generic closed banner
+  // is suppressed in this case since the "Opens at X" countdown line says
+  // the same thing with more useful detail.
+  const isOpeningLaterToday = isClosedNow && mealCountdown?.mode === 'opens'
+  const showMenuSection = !isClosedNow || isOpeningLaterToday
+
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
     const stations = menu.map((entry) => getEffectiveStation(entry))
@@ -945,7 +955,7 @@ export default function DashboardPage() {
               {/* Only worth showing as tabs when there's an actual choice to make —
                   cafes/markets with a single period (e.g. "Menu", "ALL") skip straight
                   to the items instead of showing a single, un-clickable-feeling tab. */}
-              {availableMealTypes.length > 1 && !isClosedNow && (
+              {availableMealTypes.length > 1 && showMenuSection && (
                 <div className="flex bg-[#171f33] p-2 rounded-xl gap-1">
                   {availableMealTypes.map(meal => (
                     <button
@@ -963,16 +973,20 @@ export default function DashboardPage() {
               )}
 
               {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
-                  Dinner/Late Night/Closing) — dining halls only, today only. */}
+                  Dinner/Late Night) while service is running, "Opens at X"
+                  before today's first period, "Closing at X" during the
+                  day's last period — dining halls only, today only. */}
               {mealCountdown && (
                 <p className="text-left text-sm font-semibold text-[#fb7185]">
-                  {formatCountdown(mealCountdown.minutesUntil)} until {mealCountdown.label}
+                  {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
+                  {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
+                  {mealCountdown.mode === 'closes' && `Closing at ${mealCountdown.time}`}
                 </p>
               )}
 
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
-                {!isClosedNow && (
+                {showMenuSection && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
                     <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
                     <div className="relative w-full">
@@ -1019,8 +1033,10 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Dining hall closed banner — live status for Today, published hours for other days */}
-              {isClosedNow && (
+              {/* Dining hall closed banner — live status for Today, published hours for other
+                  days. Suppressed when opening later today, since the "Opens at X" countdown
+                  line above already says this with more useful detail. */}
+              {isClosedNow && !isOpeningLaterToday && (
                 <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
                   {selectedDayOffset === 0
                     ? `${locationLabel} is Closed`
@@ -1028,8 +1044,9 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Menu items — hidden entirely when the hall is closed right now with no scraped data */}
-              {!isClosedNow && (
+              {/* Menu items — hidden when the hall is closed right now, except when it's
+                  opening later today (previewing today's already-scraped menu before open) */}
+              {showMenuSection && (
                 <div>
                   <h2 className="text-lg font-bold mb-5 tracking-tight">
                     {getDayOffsetLabel(selectedDayOffset)}'s Menu
