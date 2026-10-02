@@ -29,6 +29,10 @@
 
 html {
   overscroll-behavior: none;
+  /* Scales every rem-based Tailwind text size (text-sm, text-xs, etc.) down
+     proportionally by ~6% — a slight overall shrink across the whole app
+     instead of hand-editing each text size individually. */
+  font-size: 93.75%;
 }
 
 body.hide-scrollbar {
