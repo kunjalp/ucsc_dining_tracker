@@ -598,11 +598,27 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
   const clampedNow = Math.min(Math.max(minutesSinceMidnight, dayStart), dayEnd)
   const markerPct = ((clampedNow - dayStart) / span) * 100
 
-  const activeIndex = periods.findIndex((p) => {
+  let activeIndex = periods.findIndex((p) => {
     const s = timeToMinutes(p.start)
     const e = timeToMinutes(p.end)
     return minutesSinceMidnight >= s && minutesSinceMidnight < e
   })
+
+  // Between two named periods — e.g. after Lunch's listed end time but
+  // before Dinner starts ("Continuous Dining") — there's no formal current
+  // period, but the hall hasn't actually moved on to the next one yet
+  // either. Rather than go blank there (or worse, read as already being
+  // in the upcoming period), stay on whichever named period most recently
+  // started, so heading into Dinner the track still reads "Lunch" right up
+  // until Dinner service actually begins.
+  if (activeIndex === -1) {
+    for (let i = periods.length - 1; i >= 0; i--) {
+      if (timeToMinutes(periods[i].start) <= minutesSinceMidnight) {
+        activeIndex = i
+        break
+      }
+    }
+  }
 
   return { segments, markerPct, activeIndex }
 }
