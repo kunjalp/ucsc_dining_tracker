@@ -74,7 +74,7 @@ body.hide-scrollbar::-webkit-scrollbar {
 }
 
 .animate-glow-pulse {
-  animation: glow-pulse 2.4s ease-in-out infinite;
+  animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
 /* Slow continuous spin for the day track's slug marker — separate element

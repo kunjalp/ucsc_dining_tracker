@@ -561,6 +561,7 @@ export interface DayTrack {
   segments: DayTrackSegment[]
   markerPct: number // 0-100, clamped to the track's start/end
   activeIndex: number // index of the segment "now" falls inside, or -1
+  closesAt: string // short clock time the last period ends, e.g. "10pm"
 }
 
 /**
@@ -578,25 +579,64 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
   const periods = schedule[dayOfWeek]
   if (!periods || periods.length === 0) return null
 
-  const dayStart = timeToMinutes(periods[0].start)
-  const dayEnd = timeToMinutes(periods[periods.length - 1].end)
-  const span = dayEnd - dayStart
-  if (span <= 0) return null
+  // The bar represents only actual named-period time, laid back-to-back
+  // with no width given to the "Continuous Dining" gaps between periods
+  // (e.g. Lunch ending at 2pm, Dinner not starting until 5pm). That gap
+  // has real clock time but no segment of its own, so periods are sized
+  // against the sum of their own durations rather than the full first-to-last
+  // clock span — otherwise the gaps eat into the total and the last period
+  // (often Late Night) falls short of the bar's right edge instead of
+  // reaching it.
+  const durations = periods.map((p) => timeToMinutes(p.end) - timeToMinutes(p.start))
+  const totalDuration = durations.reduce((sum, d) => sum + d, 0)
+  if (totalDuration <= 0) return null
 
-  const segments: DayTrackSegment[] = periods.map((p) => {
+  const cumulative: number[] = []
+  let running = 0
+  for (const d of durations) {
+    cumulative.push(running)
+    running += d
+  }
+
+  const segments: DayTrackSegment[] = periods.map((p, i) => {
     const s = timeToMinutes(p.start)
     const e = timeToMinutes(p.end)
-    const fillFraction = e <= s ? 0 : Math.min(Math.max((minutesSinceMidnight - s) / (e - s), 0), 1)
+    const fillFraction =
+      minutesSinceMidnight <= s ? 0 : minutesSinceMidnight >= e ? 1 : (minutesSinceMidnight - s) / (e - s)
     return {
       label: p.label,
-      startPct: ((s - dayStart) / span) * 100,
-      widthPct: ((e - s) / span) * 100,
+      startPct: (cumulative[i] / totalDuration) * 100,
+      widthPct: (durations[i] / totalDuration) * 100,
       fillFraction,
     }
   })
 
-  const clampedNow = Math.min(Math.max(minutesSinceMidnight, dayStart), dayEnd)
-  const markerPct = ((clampedNow - dayStart) / span) * 100
+  // Map "now" onto this gapless timeline: inside a period, its offset into
+  // that period; before the first period or during a gap between two
+  // periods, the boundary it's currently sitting at — which keeps the
+  // marker parked at the edge of the period that just ended rather than
+  // floating in gap-space that no longer has any width on the bar.
+  let position = totalDuration
+  const first = periods[0]
+  if (minutesSinceMidnight <= timeToMinutes(first.start)) {
+    position = 0
+  } else {
+    for (let i = 0; i < periods.length; i++) {
+      const s = timeToMinutes(periods[i].start)
+      const e = timeToMinutes(periods[i].end)
+      if (minutesSinceMidnight >= s && minutesSinceMidnight < e) {
+        position = cumulative[i] + (minutesSinceMidnight - s)
+        break
+      }
+      if (minutesSinceMidnight < s) {
+        // In the gap right before this period starts — park at its start boundary.
+        position = cumulative[i]
+        break
+      }
+    }
+  }
+
+  const markerPct = Math.min(Math.max((position / totalDuration) * 100, 0), 100)
 
   let activeIndex = periods.findIndex((p) => {
     const s = timeToMinutes(p.start)
@@ -620,7 +660,7 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
     }
   }
 
-  return { segments, markerPct, activeIndex }
+  return { segments, markerPct, activeIndex, closesAt: formatTimeShort(periods[periods.length - 1].end) }
 }
 
 function getPacificParts(now: Date) {
@@ -646,6 +686,14 @@ function formatTime(t: string): string {
   const period = hh >= 12 ? 'PM' : 'AM'
   const hour12 = hh % 12 === 0 ? 12 : hh % 12
   return mm === 0 ? `${hour12} ${period}` : `${hour12}:${String(mm).padStart(2, '0')} ${period}`
+}
+
+// Compact version for tight UI spots — "10pm" instead of "10 PM".
+function formatTimeShort(t: string): string {
+  const [hh, mm] = t.split(':').map(Number)
+  const period = hh >= 12 ? 'pm' : 'am'
+  const hour12 = hh % 12 === 0 ? 12 : hh % 12
+  return mm === 0 ? `${hour12}${period}` : `${hour12}:${String(mm).padStart(2, '0')}${period}`
 }
 
 export interface HallOpenStatus {

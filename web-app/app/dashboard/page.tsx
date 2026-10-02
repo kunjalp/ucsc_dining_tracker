@@ -1119,6 +1119,12 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
+                  {/* Closing time, right under the bar's right edge */}
+                  <div className="flex justify-end">
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#fb7185]">
+                      {dayTrack.closesAt}
+                    </span>
+                  </div>
                 </div>
               )}
 
