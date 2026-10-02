@@ -1,0 +1,2 @@
+Made Sammy's Palate. UCSC's official nutrition calculator saves nothing, so I built a macro tracker that pulls every dining hall menu each morning and remembers what you ate.
+It's on the App Store now.

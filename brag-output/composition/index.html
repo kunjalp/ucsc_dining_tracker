@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sammy's Palate — Brag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; background: #0b1326; overflow: hidden; }
+  #root { position: relative; width: 1080px; height: 1920px; background: #0b1326; color: #dae2fd; overflow: hidden;
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; }
+  .mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+  #glow { position: absolute; left: 0; top: 0; width: 1080px; height: 900px; pointer-events: none;
+    background: radial-gradient(ellipse 70% 100% at 50% 0%, rgba(0,76,140,0.55), rgba(0,60,108,0) 70%); opacity: 0.55; }
+  .scene { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+  /* Scene 1 */
+  #s1 .line1 { white-space: pre; font-size: 104px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; max-width: 980px; }
+  #s1 .line1 .ch { opacity: 0; }
+  #s1 .row { display: flex; flex-direction: column; align-items: center; gap: 28px; margin-top: 90px; opacity: 0; }
+  #s1 .day { font-size: 78px; font-weight: 800; color: #d6b93a; }
+  #s1 .counter { font-size: 30px; font-weight: 700; padding: 14px 26px; border-radius: 16px; color: #c2c6d0;
+    background: rgba(30,41,59,0.75); border: 1px solid rgba(255,255,255,0.12); letter-spacing: 0.04em; }
+
+  /* Scene 2 */
+  #s2 .lockup { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+  #s2 .logo { width: 380px; height: 380px; object-fit: contain; opacity: 0; filter: drop-shadow(0 0 40px rgba(214,185,58,0.35)); }
+  #s2 .divider { display: none; }
+  #s2 .word { text-align: center; }
+  #s2 .name { font-size: 118px; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; color: #dae2fd; opacity: 0; }
+  #s2 .sub { font-size: 30px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(218,226,253,0.55); margin-top: 8px; opacity: 0; }
+  #s2 .note { position: absolute; left: 0; width: 1080px; padding: 0 70px; top: 1400px; text-align: center; font-size: 52px; font-weight: 600; color: #c2c6d0; opacity: 0; }
+  #s2 .note b { color: #d6b93a; font-weight: 800; }
+
+  /* Scene 3 phone */
+  #pw { position: absolute; left: 150px; top: 90px; width: 780px; height: 1410px; }
+  #phone { position: absolute; left: 0; top: 0; transform: scale(1.5); transform-origin: 0 0; width: 520px; height: 940px; border-radius: 56px; background: #0b1326;
+    border: 3px solid rgba(255,255,255,0.16); box-shadow: 0 40px 120px -20px rgba(0,60,108,0.7); overflow: hidden; }
+  #phone .hdr { position: absolute; left: 0; top: 0; width: 100%; height: 104px; background: #111a2e; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  #phone .hdr img { position: absolute; left: 22px; top: 40px; width: 48px; height: 48px; object-fit: contain; }
+  #phone .hdr .t1 { position: absolute; left: 84px; top: 40px; font-size: 22px; font-weight: 800; color: #f5d98b; }
+  #phone .hdr .t2 { position: absolute; left: 84px; top: 66px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #8892aa; }
+  #phone .pill { position: absolute; right: 20px; top: 46px; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 700;
+    color: #d8b61c; background: rgba(216,182,28,0.12); border: 1px solid rgba(216,182,28,0.35); }
+  #phone .card { position: absolute; left: 20px; top: 124px; width: 480px; height: 690px; border-radius: 28px; background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+  .abs { position: absolute; }
+  .card .ttl { left: 26px; top: 26px; font-size: 26px; font-weight: 700; color: #dae2fd; }
+  .card .chip { left: 26px; padding: 8px 18px; border-radius: 14px; background: #a9c9ff; color: #0a2a55; font-size: 15px; font-weight: 800; letter-spacing: 0.08em; }
+  .card .iname { left: 26px; font-size: 25px; font-weight: 700; color: #dae2fd; width: 420px; line-height: 1.25; }
+  .card .serv { left: 26px; font-size: 16px; color: #8892aa; font-weight: 500; }
+  .card .stats { left: 26px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .stats .c { color: #d8b61c; } .stats .p { color: #5bb448; } .stats .cb { color: #d888d3; } .stats .f { color: #fb7185; }
+  .stats span { margin-right: 12px; }
+  .seg { left: 26px; top: 328px; width: 336px; height: 54px; border-radius: 18px; background: #131b2e; border: 1px solid rgba(255,255,255,0.1); }
+  .seg .opt { position: absolute; top: 5px; height: 42px; width: 62px; border-radius: 14px; text-align: center; line-height: 42px;
+    font-size: 15px; font-weight: 700; color: #b7bdcb; }
+  #hl { position: absolute; top: 5px; left: 5px; width: 62px; height: 42px; border-radius: 14px; background: #d6b93a; }
+  .seg .opt.on { color: #3d2f00; }
+  #logbtn { left: 376px; top: 322px; width: 78px; height: 66px; border-radius: 18px; background: #d6b93a; color: #3d2f00; text-align: center;
+    line-height: 66px; font-size: 20px; font-weight: 800; box-shadow: 0 8px 22px rgba(214,185,58,0.25); }
+  #check { left: 376px; top: 322px; width: 78px; height: 66px; border-radius: 18px; background: #5bb448; color: #fff; text-align: center; line-height: 66px; font-size: 32px; font-weight: 800; opacity: 0; }
+  #phone .nav { position: absolute; left: 0; bottom: 0; width: 100%; height: 110px; background: #0f172a; border-top: 1px solid rgba(255,255,255,0.08); }
+  .nav .n { position: absolute; top: 34px; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; }
+  #cursor { position: absolute; left: 0; top: 0; width: 40px; height: 40px; opacity: 0; z-index: 20; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+  #s3 .call { position: absolute; left: 0; top: 1545px; width: 1080px; text-align: center; }
+  #s3 .call .big { font-size: 92px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.08; opacity: 0; }
+  #s3 .call .big em { font-style: normal; color: #d6b93a; }
+  #s3 .call .small { margin-top: 26px; font-size: 26px; font-weight: 700; letter-spacing: 0.14em; color: #8892aa; text-transform: uppercase; opacity: 0; }
+
+  /* Scene 4 */
+  #s4 .head { position: absolute; left: 0; width: 1080px; top: 170px; text-align: center; opacity: 0; }
+  #s4 .head .h { font-size: 62px; font-weight: 800; letter-spacing: -0.02em; }
+  #s4 .head .s { font-size: 32px; font-weight: 700; color: #93c5fd; margin-top: 8px; }
+  .rc { position: absolute; width: 440px; height: 470px; border-radius: 36px; background: rgba(30,41,59,0.75);
+    border: 1px solid rgba(255,255,255,0.12); opacity: 0; }
+  .rc svg { position: absolute; left: 75px; top: 24px; }
+  .rc .pct { position: absolute; left: 0; top: 119px; width: 440px; text-align: center; font-size: 64px; font-weight: 800; color: #eef2ff; }
+  .rc .lab { position: absolute; left: 0; top: 330px; width: 440px; text-align: center; font-size: 44px; font-weight: 800; }
+  .rc .val { position: absolute; left: 0; top: 396px; width: 440px; text-align: center; font-size: 28px; font-weight: 600; color: #c2c6d0; }
+  #s4 .cap { position: absolute; left: 0; width: 1080px; top: 1500px; text-align: center; font-size: 56px; font-weight: 700; color: #dae2fd; opacity: 0; }
+  #s4 .cap b { color: #d6b93a; font-weight: 800; }
+
+  /* Scene 5 */
+  #s5 .lock { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+  #s5 .logo { width: 300px; height: 300px; object-fit: contain; opacity: 0; filter: drop-shadow(0 0 40px rgba(214,185,58,0.4)); }
+  #s5 .name { font-size: 116px; font-weight: 800; letter-spacing: -0.035em; white-space: nowrap; opacity: 0; }
+  #s5 .tag { font-size: 58px; font-weight: 700; color: #d6b93a; margin-top: 30px; opacity: 0; }
+  #s5 .foot { font-size: 36px; font-weight: 700; letter-spacing: 0.08em; color: rgba(218,226,253,0.6); margin-top: 60px; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="root" data-width="1080" data-height="1920" data-start="0" data-duration="20.5">
+  <div id="glow"></div>
+
+  <!-- Scene 1: hook -->
+  <div id="s1" class="scene clip center" data-start="0" data-duration="3.8">
+    <div class="line1" id="line1"></div>
+    <div class="row" id="s1row"><div class="day">Day 1. Every day.</div><div class="counter mono">0 kcal logged</div></div>
+  </div>
+
+  <!-- Scene 2: reveal -->
+  <div id="s2" class="scene clip center" data-start="3.5" data-duration="4.3">
+    <div class="lockup">
+      <img class="logo" id="logo2" src="assets/img/sammy-logo-transparent.png" alt="Sammy" />
+      <div class="divider" id="div2"></div>
+      <div class="word">
+        <div class="name" id="name2">Sammy's Palate</div>
+        <div class="sub mono" id="sub2">UCSC Macro Tracker</div>
+      </div>
+    </div>
+    <div class="note" id="note2">Menus pulled fresh <b>every morning at 6 AM.</b></div>
+  </div>
+
+  <!-- Scene 3: log flow -->
+  <div id="s3" class="scene clip" data-start="7.5" data-duration="5.3">
+    <div id="pw"><div id="phone">
+      <div class="hdr">
+        <img src="assets/img/sammy-logo-transparent.png" alt="" />
+        <div class="t1">Sammy's Palate</div>
+        <div class="t2 mono">UCSC MACRO TRACKER</div>
+        <div class="pill mono" id="pill">0 kcal</div>
+      </div>
+      <div class="card">
+        <div class="abs ttl">Today's Menu (Lunch)</div>
+        <div class="abs chip" style="top:82px">GRILL</div>
+        <div class="abs iname" style="top:146px">Halal Chicken Nuggets</div>
+        <div class="abs serv" style="top:190px">Serving Size: 3 oz</div>
+        <div class="abs stats" style="top:232px" id="stats">
+          <span class="c" id="s_c">Cals: 182.007</span><span class="p" id="s_p">P: 14.459g</span><span class="cb" id="s_cb">C: 14.459g</span><span class="f" id="s_f">F: 5.954g</span>
+        </div>
+        <div class="abs seg">
+          <div id="hl"></div>
+          <div class="opt" style="left:5px" id="o0">1/4x</div>
+          <div class="opt" style="left:67px" id="o1">1/2x</div>
+          <div class="opt on" style="left:129px" id="o2">1x</div>
+          <div class="opt" style="left:191px" id="o3">1.5x</div>
+          <div class="opt" style="left:253px" id="o4">2x</div>
+        </div>
+        <div class="abs" id="logbtn">Log</div>
+        <div class="abs" id="check">&#10003;</div>
+        <div class="abs chip" style="top:446px">PIZZA</div>
+        <div class="abs iname" style="top:506px;font-size:23px">Vegan Spinach and Roasted Garlic Pizza</div>
+        <div class="abs serv" style="top:584px">Serving Size: 1/8 pie</div>
+        <div class="abs stats" style="top:620px;opacity:0.85"><span class="c">Cals: 275.554</span><span class="p">P: 3.174g</span><span class="cb">C: 46.241g</span><span class="f">F: 9.576g</span></div>
+      </div>
+      <div class="nav">
+        <div class="n" style="left:78px;color:#f5d98b">LOG MENU</div>
+        <div class="n" style="left:334px;color:#7a8299">PROGRESS</div>
+      </div>
+      <svg id="cursor" viewBox="0 0 40 40"><path d="M6 3 L6 30 L13 24 L18 35 L23 33 L18 22 L27 22 Z" fill="#ffffff" stroke="#0b1326" stroke-width="2" stroke-linejoin="round"/></svg>
+    </div></div>
+    <div class="call">
+      <div class="big" id="call1">Pick a serving.<br /><em>Tap Log.</em></div>
+      <div class="small mono" id="call2">1/4x to 2x · no math</div>
+    </div>
+  </div>
+
+  <!-- Scene 4: rings -->
+  <div id="s4" class="scene clip" data-start="12.5" data-duration="4.52">
+    <div class="head" id="head4"><div class="h">Today's Progress Breakdown</div><div class="s">Recommended Target</div></div>
+    <div class="rc" id="rc0" style="left:80px;top:400px"></div>
+    <div class="rc" id="rc1" style="left:560px;top:400px"></div>
+    <div class="rc" id="rc2" style="left:80px;top:910px"></div>
+    <div class="rc" id="rc3" style="left:560px;top:910px"></div>
+    <div class="cap" id="cap4">History saved. <b>Every day.</b></div>
+  </div>
+
+  <!-- Scene 5: outro -->
+  <div id="s5" class="scene clip center" data-start="17.02" data-duration="3.48">
+    <div class="lock">
+      <img class="logo" id="logo5" src="assets/img/sammy-logo-transparent.png" alt="Sammy" />
+      <div class="name" id="name5">Sammy's Palate</div>
+    </div>
+    <div class="tag" id="tag5">It remembers what you ate.</div>
+    <div class="foot mono" id="foot5">On the App Store</div>
+  </div>
+
+  
+  <!-- SFX -->
+  <audio id="k1" data-start="0.35" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="k2" data-start="0.6" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="k3" data-start="0.85" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="k4" data-start="1.1" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="k5" data-start="1.35" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="k6" data-start="1.6" data-duration="0.25" data-track-index="1" data-volume="0.25" src="assets/sfx/key.wav"></audio>
+  <audio id="x1" data-start="2.2" data-duration="0.13" data-track-index="2" data-volume="0.3" src="assets/sfx/bong_001.ogg"></audio>
+  <audio id="x2" data-start="4.02" data-duration="0.14" data-track-index="2" data-volume="0.6" src="assets/sfx/impactSoft_medium_002.ogg"></audio>
+  <audio id="x3" data-start="8.02" data-duration="0.6" data-track-index="2" data-volume="0.4" src="assets/sfx/card-slide-1.ogg"></audio>
+  <audio id="x4" data-start="9.7" data-duration="0.1" data-track-index="2" data-volume="0.9" src="assets/sfx/click_003.ogg"></audio>
+  <audio id="x5" data-start="10.95" data-duration="0.1" data-track-index="2" data-volume="0.9" src="assets/sfx/click_003.ogg"></audio>
+  <audio id="x6" data-start="11.05" data-duration="0.13" data-track-index="2" data-volume="0.35" src="assets/sfx/bong_001.ogg"></audio>
+  <audio id="r1" data-start="13.02" data-duration="0.6" data-track-index="2" data-volume="0.35" src="assets/sfx/card-slide-1.ogg"></audio>
+  <audio id="r2" data-start="14.02" data-duration="0.6" data-track-index="2" data-volume="0.35" src="assets/sfx/card-slide-1.ogg"></audio>
+  <audio id="r3" data-start="15.02" data-duration="0.6" data-track-index="2" data-volume="0.35" src="assets/sfx/card-slide-1.ogg"></audio>
+  <audio id="r4" data-start="16.02" data-duration="0.6" data-track-index="2" data-volume="0.35" src="assets/sfx/card-slide-1.ogg"></audio>
+  <audio id="o1a" data-start="17.02" data-duration="0.19" data-track-index="2" data-volume="0.7" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+  <audio id="fl1" data-start="3.7" data-duration="3.8" data-track-index="4" data-volume="1" src="assets/sfx/flourish.wav"></audio>
+  <audio id="fl2" data-start="16.7" data-duration="3.8" data-track-index="4" data-volume="1" src="assets/sfx/flourish.wav"></audio>
+  <audio id="o1b" data-start="17.06" data-duration="0.15" data-track-index="3" data-volume="0.35" src="assets/sfx/impactSoft_medium_004.ogg"></audio>
+
+  <script src="assets/gsap.min.js"></script>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const EASE_OUT = "power3.out";
+
+
+    /* ---------- Scene 1: hook (0 – 3.5) ---------- */
+    const line1 = document.getElementById("line1");
+    const text1 = "UCSC's nutrition calculator saves nothing.";
+    text1.split("").forEach((c, i) => {
+      const s = document.createElement("span");
+      if (i === 16 || i === 33) { const br = document.createElement("br"); br.id = "c" + i; line1.appendChild(br); return; } // hard break replaces the space after "calculator"
+      s.className = "ch"; s.id = "c" + i; s.textContent = c;
+      line1.appendChild(s);
+    });
+    const n1 = text1.length;
+    for (let i = 0; i < n1; i++) tl.set("#c" + i, { opacity: 1 }, 0.3 + (i * 1.25) / n1);
+    tl.fromTo("#s1row", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.45, ease: EASE_OUT }, 2.2);
+    tl.to("#s1", { opacity: 0, duration: 0.3, ease: "power1.in" }, 3.5);
+
+    /* ---------- Scene 2: reveal (3.5 – 7.5) ---------- */
+    tl.fromTo("#logo2", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.6)" }, 3.6);
+        tl.fromTo("#name2", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: EASE_OUT }, 4.02); // beat-grid: 4.02s
+    tl.fromTo("#sub2", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: EASE_OUT }, 4.4);
+    tl.fromTo("#note2", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: EASE_OUT }, 5.0);
+    tl.to("#s2", { opacity: 0, duration: 0.3, ease: "power1.in" }, 7.5);
+
+    /* ---------- Scene 3: log flow (7.5 – 12.5) ---------- */
+    tl.fromTo("#pw", { y: 220, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: EASE_OUT }, 7.6); // beat-locked: 8.02s settle
+    tl.fromTo("#call1", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: EASE_OUT }, 8.5);
+    tl.fromTo("#call2", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: EASE_OUT }, 9.1);
+
+    // cursor coords are relative to #phone (520x940). Card origin = (20,124); seg = card (26,328); 1.5x centre = 26+191+31, 328+27
+    const cx15 = 20 + 26 + 191 + 31, cy15 = 124 + 328 + 27;
+    const cxLog = 20 + 376 + 39, cyLog = 124 + 322 + 33;
+    tl.set("#cursor", { x: 430, y: 700, opacity: 0 }, 8.4);
+    tl.to("#cursor", { opacity: 1, duration: 0.2 }, 8.7);
+    tl.to("#cursor", { x: cx15 - 6, y: cy15 - 4, duration: 0.85, ease: "power2.inOut" }, 8.75);
+    tl.to("#cursor", { scale: 0.85, duration: 0.08, ease: "power1.in" }, 9.62);
+    tl.to("#cursor", { scale: 1, duration: 0.12 }, 9.7);
+    // select 1.5x at 9.7
+    tl.set("#hl", { x: 124 }, 0);
+    tl.to("#hl", { x: 188, duration: 0.18, ease: "power2.out" }, 9.7);
+    tl.set("#o2", { color: "#b7bdcb" }, 9.72);
+    tl.set("#o3", { color: "#3d2f00" }, 9.72);
+    tl.set("#s_c", { textContent: "Cals: 273.011" }, 9.75);
+    tl.set("#s_p", { textContent: "P: 21.689g" }, 9.75);
+    tl.set("#s_cb", { textContent: "C: 21.689g" }, 9.75);
+    tl.set("#s_f", { textContent: "F: 8.931g" }, 9.75);
+    // move to Log and press at 10.95
+    tl.to("#cursor", { x: cxLog - 6, y: cyLog - 4, duration: 0.8, ease: "power2.inOut" }, 10.0);
+    tl.to("#cursor", { scale: 0.85, duration: 0.08, ease: "power1.in" }, 10.87);
+    tl.to("#cursor", { scale: 1, duration: 0.12 }, 10.95);
+    tl.to("#logbtn", { scale: 0.92, duration: 0.08 }, 10.9);
+    tl.to("#logbtn", { scale: 1, duration: 0.12 }, 10.98);
+    tl.set("#logbtn", { opacity: 0 }, 11.05);
+    tl.set("#check", { opacity: 1 }, 11.05);
+    tl.fromTo("#check", { scale: 0.5 }, { scale: 1, duration: 0.35, ease: "back.out(2)" }, 11.05);
+    tl.set("#pill", { textContent: "273 kcal" }, 11.1);
+    tl.fromTo("#pill", { scale: 1.25 }, { scale: 1, duration: 0.3, ease: "back.out(2)" }, 11.1);
+    tl.to("#cursor", { opacity: 0, duration: 0.25 }, 11.6);
+    tl.to("#s3", { opacity: 0, duration: 0.3, ease: "power1.in" }, 12.5);
+
+    /* ---------- Scene 4: rings (12.5 – 17.02) ---------- */
+    const rings = [
+      { color: "#d8b61c", label: "Calories", pct: 57, val: "1362 / 2377 kcal", t: 13.02 },  // beat-grid: 13.02s
+      { color: "#5bb448", label: "Protein",  pct: 49, val: "88 / 178 g",        t: 14.02 },  // beat-grid: 14.02s
+      { color: "#bd5db8", label: "Carbs",    pct: 67, val: "140 / 208 g",       t: 15.02 },  // beat-grid: 15.02s
+      { color: "#fb7185", label: "Fat",      pct: 67, val: "61 / 92 g",         t: 16.02 }   // beat-grid: 16.02s
+    ];
+    const R = 110, C = 2 * Math.PI * R;
+    rings.forEach((r, i) => {
+      const el = document.getElementById("rc" + i);
+      el.innerHTML =
+        '<svg width="290" height="290" viewBox="0 0 290 290">' +
+          '<circle cx="145" cy="145" r="' + R + '" fill="none" stroke="#3d4658" stroke-width="24"/>' +
+          '<circle id="arc' + i + '" cx="145" cy="145" r="' + R + '" fill="none" stroke="' + r.color + '" stroke-width="24" stroke-linecap="round" ' +
+          'stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '" transform="rotate(-90 145 145)"/>' +
+        '</svg>' +
+        '<div class="pct" id="pct' + i + '">0%</div>' +
+        '<div class="lab" style="color:' + r.color + '">' + r.label + '</div>' +
+        '<div class="val">' + r.val + '</div>';
+      const o = { v: 0 };
+      tl.fromTo("#rc" + i, { opacity: 0, y: 50, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: EASE_OUT }, r.t);
+      tl.to("#arc" + i, { attr: { "stroke-dashoffset": C * (1 - r.pct / 100) }, duration: 0.85, ease: "power2.out" }, r.t + 0.1);
+      tl.to(o, { v: r.pct, duration: 0.85, ease: "power2.out", onUpdate: () => {
+        const n = document.getElementById("pct" + i); if (n) n.textContent = Math.round(o.v) + "%";
+      } }, r.t + 0.1);
+    });
+    tl.fromTo("#head4", { opacity: 0, y: -24 }, { opacity: 1, y: 0, duration: 0.45, ease: EASE_OUT }, 12.6);
+    tl.fromTo("#cap4", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: EASE_OUT }, 15.65);
+
+    /* ---------- Scene 5: outro (17.02 – 20.5) ---------- */
+    tl.fromTo("#logo5", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 17.02); // beat-locked: 17.02s
+    tl.fromTo("#name5", { opacity: 0, scale: 1.18, x: 30 }, { opacity: 1, scale: 1, x: 0, duration: 0.4, ease: "power4.out" }, 17.02); // beat-locked: 17.02s
+    tl.fromTo("#tag5", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: EASE_OUT }, 17.7);
+    tl.fromTo("#foot5", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: EASE_OUT }, 18.5);
+    tl.to("#s5", { opacity: 0, duration: 0.5, ease: "power1.in" }, 20.0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["root"] = tl;
+  </script>
+</div>
+</body>
+</html>
