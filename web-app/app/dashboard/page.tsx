@@ -160,8 +160,8 @@ interface ProgressRingProps {
 }
 
 function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: ProgressRingProps) {
-  const radius = 50
-  const stroke = 10
+  const radius = 42
+  const stroke = 9
   const normalizedRadius = radius - stroke * 2
   const circumference = normalizedRadius * 2 * Math.PI
 
@@ -169,7 +169,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/10">
+    <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10">
       <div className="relative flex items-center justify-center">
         <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
           <circle
@@ -195,13 +195,13 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
         </svg>
 
         <div className="absolute text-center">
-          <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-black tracking-tight text-[#dae2fd]">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-black tracking-tight text-[#dae2fd]">
             {goal > 0 ? Math.round((value / goal) * 100) : 0}%
           </span>
         </div>
       </div>
 
-      <div className="text-center mt-3">
+      <div className="text-center mt-2">
         <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
         <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#c2c6d0] font-semibold mt-0.5">
           {Math.round(value)} / {goal} {unit}
@@ -1252,8 +1252,8 @@ export default function DashboardPage() {
         ) : (
           /* PROGRESS TAB */
           <div className="space-y-6">
-            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="rounded-2xl p-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
                     {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
@@ -1296,7 +1296,7 @@ export default function DashboardPage() {
               </div>
 
               {!showCalendar ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <ProgressRing value={totals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
                   <ProgressRing value={totals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
                   <ProgressRing value={totals.carbs} goal={goalCarbs} strokeColor="#bd5db8" labelColor="#bd5db8" label="Carbs" unit="g" />
