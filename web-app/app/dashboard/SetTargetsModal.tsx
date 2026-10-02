@@ -239,7 +239,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
                   onChange={(e) => setRate(Number(e.target.value))}
                   className="w-full accent-[#d6b93a]"
                 />
-                <div className="flex justify-between font-['JetBrains_Mono'] text-[10px] text-[#c2c6d0]/70 mt-1">
+                <div className="flex justify-between font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#c2c6d0]/70 mt-1">
                   <span>0.5 lb</span><span>1.0 lb</span><span>1.5 lb</span><span>2.0 lb</span>
                 </div>
               </div>

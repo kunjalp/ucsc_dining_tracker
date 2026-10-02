@@ -195,7 +195,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
         </svg>
 
         <div className="absolute text-center">
-          <span className="font-['JetBrains_Mono'] text-lg font-black tracking-tight text-[#dae2fd]">
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-black tracking-tight text-[#dae2fd]">
             {goal > 0 ? Math.round((value / goal) * 100) : 0}%
           </span>
         </div>
@@ -203,7 +203,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
 
       <div className="text-center mt-3">
         <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
-        <p className="font-['JetBrains_Mono'] text-xs text-[#c2c6d0] font-semibold mt-0.5">
+        <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#c2c6d0] font-semibold mt-0.5">
           {Math.round(value)} / {goal} {unit}
         </p>
       </div>
@@ -949,19 +949,19 @@ export default function DashboardPage() {
         {activeTab === 'log' && (
           <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
             <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="font-['JetBrains_Mono'] text-xs font-semibold text-[#d8b61c] uppercase tracking-wider">Calories</p>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold text-[#d8b61c] uppercase tracking-wider">Calories</p>
               <p className="text-lg font-black mt-1">{Math.round(totals.calories)} kcal</p>
             </div>
             <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="font-['JetBrains_Mono'] text-xs font-semibold text-[#5bb448] uppercase tracking-wider">Protein</p>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold text-[#5bb448] uppercase tracking-wider">Protein</p>
               <p className="text-lg font-black mt-1">{Math.round(totals.protein)}g</p>
             </div>
             <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="font-['JetBrains_Mono'] text-xs font-semibold text-[#bd5db8] uppercase tracking-wider">Carbs</p>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold text-[#bd5db8] uppercase tracking-wider">Carbs</p>
               <p className="text-lg font-black mt-1">{Math.round(totals.carbs)}g</p>
             </div>
             <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="font-['JetBrains_Mono'] text-xs font-semibold text-[#fb7185] uppercase tracking-wider">Fat</p>
+              <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold text-[#fb7185] uppercase tracking-wider">Fat</p>
               <p className="text-lg font-black mt-1">{Math.round(totals.fat)}g</p>
             </div>
           </div>
@@ -1066,7 +1066,7 @@ export default function DashboardPage() {
                       <div
                         key={`${seg.label}-label-${i}`}
                         style={{ width: `${seg.widthPct}%` }}
-                        className={`text-center font-['JetBrains_Mono'] text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
+                        className={`text-center font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
                           i === dayTrack.activeIndex ? 'text-[#fb7185]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
@@ -1081,7 +1081,7 @@ export default function DashboardPage() {
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
-                    <p className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
+                    <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
                     <div className="relative w-full">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
                       <input
@@ -1159,7 +1159,7 @@ export default function DashboardPage() {
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
                         <div key={parent} className="space-y-3">
                           <div className="flex items-center">
-                            <span className="font-['JetBrains_Mono'] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
+                            <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
                               {cleanStationName(parent)}
                             </span>
                             <div className="flex-1 h-px bg-white/10 ml-4" />
@@ -1168,7 +1168,7 @@ export default function DashboardPage() {
                           {subgroups.map(({ sub, entries }) => (
                             <div key={sub || 'none'} className="space-y-2">
                               {sub && (
-                                <p className="inline-block font-['JetBrains_Mono'] text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-md">
+                                <p className="inline-block font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-md">
                                   {sub}
                                 </p>
                               )}
@@ -1186,7 +1186,7 @@ export default function DashboardPage() {
                                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                                           Serving Size: {food.portion || '1 serving'}
                                         </p>
-                                        <div className="flex gap-3 mt-1.5 font-['JetBrains_Mono'] text-xs font-semibold">
+                                        <div className="flex gap-3 mt-1.5 font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold">
                                           <span className="text-[#d8b61c]">Cals: {food.calories}</span>
                                           <span className="text-[#5bb448]">P: {food.protein}g</span>
                                           <span className="text-[#bd5db8]">C: {food.carbs}g</span>
@@ -1338,7 +1338,7 @@ export default function DashboardPage() {
                         <ChevronLeft size={16} strokeWidth={2.5} />
                       </button>
 
-                      <p className="font-['JetBrains_Mono'] text-sm font-black text-[#dae2fd] uppercase tracking-wider">
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-black text-[#dae2fd] uppercase tracking-wider">
                         {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                       </p>
 
@@ -1353,7 +1353,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center font-['JetBrains_Mono'] text-xs font-extrabold text-[#c2c6d0]/70">
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center font-[family-name:var(--font-jetbrains-mono)] text-xs font-extrabold text-[#c2c6d0]/70">
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
@@ -1416,7 +1416,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                           {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings}x serving(s)
                         </p>
-                        <div className="flex gap-2 mt-1 font-['JetBrains_Mono'] text-xs text-[#c2c6d0]">
+                        <div className="flex gap-2 mt-1 font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#c2c6d0]">
                           <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
                           <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
                           <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
@@ -1459,7 +1459,7 @@ export default function DashboardPage() {
               }`}
           >
             <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
           </button>
 
           <button
@@ -1468,7 +1468,7 @@ export default function DashboardPage() {
               }`}
           >
             <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wide">Progress</span>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold uppercase tracking-wide">Progress</span>
           </button>
         </div>
       </div>

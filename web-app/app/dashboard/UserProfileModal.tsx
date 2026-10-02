@@ -340,7 +340,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           </button>
 
           {memberSinceLabel && (
-            <p className="font-['JetBrains_Mono'] text-[10px] text-[#c2c6d0]/60 mt-1">
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#c2c6d0]/60 mt-1">
               Member since {memberSinceLabel}
             </p>
           )}
@@ -348,7 +348,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <div>
-            <label htmlFor="nickname" className="block font-['JetBrains_Mono'] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="nickname" className="block font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Nickname
             </label>
             <input
@@ -362,7 +362,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           </div>
 
           <div>
-            <label htmlFor="email" className="block font-['JetBrains_Mono'] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="email" className="block font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
               Email
             </label>
             <input
@@ -429,13 +429,13 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 This permanently deletes your account and all logged meals. This cannot be undone.
               </p>
               <p className="text-[10px] text-[#c2c6d0]">
-                Type <span className="font-['JetBrains_Mono'] font-bold text-[#dae2fd]">DELETE</span> to confirm.
+                Type <span className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#dae2fd]">DELETE</span> to confirm.
               </p>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full rounded-lg border border-[#ffb4ab]/30 bg-[#171f33] p-2 text-sm text-[#dae2fd] font-['JetBrains_Mono'] focus:outline-none focus:ring-2 focus:ring-[#ffb4ab]/40"
+                className="w-full rounded-lg border border-[#ffb4ab]/30 bg-[#171f33] p-2 text-sm text-[#dae2fd] font-[family-name:var(--font-jetbrains-mono)] focus:outline-none focus:ring-2 focus:ring-[#ffb4ab]/40"
                 placeholder="DELETE"
               />
               {deleteError && (
