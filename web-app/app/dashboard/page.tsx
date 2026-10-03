@@ -1127,15 +1127,15 @@ export default function DashboardPage() {
                       both strokes use a single dash spanning the whole path, so
                       the reveal (and the blue outline) stop exactly at "now" and
                       never bleed into the untraveled portion. Sammy's head rides
-                      the wave, idling between +70 and -70 degrees. */}
+                      the wave, idling slowly between +65 and -65 degrees. */}
                   <svg viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible' }}>
                     <defs>
                       {/* Soft neon fade at the leading edge of the completed
                           portion, where the glowing stroke gives way to the
                           plain unlit track. */}
                       <radialGradient id="dayTrackEdgeGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#a1c9ff" stopOpacity="0.85" />
-                        <stop offset="100%" stopColor="#a1c9ff" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#3f7fb0" stopOpacity="0.7" />
+                        <stop offset="100%" stopColor="#3f7fb0" stopOpacity="0" />
                       </radialGradient>
                     </defs>
                     <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
@@ -1147,14 +1147,14 @@ export default function DashboardPage() {
                     <path
                       d={DAY_TRACK_PATH}
                       fill="none"
-                      stroke="#5ec4ff"
+                      stroke="#3f7fb0"
                       strokeOpacity="1"
                       strokeWidth="11"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
-                      style={{ filter: 'drop-shadow(0 0 3px rgba(94,196,255,0.95)) drop-shadow(0 0 9px rgba(94,196,255,0.7))' }}
+                      style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.6))' }}
                       className="transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
                     <path
@@ -1172,7 +1172,7 @@ export default function DashboardPage() {
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
-                      return <circle key={i} cx={tx} cy={ty} r="2" fill="#a1c9ff" fillOpacity="0.6" />
+                      return <circle key={i} cx={tx} cy={ty} r="2" fill="#3f7fb0" fillOpacity="0.6" />
                     })}
                     {(() => {
                       const t = dayTrack.markerPct / 100
@@ -1185,22 +1185,22 @@ export default function DashboardPage() {
                           <circle cx={0} cy={0} r={15} fill="url(#dayTrackEdgeGlow)" />
                           {/* Just the head now — no body/slide profile. Mirrored
                               across the y-axis from its original orientation and
-                              scaled up for visibility, idling continuously between
-                              +70 and -70 degrees, independent of the track position
-                              underneath it. */}
+                              scaled up for visibility, idling slowly and continuously
+                              between +65 and -65 degrees, independent of the track
+                              position underneath it. */}
                           <g
                             transform="scale(-1.6, 1.6)"
-                            style={{ filter: 'drop-shadow(0 0 3px rgba(161,201,255,0.9)) drop-shadow(0 0 6px rgba(161,201,255,0.5))' }}
+                            style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))' }}
                           >
                             <g>
                               <animateTransform
                                 attributeName="transform"
                                 type="rotate"
-                                values="-70;70;-70"
+                                values="-65;65;-65"
                                 keyTimes="0;0.5;1"
                                 calcMode="spline"
                                 keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                                dur="3.2s"
+                                dur="4.6s"
                                 repeatCount="indefinite"
                               />
                               <SlugHead />
