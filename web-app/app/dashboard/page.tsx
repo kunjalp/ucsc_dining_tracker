@@ -417,7 +417,15 @@ export default function DashboardPage() {
   // Ticks once a minute so the "X until Lunch/Dinner/Closing" countdown
   // below stays current without needing a page refresh.
   const [now, setNow] = useState(() => new Date())
+  // The server renders this page at request time with its own "now", which
+  // almost never matches the client's "now" by the time the bundle hydrates
+  // (sometimes off by a minute, always off by at least a little), so the
+  // countdown text below used to trip a React hydration mismatch and cause a
+  // visible re-render flash on load. Keep it hidden until after mount, when
+  // only the client's own clock is in play.
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
+    setMounted(true)
     const id = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(id)
   }, [])
@@ -1261,7 +1269,7 @@ export default function DashboardPage() {
                   Dinner/Late Night) while service is running, "Opens at X"
                   before today's first period, "Closing at X" during the
                   day's last period — dining halls only, today only. */}
-              {mealCountdown && (
+              {mounted && mealCountdown && (
                 <p className="text-left text-sm font-semibold text-[#fb7185]">
                   {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
                   {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
