@@ -482,7 +482,7 @@ export default function DashboardPage() {
       const finalPct = trackDragPctRef.current
       if (dayTrack && finalPct !== null) {
         const seg = dayTrack.segments[dayTrackSegmentIndexForPct(dayTrack, finalPct)]
-        if (seg && availableMealTypes.includes(seg.label)) {
+        if (seg) {
           setSelectedMeal(seg.label)
         }
       }
@@ -1394,10 +1394,8 @@ export default function DashboardPage() {
                         type="button"
                         style={{ width: `${seg.widthPct}%` }}
                         onClick={() => {
-                          if (availableMealTypes.includes(seg.label)) {
-                            setSelectedMeal(seg.label)
-                            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
-                          }
+                          setSelectedMeal(seg.label)
+                          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
                         }}
                         className={`text-center py-1 text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
