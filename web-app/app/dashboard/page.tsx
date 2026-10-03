@@ -172,7 +172,9 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 // light-blue accent streak, echoing the highlight patches on the real
 // logo's gold band. Positioned/rotated entirely by the parent <g>'s
 // transform, so this just draws the shape centered on its own origin.
-function SlugProfile() {
+// The slug's body/slide profile: stays put on the path, no rotation of its
+// own. Only the head (eyes + antennae) idles independently, below.
+function SlugBody() {
   return (
     <>
       <path
@@ -197,11 +199,23 @@ function SlugProfile() {
         strokeLinecap="round"
         opacity="0.55"
       />
-      <circle cx="-14" cy="-2" r="3.4" fill="#d6b93a" stroke="#0b1326" strokeWidth="1" />
-      <line x1="-16" y1="-4.5" x2="-19" y2="-9.5" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <line x1="-13" y1="-5" x2="-14" y2="-10" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="-19.5" cy="-10.3" r="1.5" fill="#d6b93a" />
-      <circle cx="-14.3" cy="-10.8" r="1.5" fill="#d6b93a" />
+    </>
+  )
+}
+
+// The head (eye + antennae), drawn in coordinates relative to its own pivot
+// (the point where it joins the body) so the parent <g> can rotate it about
+// that point with a plain CSS transform. Idles continuously between +70 and
+// -70 degrees via the `animate-head-idle` keyframes, independent of the
+// body's position on the wave.
+function SlugHead() {
+  return (
+    <>
+      <circle cx="0" cy="0" r="3.4" fill="#d6b93a" stroke="#0b1326" strokeWidth="1" />
+      <line x1="-2" y1="-2.5" x2="-5" y2="-7.5" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="1" y1="-3" x2="0" y2="-8" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="-5.5" cy="-8.3" r="1.5" fill="#d6b93a" />
+      <circle cx="-0.3" cy="-8.8" r="1.5" fill="#d6b93a" />
     </>
   )
 }
@@ -215,22 +229,13 @@ type Point = [number, number]
 const WAVE_X0 = 10
 const WAVE_X1 = 290
 const WAVE_BASE_Y = 32
-const WAVE_AMPLITUDE = 12
-const WAVE_CYCLES = 1.5 // how many full ripples across the track
+const WAVE_AMPLITUDE = 4
+const WAVE_CYCLES = 1 // one gentle, shallow ripple across the track
 
 function wavePoint(t: number): Point {
   const x = WAVE_X0 + t * (WAVE_X1 - WAVE_X0)
   const y = WAVE_BASE_Y - WAVE_AMPLITUDE * Math.sin(2 * Math.PI * WAVE_CYCLES * t)
   return [x, y]
-}
-
-// The marker's rock/tilt as it rides the wave — same phase as the wave's
-// actual slope (steepest where the wave is steepest, level at each crest
-// and trough), but capped at exactly +/-70 degrees rather than the much
-// steeper angle the raw geometry implies, so it reads as a deliberate
-// rocking motion rather than a spin.
-function waveRotation(t: number): number {
-  return -70 * Math.cos(2 * Math.PI * WAVE_CYCLES * t)
 }
 
 function buildWavePath(samples = 60): string {
@@ -1168,15 +1173,21 @@ export default function DashboardPage() {
                       strokeDashoffset={100 - dayTrack.markerPct}
                       className="animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
+                    {/* Blue glow accent strictly on the elapsed portion of the
+                        path (same dash-offset trick as the gold glow below it),
+                        echoing the logo's blue highlight patches on its gold band. */}
                     <path
                       d={DAY_TRACK_PATH}
                       fill="none"
                       stroke="#a1c9ff"
-                      strokeOpacity="0.8"
+                      strokeOpacity="0.9"
                       strokeWidth="3"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray="6 14"
+                      strokeDashoffset={100 - dayTrack.markerPct}
+                      style={{ filter: 'drop-shadow(0 0 2px rgba(161,201,255,0.8))' }}
+                      className="transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
@@ -1185,16 +1196,41 @@ export default function DashboardPage() {
                     {(() => {
                       const t = dayTrack.markerPct / 100
                       const [mx, my] = wavePoint(t)
-                      const angle = waveRotation(t)
                       return (
                         <g
                           style={{
                             transition: 'transform 1000ms linear',
-                            filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.6))',
+                            filter:
+                              'drop-shadow(0 0 3px rgba(161,201,255,0.85)) drop-shadow(0 0 6px rgba(161,201,255,0.45))',
                           }}
-                          transform={`translate(${mx} ${my}) rotate(${angle})`}
+                          transform={`translate(${mx} ${my})`}
                         >
-                          <SlugProfile />
+                          {/* Stationary body/slide profile — holds its position on
+                              the path without rotating itself. */}
+                          <SlugBody />
+                          {/* The head pivots at the point where it joins the body
+                              (-14, -2) and idles continuously between +70 and -70
+                              degrees, independent of the body underneath it. */}
+                          <g transform="translate(-14 -2)">
+                            <g>
+                              {/* Idles continuously between +70 and -70 degrees,
+                                  rotating around the pivot (the local origin here,
+                                  since the parent <g> above is already translated
+                                  to the head's attachment point) — independent of
+                                  the body's position/motion on the wave. */}
+                              <animateTransform
+                                attributeName="transform"
+                                type="rotate"
+                                values="-70;70;-70"
+                                keyTimes="0;0.5;1"
+                                calcMode="spline"
+                                keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                                dur="3.2s"
+                                repeatCount="indefinite"
+                              />
+                              <SlugHead />
+                            </g>
+                          </g>
                         </g>
                       )
                     })()}
