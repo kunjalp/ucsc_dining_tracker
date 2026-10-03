@@ -566,17 +566,35 @@ export interface DayTrack {
 }
 
 /**
- * Builds today's day track for a dining hall: the full span from the
- * first period's start to the last period's end, broken into real,
- * proportionally-sized segments with a "now" marker position. Returns
- * null for halls without meal-period data, or on a day with none
- * scheduled (track has nothing meaningful to show either way).
+ * Builds a day track for a dining hall: the full span from the first
+ * period's start to the last period's end, broken into real,
+ * proportionally-sized segments. Returns null for halls without
+ * meal-period data, or on a day with none scheduled (track has nothing
+ * meaningful to show either way).
+ *
+ * `dayOffset` (0 = today, 1 = tomorrow, ...) picks which day's schedule to
+ * use. Only today (the default) has a real "now" — a future day has
+ * nothing elapsed yet, so its segments all come back with fillFraction 0,
+ * markerPct 0, and activeIndex -1 rather than pretending a position on a
+ * day that hasn't happened.
  */
-export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack | null {
+export function getDayTrack(hallName: string, now: Date = new Date(), dayOffset: number = 0): DayTrack | null {
   const schedule = MEAL_PERIOD_SCHEDULES[hallName]
   if (!schedule) return null
 
-  const { dayOfWeek, minutesSinceMidnight } = getPacificParts(now)
+  const isToday = dayOffset === 0
+  let dayOfWeek: number
+  let minutesSinceMidnight: number
+  if (isToday) {
+    const parts = getPacificParts(now)
+    dayOfWeek = parts.dayOfWeek
+    minutesSinceMidnight = parts.minutesSinceMidnight
+  } else {
+    const target = new Date(now)
+    target.setDate(target.getDate() + dayOffset)
+    dayOfWeek = new Date(target.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getDay()
+    minutesSinceMidnight = -1 // unused — a future day has no "now" position
+  }
   const periods = schedule[dayOfWeek]
   if (!periods || periods.length === 0) return null
 
@@ -602,8 +620,9 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
   const segments: DayTrackSegment[] = periods.map((p, i) => {
     const s = timeToMinutes(p.start)
     const e = timeToMinutes(p.end)
-    const fillFraction =
-      minutesSinceMidnight <= s ? 0 : minutesSinceMidnight >= e ? 1 : (minutesSinceMidnight - s) / (e - s)
+    const fillFraction = !isToday
+      ? 0
+      : minutesSinceMidnight <= s ? 0 : minutesSinceMidnight >= e ? 1 : (minutesSinceMidnight - s) / (e - s)
     return {
       label: p.label,
       startPct: (cumulative[i] / totalDuration) * 100,
@@ -612,51 +631,56 @@ export function getDayTrack(hallName: string, now: Date = new Date()): DayTrack 
     }
   })
 
-  // Map "now" onto this gapless timeline: inside a period, its offset into
-  // that period; before the first period or during a gap between two
-  // periods, the boundary it's currently sitting at — which keeps the
-  // marker parked at the edge of the period that just ended rather than
-  // floating in gap-space that no longer has any width on the bar.
-  let position = totalDuration
-  const first = periods[0]
-  if (minutesSinceMidnight <= timeToMinutes(first.start)) {
-    position = 0
-  } else {
-    for (let i = 0; i < periods.length; i++) {
-      const s = timeToMinutes(periods[i].start)
-      const e = timeToMinutes(periods[i].end)
-      if (minutesSinceMidnight >= s && minutesSinceMidnight < e) {
-        position = cumulative[i] + (minutesSinceMidnight - s)
-        break
-      }
-      if (minutesSinceMidnight < s) {
-        // In the gap right before this period starts — park at its start boundary.
-        position = cumulative[i]
-        break
+  let markerPct = 0
+  let activeIndex = -1
+
+  if (isToday) {
+    // Map "now" onto this gapless timeline: inside a period, its offset into
+    // that period; before the first period or during a gap between two
+    // periods, the boundary it's currently sitting at — which keeps the
+    // marker parked at the edge of the period that just ended rather than
+    // floating in gap-space that no longer has any width on the bar.
+    let position = totalDuration
+    const first = periods[0]
+    if (minutesSinceMidnight <= timeToMinutes(first.start)) {
+      position = 0
+    } else {
+      for (let i = 0; i < periods.length; i++) {
+        const s = timeToMinutes(periods[i].start)
+        const e = timeToMinutes(periods[i].end)
+        if (minutesSinceMidnight >= s && minutesSinceMidnight < e) {
+          position = cumulative[i] + (minutesSinceMidnight - s)
+          break
+        }
+        if (minutesSinceMidnight < s) {
+          // In the gap right before this period starts — park at its start boundary.
+          position = cumulative[i]
+          break
+        }
       }
     }
-  }
 
-  const markerPct = Math.min(Math.max((position / totalDuration) * 100, 0), 100)
+    markerPct = Math.min(Math.max((position / totalDuration) * 100, 0), 100)
 
-  let activeIndex = periods.findIndex((p) => {
-    const s = timeToMinutes(p.start)
-    const e = timeToMinutes(p.end)
-    return minutesSinceMidnight >= s && minutesSinceMidnight < e
-  })
+    activeIndex = periods.findIndex((p) => {
+      const s = timeToMinutes(p.start)
+      const e = timeToMinutes(p.end)
+      return minutesSinceMidnight >= s && minutesSinceMidnight < e
+    })
 
-  // Between two named periods — e.g. after Lunch's listed end time but
-  // before Dinner starts ("Continuous Dining") — there's no formal current
-  // period, but the hall hasn't actually moved on to the next one yet
-  // either. Rather than go blank there (or worse, read as already being
-  // in the upcoming period), stay on whichever named period most recently
-  // started, so heading into Dinner the track still reads "Lunch" right up
-  // until Dinner service actually begins.
-  if (activeIndex === -1) {
-    for (let i = periods.length - 1; i >= 0; i--) {
-      if (timeToMinutes(periods[i].start) <= minutesSinceMidnight) {
-        activeIndex = i
-        break
+    // Between two named periods — e.g. after Lunch's listed end time but
+    // before Dinner starts ("Continuous Dining") — there's no formal current
+    // period, but the hall hasn't actually moved on to the next one yet
+    // either. Rather than go blank there (or worse, read as already being
+    // in the upcoming period), stay on whichever named period most recently
+    // started, so heading into Dinner the track still reads "Lunch" right up
+    // until Dinner service actually begins.
+    if (activeIndex === -1) {
+      for (let i = periods.length - 1; i >= 0; i--) {
+        if (timeToMinutes(periods[i].start) <= minutesSinceMidnight) {
+          activeIndex = i
+          break
+        }
       }
     }
   }

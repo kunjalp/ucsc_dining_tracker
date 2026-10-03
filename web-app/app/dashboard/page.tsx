@@ -180,10 +180,10 @@ function SlugHead() {
   return (
     <>
       <circle cx="0" cy="0" r="3.4" fill="#d6b93a" stroke="#3f7fb0" strokeWidth="1.2" />
-      <line x1="-2" y1="-2.5" x2="-5" y2="-7.5" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <line x1="1" y1="-3" x2="0" y2="-8" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="-5.5" cy="-8.3" r="1.5" fill="#d6b93a" />
-      <circle cx="-0.3" cy="-8.8" r="1.5" fill="#d6b93a" />
+      <line x1="-2" y1="-2.5" x2="-4" y2="-5.8" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="1" y1="-3" x2="0.3" y2="-6.3" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="-4.5" cy="-6.6" r="1.5" fill="#d6b93a" />
+      <circle cx="0" cy="-7.1" r="1.5" fill="#d6b93a" />
     </>
   )
 }
@@ -368,6 +368,28 @@ export default function DashboardPage() {
   const [goalFat, setGoalFat] = useState(70)
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
 
+  // One-time welcome card for brand-new users — shown once, ever, gated by
+  // a localStorage flag, then dismissed for good once they tap "Got it."
+  const [showWelcome, setShowWelcome] = useState(false)
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('ucsc_has_onboarded')) {
+        setShowWelcome(true)
+      }
+    } catch {
+      // localStorage unavailable (private mode, etc.) — just skip the
+      // one-time card rather than showing it every visit.
+    }
+  }, [])
+  const dismissWelcome = () => {
+    setShowWelcome(false)
+    try {
+      localStorage.setItem('ucsc_has_onboarded', '1')
+    } catch {
+      // Nothing to do if it can't be saved — worst case it shows again.
+    }
+  }
+
   // User profile modal + data (nickname / email)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -405,12 +427,13 @@ export default function DashboardPage() {
     return getMealCountdown(selectedHall, now)
   }, [selectedHall, selectedDayOffset, now])
 
-  // Today's "day track" — the dining hall's scheduled periods laid out
-  // proportionally to their real length, with a live "now" marker. Same
-  // today-only scope as the countdown above.
+  // The "day track" — the dining hall's scheduled periods for whichever day
+  // is being browsed, laid out proportionally to their real length. Today
+  // gets a live "now" fill; other days render the same track with nothing
+  // marked elapsed (see getDayTrack's dayOffset handling) so it still works
+  // as a meal picker when browsing ahead.
   const dayTrack = useMemo(() => {
-    if (selectedDayOffset !== 0) return null
-    return getDayTrack(selectedHall, now)
+    return getDayTrack(selectedHall, now, selectedDayOffset)
   }, [selectedHall, selectedDayOffset, now])
 
   // Dragging the slug's head along the day track lets the person browse a
@@ -431,7 +454,7 @@ export default function DashboardPage() {
   // locks into each zone in turn, not just once at the very end.
   const dragSegmentIndexRef = useRef<number | null>(null)
 
-  const handleTrackPointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
+  const handleTrackPointerDown = (e: React.PointerEvent<SVGGeometryElement>) => {
     if (!dayTrackSvgRef.current) return
     e.preventDefault()
     const pct = dayTrackPctFromClientX(dayTrackSvgRef.current, e.clientX)
@@ -498,7 +521,10 @@ export default function DashboardPage() {
   const prevTrackKeyRef = useRef<string | null>(null)
   const prevActiveIndexRef = useRef<number | null>(null)
   useEffect(() => {
-    const trackKey = selectedHall
+    // Keying on the day offset too means switching to Tomorrow (where
+    // activeIndex is always -1, having no "now") resets silently instead of
+    // reading as a crossing and firing a spurious haptic.
+    const trackKey = `${selectedHall}|${selectedDayOffset}`
     if (prevTrackKeyRef.current !== trackKey) {
       prevTrackKeyRef.current = trackKey
       prevActiveIndexRef.current = dayTrack?.activeIndex ?? null
@@ -510,7 +536,7 @@ export default function DashboardPage() {
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
     }
     prevActiveIndexRef.current = nextIndex
-  }, [selectedHall, dayTrack?.activeIndex])
+  }, [selectedHall, selectedDayOffset, dayTrack?.activeIndex])
 
   // A firmer haptic tap once, the moment the hall enters its last 15
   // minutes of service for the day — the one countdown moment actually
@@ -1179,25 +1205,10 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Only worth showing as tabs when there's an actual choice to make —
-                  cafes/markets with a single period (e.g. "Menu", "ALL") skip straight
-                  to the items instead of showing a single, un-clickable-feeling tab. */}
-              {availableMealTypes.length > 1 && showMenuSection && (
-                <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
-                  {availableMealTypes.map(meal => (
-                    <button
-                      key={meal}
-                      onClick={() => setSelectedMeal(meal)}
-                      className={`flex-1 px-2 py-1.5 text-[11px] font-semibold rounded-lg transition-all whitespace-nowrap ${selectedMeal === meal
-                        ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                        : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                        }`}
-                    >
-                      {meal}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Meal-period selection now lives entirely on the day track
+                  below (drag the head, tap a letter, or tap anywhere on the
+                  wave) instead of a separate pill row — one control instead
+                  of two that used to say the same thing. */}
 
               {/* Countdown to the next meal-period milestone (Breakfast/Lunch/
                   Dinner/Late Night) while service is running, "Opens at X"
@@ -1240,6 +1251,19 @@ export default function DashboardPage() {
                       </radialGradient>
                     </defs>
                     <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
+                    {/* Invisible, generously wide hit target spanning the whole
+                        path — lets a single tap anywhere on the track jump the
+                        head straight there (same snap + haptic as a drag),
+                        not just a drag starting right on the head itself. */}
+                    <path
+                      d={DAY_TRACK_PATH}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={28}
+                      strokeLinecap="round"
+                      style={{ cursor: 'pointer', touchAction: 'none', pointerEvents: 'stroke' }}
+                      onPointerDown={handleTrackPointerDown}
+                    />
                     {/* Blue neon outline — wider than the gold fill and drawn
                         underneath it, so a glowing blue edge shows on both sides
                         of the gold. Revealed with the same single-dash-the-length-
@@ -1276,7 +1300,16 @@ export default function DashboardPage() {
                       return <circle key={i} cx={tx} cy={ty} r="2" fill="#3f7fb0" fillOpacity="0.6" />
                     })}
                     {(() => {
-                      const t = headPct / 100
+                      // While the hall is actually closed right now (today only —
+                      // there's no live "now" on a future day), the head rests at
+                      // the real elapsed position instead of the selected meal:
+                      // dayTrack.markerPct already resolves to 0 before opening
+                      // and 100 once service has ended, so it doubles as "parked
+                      // at the start, asleep" / "parked at closing time, asleep"
+                      // for free, with no separate opening/closing branch needed.
+                      const isSleeping = trackDragPct === null && selectedDayOffset === 0 && isClosedNow
+                      const restPct = selectedDayOffset === 0 && isClosedNow ? dayTrack.markerPct : headPct
+                      const t = (trackDragPct !== null ? trackDragPct : restPct) / 100
                       const [mx, my] = wavePoint(t)
                       return (
                         <g
@@ -1286,7 +1319,7 @@ export default function DashboardPage() {
                           {/* Soft gradient fade marking the edge of the completed
                               (neon) portion of the track, right where the head
                               currently sits. */}
-                          <circle cx={0} cy={0} r={20} fill="url(#dayTrackEdgeGlow)" />
+                          <circle cx={0} cy={0} r={23} fill="url(#dayTrackEdgeGlow)" />
                           {/* Invisible, generously-sized hit target so the head is
                               easy to grab on a touchscreen — the drawn head itself
                               is much smaller than a comfortable tap/drag target. */}
@@ -1300,45 +1333,78 @@ export default function DashboardPage() {
                           />
                           {/* Just the head now — no body/slide profile. Mirrored
                               across the y-axis from its original orientation and
-                              scaled up for visibility, idling slowly and continuously
-                              between +65 and -65 degrees, independent of the track
-                              position underneath it. Dragging it elsewhere on the
-                              track switches which meal period's menu is shown below;
-                              the gold/blue fill still always reflects the real time
-                              of day regardless of where the head itself is parked. */}
+                              scaled up for visibility. Idles between +65 and -65
+                              degrees while awake; holds a fixed gentle tilt instead
+                              while asleep, since a sleeping creature shouldn't be
+                              actively rocking its head. Dragging (or tapping the
+                              track) elsewhere switches which meal period's menu is
+                              shown below; the gold/blue fill still always reflects
+                              the real time of day regardless of where the head
+                              itself is parked. */}
                           <g
-                            transform="scale(-2.2, 2.2)"
+                            transform="scale(-2.6, 2.6)"
                             style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))', pointerEvents: 'none' }}
                           >
-                            <g>
-                              <animateTransform
-                                attributeName="transform"
-                                type="rotate"
-                                values="-65;65;-65"
-                                keyTimes="0;0.5;1"
-                                calcMode="spline"
-                                keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                                dur="4.6s"
-                                repeatCount="indefinite"
-                              />
-                              <SlugHead />
-                            </g>
+                            {isSleeping ? (
+                              <g transform="rotate(18)">
+                                <SlugHead />
+                              </g>
+                            ) : (
+                              <g>
+                                <animateTransform
+                                  attributeName="transform"
+                                  type="rotate"
+                                  values="-65;65;-65"
+                                  keyTimes="0;0.5;1"
+                                  calcMode="spline"
+                                  keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                                  dur="4.6s"
+                                  repeatCount="indefinite"
+                                />
+                                <SlugHead />
+                              </g>
+                            )}
                           </g>
+                          {/* Two small "Zz" marks drifting up and fading near the
+                              top-right of the face while asleep — outside the
+                              mirrored/scaled head group so they stay upright and
+                              unflipped regardless of which way the head is facing. */}
+                          {isSleeping && (
+                            <g style={{ pointerEvents: 'none' }}>
+                              <text x="13" y="-16" fontSize="9" fontWeight="bold" fill="#a1c9ff">
+                                <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.7;1" dur="2.4s" repeatCount="indefinite" />
+                                <animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="2.4s" repeatCount="indefinite" />
+                                z
+                              </text>
+                              <text x="19" y="-23" fontSize="6" fontWeight="bold" fill="#a1c9ff">
+                                <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.15;0.7;1" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
+                                <animateTransform attributeName="transform" type="translate" values="0 4;0 -8" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
+                                z
+                              </text>
+                            </g>
+                          )}
                         </g>
                       )
                     })()}
                   </svg>
                   <div className="flex">
                     {dayTrack.segments.map((seg, i) => (
-                      <div
+                      <button
                         key={`${seg.label}-label-${i}`}
+                        type="button"
                         style={{ width: `${seg.widthPct}%` }}
-                        className={`text-center text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
+                        onClick={() => {
+                          if (availableMealTypes.includes(seg.label)) {
+                            setSelectedMeal(seg.label)
+                            Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+                          }
+                        }}
+                        className={`text-center py-1 text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
                         {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
-                      </div>
+                      </button>
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
@@ -1784,6 +1850,35 @@ export default function DashboardPage() {
           }}
           onSave={handleSaveProfile}
         />
+      )}
+
+      {/* One-time welcome card for first-time users */}
+      {showWelcome && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-title"
+        >
+          <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
+          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd]">
+            <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-[#dae2fd] mb-3">
+              Welcome to Sammy's Palate
+            </h2>
+            <ul className="space-y-2.5 text-sm text-[#c2c6d0] mb-5">
+              <li>Browse today's menu, filter by station, and tap + to log what you eat.</li>
+              <li>Watch your calories, protein, carbs, and fat fill in below as you log.</li>
+              <li>Drag the slug (or tap a letter) to preview a different meal's menu.</li>
+            </ul>
+            <button
+              type="button"
+              onClick={dismissWelcome}
+              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold shadow-md shadow-[#d6b93a]/20"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
