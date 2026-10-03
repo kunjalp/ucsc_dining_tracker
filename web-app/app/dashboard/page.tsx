@@ -21,6 +21,7 @@ import {
   User,
   Trash2,
   Check,
+  X,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -1474,8 +1475,18 @@ export default function DashboardPage() {
                         placeholder="Search today's items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-4 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
+                        className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-9 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
                       />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          aria-label="Clear search"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c2c6d0] hover:text-[#dae2fd] transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
                     </div>
 
                     {availableStations.length > 0 && (
@@ -1544,7 +1555,7 @@ export default function DashboardPage() {
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
                         <div key={parent} className="space-y-3">
                           <div className="flex items-center">
-                            <span className="text-sm font-black tracking-wide text-[#a1c9ff] uppercase">
+                            <span className="text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
                               {cleanStationName(parent)}
                             </span>
                             <div className="flex-1 h-px bg-white/10 ml-4" />
