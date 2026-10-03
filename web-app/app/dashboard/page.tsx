@@ -1160,7 +1160,7 @@ export default function DashboardPage() {
             <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight leading-none mb-0.5">
               Sammy's Palate
             </span>
-            <span className="text-xs font-bold text-[#dae2fd]/70 tracking-wide uppercase">
+            <span className="text-xs font-bold text-[#dae2fd]/70">
               UCSC Macro Tracker
             </span>
           </div>
@@ -1198,7 +1198,7 @@ export default function DashboardPage() {
               { label: 'Fat', value: totals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
             ].map((m, i) => (
               <div key={m.label} className={`flex-1 min-w-0 ${i > 0 ? 'border-l border-white/10 pl-4' : ''}`}>
-                <p className="text-[10px] font-semibold text-[#c2c6d0]/70 uppercase tracking-wider truncate">{m.label}</p>
+                <p className="text-[10px] font-semibold text-[#c2c6d0]/70 truncate">{m.label}</p>
                 <p className="text-sm font-black mt-0.5 truncate" style={{ color: m.color }}>
                   {Math.round(m.value)}{m.unit}
                   <span className="text-[#c2c6d0]/50 font-semibold"> / {Math.round(m.goal)}{m.unit}</span>
@@ -1444,7 +1444,7 @@ export default function DashboardPage() {
                           setSelectedMeal(seg.label)
                           Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
                         }}
-                        className={`text-center py-1 text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
+                        className={`text-center py-1 text-[9px] font-bold transition-colors duration-500 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
@@ -1468,7 +1468,7 @@ export default function DashboardPage() {
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
-                    <p className="text-[11px] font-bold text-[#c2c6d0] uppercase tracking-wider">Search & Station Filters</p>
+                    <p className="text-[11px] font-bold text-[#c2c6d0]">Search & Station Filters</p>
                     <div className="relative w-full">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
                       <input
@@ -1725,7 +1725,7 @@ export default function DashboardPage() {
                         <ChevronLeft size={16} strokeWidth={2.5} />
                       </button>
 
-                      <p className="text-sm font-black text-[#dae2fd] uppercase tracking-wider">
+                      <p className="text-sm font-black text-[#dae2fd]">
                         {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                       </p>
 
@@ -1846,7 +1846,7 @@ export default function DashboardPage() {
               }`}
           >
             <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wide">Log Menu</span>
+            <span className="text-[10px] font-bold">Log Menu</span>
           </button>
 
           <button
@@ -1855,7 +1855,7 @@ export default function DashboardPage() {
               }`}
           >
             <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wide">Progress</span>
+            <span className="text-[10px] font-bold">Progress</span>
           </button>
         </div>
       </div>
