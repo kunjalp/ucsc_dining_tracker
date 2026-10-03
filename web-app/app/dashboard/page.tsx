@@ -80,8 +80,11 @@ const getDayOffsetLabel = (offsetDays: number): string => {
   return d.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long' })
 }
 
-// How many days ahead the app lets students browse — matches DAYS_AHEAD in
-// scraper/scrape_upcoming.py, which is what actually populates these dates.
+// How many days ahead the app lets students browse. scrape_upcoming.py
+// actually scrapes one extra day beyond this (DAYS_AHEAD = 3) on purpose —
+// that buffer day means the furthest day shown here already has data
+// cached from the PREVIOUS day's scrape, so it's never empty overnight
+// while waiting for today's run.
 const DAY_OFFSETS = [0, 1, 2]
 
 // Whichever meal period a dining hall is actually serving (or, during a
