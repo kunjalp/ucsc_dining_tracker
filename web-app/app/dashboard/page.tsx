@@ -160,6 +160,14 @@ const getEffectiveStation = (entry: MenuEntry): string => {
   return byName || 'General'
 }
 
+// The four "Condiments - ..." sub-stations (Dressings, Hot Sauces, Spreads,
+// etc.) each used to show up as their own filter pill, reading as four
+// near-duplicate chips. For FILTERING purposes only (not the grouped menu
+// headers below, which still show the specific sub-station) they collapse
+// into a single "Condiments" pill.
+const getStationFilterKey = (station: string): string =>
+  station.startsWith('Condiments') ? 'Condiments' : station
+
 // Tiny version of the Sammy's Palate logo (a banana slug curled into a
 // shell) used as the day track's moving marker — same gold/navy/light-blue
 // palette as the real logo and the rest of the app, not a generic dot.
@@ -848,7 +856,7 @@ export default function DashboardPage() {
 
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
-    const stations = menu.map((entry) => getEffectiveStation(entry))
+    const stations = menu.map((entry) => getStationFilterKey(getEffectiveStation(entry)))
     const unique = Array.from(new Set(stations))
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
@@ -862,7 +870,7 @@ export default function DashboardPage() {
       const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStation =
         activeStationFilters.length === 0 ||
-        activeStationFilters.includes(getEffectiveStation(entry))
+        activeStationFilters.includes(getStationFilterKey(getEffectiveStation(entry)))
 
       return matchesSearch && matchesStation
     })
@@ -1374,7 +1382,7 @@ export default function DashboardPage() {
                                   keyTimes="0;0.5;1"
                                   calcMode="spline"
                                   keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                                  dur="5.4s"
+                                  dur="7.5s"
                                   repeatCount="indefinite"
                                 />
                                 <SlugHead />
@@ -1450,7 +1458,7 @@ export default function DashboardPage() {
                     </div>
 
                     {availableStations.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <div className="flex gap-2 pt-1 overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x proximity' }}>
                         {availableStations.map((station) => {
                           const isActive = activeStationFilters.includes(station)
                           const [parentLabel, subLabel] = station.includes(' - ')
@@ -1462,10 +1470,11 @@ export default function DashboardPage() {
                               key={station}
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
-                              className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
+                              className={`shrink-0 px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight whitespace-nowrap ${isActive
                                 ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
                                 : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                                 }`}
+                              style={{ scrollSnapAlign: 'start' }}
                             >
                               {parentLabel && (
                                 <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#6b5300]/70' : 'text-[#a1c9ff]'}`}>

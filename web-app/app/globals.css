@@ -44,6 +44,15 @@ body.hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes check-pop {
   0% {
     transform: scale(0.5);
