@@ -43,6 +43,29 @@ body.hide-scrollbar {
 body.hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+/* Thin, themed scrollbar for the horizontal-scrolling desktop station-filter
+   chip row, instead of the browser's default gray scrollbar. */
+.chip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.chip-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chip-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+}
+
+.chip-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
 
 @keyframes check-pop {
   0% {

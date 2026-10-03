@@ -1249,7 +1249,7 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="space-y-6">
             {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 lg:p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 lg:grid lg:grid-cols-[minmax(280px,30%)_1fr] lg:gap-10 lg:items-start">
+            <div className="rounded-2xl p-5 lg:p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 lg:grid lg:grid-cols-[minmax(280px,30%)_minmax(0,1fr)] lg:gap-10 lg:items-start">
               <div className="space-y-4 lg:sticky lg:top-[150px] lg:self-start">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
@@ -1308,7 +1308,7 @@ export default function DashboardPage() {
                   each one elapses; a soft haptic tap marks the moment it
                   crosses into the next period. */}
               {dayTrack && (
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#171f33]/60 border border-white/10">
+                <div className="space-y-1.5 pt-1 pb-1 lg:p-3 lg:rounded-xl lg:bg-[#171f33]/60 lg:border lg:border-white/10">
                   {/* A rippling wave instead of a straight slider or a single arc —
                       echoes a slug's actual undulating crawl. Elapsed time is a
                       neon gold stroke with a glowing blue outline traced on both
@@ -1487,11 +1487,11 @@ export default function DashboardPage() {
                   {/* Open / close times, sky blue to match the logo's accent color */}
                   <div className="flex justify-between pt-1 border-t border-white/5">
                     <span className="text-[10px] font-bold text-[#a1c9ff]">
-                      <span className="text-[#a1c9ff]/50 font-semibold">Opens </span>
+                      <span className="hidden lg:inline text-[#a1c9ff]/50 font-semibold">Opens </span>
                       {dayTrack.opensAt}
                     </span>
                     <span className="text-[10px] font-bold text-[#a1c9ff]">
-                      <span className="text-[#a1c9ff]/50 font-semibold">Closes </span>
+                      <span className="hidden lg:inline text-[#a1c9ff]/50 font-semibold">Closes </span>
                       {dayTrack.closesAt}
                     </span>
                   </div>
@@ -1526,7 +1526,7 @@ export default function DashboardPage() {
                     </div>
 
                     {availableStations.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1 lg:flex-nowrap lg:overflow-x-auto lg:pb-2">
+                      <div className="flex flex-wrap gap-2 pt-1 lg:flex-nowrap lg:overflow-x-auto lg:pb-2 chip-scroll">
                         {stationChipGroups.map((group) => {
                           if (group.stations.length === 1 || !group.parentLabel) {
                             const station = group.stations[0]
@@ -1660,7 +1660,7 @@ export default function DashboardPage() {
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors lg:grid lg:grid-cols-[2fr_1.1fr_1.3fr_70px] lg:gap-4"
+                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,1.3fr)_70px] lg:gap-4"
                                     >
                                       <div className="lg:contents">
                                       <div>
