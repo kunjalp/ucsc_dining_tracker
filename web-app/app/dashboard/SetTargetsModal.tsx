@@ -140,14 +140,14 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
         </div>
 
         {/* Toggle Mode */}
-        <div className="flex bg-[#0b1326] rounded-xl p-1.5 gap-1 mb-6 border border-white/10">
+        <div className="flex bg-[#0b1326] rounded-xl p-1.5 gap-1 mb-6">
           <button
             type="button"
             onClick={() => setMode('recommended')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
               mode === 'recommended'
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
             }`}
           >
             Recommended
@@ -155,10 +155,10 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={() => setMode('manual')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
               mode === 'manual'
-                ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
+                : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
             }`}
           >
             Manual

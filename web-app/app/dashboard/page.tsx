@@ -1585,7 +1585,7 @@ export default function DashboardPage() {
                                       </div>
 
                                       <div className="flex items-center justify-between w-full gap-3">
-                                        <div className="flex bg-[#171f33] p-1 rounded-xl gap-1">
+                                        <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                                           {[
                                             { label: '1/4x', value: 0.25 },
                                             { label: '1/2x', value: 0.5 },
