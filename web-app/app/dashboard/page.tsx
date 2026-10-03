@@ -18,8 +18,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
   User,
   Trash2,
   Check,
@@ -366,7 +364,6 @@ export default function DashboardPage() {
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
-  const [expandedStationGroup, setExpandedStationGroup] = useState<string | null>(null)
 
   // Daily targets state settings (now tracking all 4 macro targets)
   const [goalCalories, setGoalCalories] = useState(2000)
@@ -879,26 +876,6 @@ export default function DashboardPage() {
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
 
-  // 2b. Group stations sharing a parent label (e.g. "CONDIMENTS - Spreads &
-  // Butters" / "CONDIMENTS - Sauces") into one collapsible chip, so desktop
-  // doesn't have to render every sub-category as its own full-size pill.
-  const stationChipGroups = useMemo(() => {
-    const groups: { parentLabel: string | null; stations: string[] }[] = []
-    const byParent = new Map<string, string[]>()
-    availableStations.forEach((station) => {
-      const [parentLabel] = station.includes(' - ') ? station.split(' - ') : [null]
-      if (parentLabel) {
-        byParent.set(parentLabel, [...(byParent.get(parentLabel) ?? []), station])
-      } else {
-        groups.push({ parentLabel: null, stations: [station] })
-      }
-    })
-    byParent.forEach((stations, parentLabel) => {
-      groups.push({ parentLabel, stations })
-    })
-    return groups
-  }, [availableStations])
-
   // 3. Filter raw items first by search input & clicked station pills
   const filteredMenu = useMemo(() => {
     return menu.filter((entry) => {
@@ -1222,7 +1199,7 @@ export default function DashboardPage() {
             macro) instead of four separate boxed tiles stacked 2x2 — same information,
             a fraction of the height. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)] lg:sticky lg:top-[64px] lg:z-40">
+          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
             {[
               { label: 'Cal', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
               { label: 'Protein', value: totals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
@@ -1249,7 +1226,7 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="space-y-6">
             {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 lg:p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 lg:grid lg:grid-cols-[minmax(280px,30%)_1fr] lg:gap-10 lg:items-start">
+            <div className="rounded-2xl p-5 lg:p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 lg:grid lg:grid-cols-[360px_1fr] lg:gap-10 lg:items-start">
               <div className="space-y-4 lg:sticky lg:top-[150px] lg:self-start">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
@@ -1308,7 +1285,7 @@ export default function DashboardPage() {
                   each one elapses; a soft haptic tap marks the moment it
                   crosses into the next period. */}
               {dayTrack && (
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#171f33]/60 border border-white/10">
+                <div className="space-y-1.5 pt-1 pb-1">
                   {/* A rippling wave instead of a straight slider or a single arc —
                       echoes a slug's actual undulating crawl. Elapsed time is a
                       neon gold stroke with a glowing blue outline traced on both
@@ -1485,13 +1462,11 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
-                  <div className="flex justify-between pt-1 border-t border-white/5">
+                  <div className="flex justify-between">
                     <span className="text-[10px] font-bold text-[#a1c9ff]">
-                      <span className="text-[#a1c9ff]/50 font-semibold">Opens </span>
                       {dayTrack.opensAt}
                     </span>
                     <span className="text-[10px] font-bold text-[#a1c9ff]">
-                      <span className="text-[#a1c9ff]/50 font-semibold">Closes </span>
                       {dayTrack.closesAt}
                     </span>
                   </div>
@@ -1526,79 +1501,30 @@ export default function DashboardPage() {
                     </div>
 
                     {availableStations.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1 lg:flex-nowrap lg:overflow-x-auto lg:pb-2">
-                        {stationChipGroups.map((group) => {
-                          if (group.stations.length === 1 || !group.parentLabel) {
-                            const station = group.stations[0]
-                            const isActive = activeStationFilters.includes(station)
-                            const [parentLabel, subLabel] = station.includes(' - ')
-                              ? station.split(' - ')
-                              : [null, station]
-
-                            return (
-                              <button
-                                key={station}
-                                type="button"
-                                onClick={() => handleToggleStationFilter(station)}
-                                className={`shrink-0 px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
-                                  ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                                  : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                                  }`}
-                              >
-                                {parentLabel && (
-                                  <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#d6b93a]/70' : 'text-[#a1c9ff]'}`}>
-                                    {parentLabel}
-                                  </span>
-                                )}
-                                <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
-                              </button>
-                            )
-                          }
-
-                          // Several sub-categories under one parent (e.g. multiple
-                          // Condiments stations) collapse into a single pill that
-                          // expands into its own row, instead of each sub-category
-                          // taking up a full-size pill of its own.
-                          const parentLabel = group.parentLabel
-                          const isExpanded = expandedStationGroup === parentLabel
-                          const groupHasActive = group.stations.some((s) => activeStationFilters.includes(s))
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {availableStations.map((station) => {
+                          const isActive = activeStationFilters.includes(station)
+                          const [parentLabel, subLabel] = station.includes(' - ')
+                            ? station.split(' - ')
+                            : [null, station]
 
                           return (
-                            <div key={parentLabel} className="shrink-0 flex flex-col gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setExpandedStationGroup(isExpanded ? null : parentLabel)}
-                                className={`shrink-0 px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 leading-tight ${groupHasActive
-                                  ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                                  : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                                  }`}
-                              >
-                                <span className="text-xs font-bold">{parentLabel}</span>
-                                <span className="text-[9px] text-[#a1c9ff]/70">({group.stations.length})</span>
-                                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                              </button>
-                              {isExpanded && (
-                                <div className="flex flex-wrap gap-1.5 pl-1">
-                                  {group.stations.map((station) => {
-                                    const isActive = activeStationFilters.includes(station)
-                                    const [, subLabel] = station.split(' - ')
-                                    return (
-                                      <button
-                                        key={station}
-                                        type="button"
-                                        onClick={() => handleToggleStationFilter(station)}
-                                        className={`px-2.5 py-1 rounded-full border text-xs font-bold transition ${isActive
-                                          ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                                          : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
-                                          }`}
-                                      >
-                                        {cleanStationName(subLabel)}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
+                            <button
+                              key={station}
+                              type="button"
+                              onClick={() => handleToggleStationFilter(station)}
+                              className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
+                                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
+                                : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                                }`}
+                            >
+                              {parentLabel && (
+                                <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#d6b93a]/70' : 'text-[#a1c9ff]'}`}>
+                                  {parentLabel}
+                                </span>
                               )}
-                            </div>
+                              <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
+                            </button>
                           )
                         })}
                       </div>
@@ -1660,30 +1586,22 @@ export default function DashboardPage() {
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors lg:grid lg:grid-cols-[2fr_1.1fr_1.3fr_70px] lg:gap-4"
+                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
                                     >
-                                      <div className="lg:contents">
                                       <div>
                                         <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
                                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                                           {food.portion || '1 serving'}
                                         </p>
-                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold lg:hidden">
+                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold">
                                           <span className="text-[#d8b61c]">Cals: {Math.round(food.calories)}</span>
                                           <span className="text-[#5bb448]">P: {Math.round(food.protein)}g</span>
                                           <span className="text-[#bd5db8]">C: {Math.round(food.carbs)}g</span>
                                           <span className="text-[#fb7185]">F: {Math.round(food.fat)}g</span>
                                         </div>
                                       </div>
-                                      <div className="hidden lg:flex lg:flex-col lg:gap-0.5 text-xs font-semibold">
-                                        <span className="text-[#d8b61c]">Cals: {Math.round(food.calories)}</span>
-                                        <span className="text-[#5bb448]">P: {Math.round(food.protein)}g</span>
-                                        <span className="text-[#bd5db8]">C: {Math.round(food.carbs)}g</span>
-                                        <span className="text-[#fb7185]">F: {Math.round(food.fat)}g</span>
-                                      </div>
-                                      </div>
 
-                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start lg:contents">
+                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
                                         <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                                           {[
                                             { label: '0.25x', value: 0.25 },
