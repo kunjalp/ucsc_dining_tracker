@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack } from '@/lib/diningHours'
+import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
@@ -179,7 +179,7 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 function SlugHead() {
   return (
     <>
-      <circle cx="0" cy="0" r="3.4" fill="#d6b93a" stroke="#0b1326" strokeWidth="1" />
+      <circle cx="0" cy="0" r="3.4" fill="#d6b93a" stroke="#3f7fb0" strokeWidth="1.2" />
       <line x1="-2" y1="-2.5" x2="-5" y2="-7.5" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
       <line x1="1" y1="-3" x2="0" y2="-8" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
       <circle cx="-5.5" cy="-8.3" r="1.5" fill="#d6b93a" />
@@ -217,6 +217,30 @@ function buildWavePath(samples = 60): string {
 }
 
 const DAY_TRACK_PATH = buildWavePath()
+
+// Converts a pointer's clientX (from a drag on the day track) into a percent
+// (0-100) position along the wave's t axis, the same units as
+// DayTrackSegment.startPct/widthPct and DayTrack.markerPct. The SVG's
+// viewBox is a fixed 300 units wide regardless of its rendered size, so the
+// pointer position is rescaled from the element's actual on-screen width.
+function dayTrackPctFromClientX(svg: SVGSVGElement, clientX: number): number {
+  const rect = svg.getBoundingClientRect()
+  const localX = ((clientX - rect.left) / rect.width) * 300
+  const t = Math.min(Math.max((localX - WAVE_X0) / (WAVE_X1 - WAVE_X0), 0), 1)
+  return t * 100
+}
+
+// Which meal-period segment a given percent position falls into — used both
+// to figure out what the user dragged the head onto, and to decide which
+// segment to highlight underneath the track for the currently selected meal.
+function dayTrackSegmentIndexForPct(track: DayTrack, pct: number): number {
+  const clamped = Math.min(Math.max(pct, 0), 100)
+  for (let i = 0; i < track.segments.length; i++) {
+    const seg = track.segments[i]
+    if (clamped >= seg.startPct && clamped < seg.startPct + seg.widthPct) return i
+  }
+  return track.segments.length - 1
+}
 
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
@@ -388,6 +412,73 @@ export default function DashboardPage() {
     if (selectedDayOffset !== 0) return null
     return getDayTrack(selectedHall, now)
   }, [selectedHall, selectedDayOffset, now])
+
+  // Dragging the slug's head along the day track lets the person browse a
+  // different meal period's menu directly from the track instead of using
+  // the tabs above it — the head becomes a hand-movable "which menu am I
+  // looking at" control, decoupled from the gold/blue fill (which always
+  // reflects the real elapsed time of day, drag or no drag). `trackDragPct`
+  // is null when at rest (the head then sits over whichever segment matches
+  // `selectedMeal`) and holds a live 0-100 position while a drag is in
+  // progress. The ref mirrors the state so the window pointerup handler —
+  // registered once per drag via the effect below — always reads the latest
+  // position rather than a stale closure value.
+  const [trackDragPct, setTrackDragPct] = useState<number | null>(null)
+  const trackDragPctRef = useRef<number | null>(null)
+  const dayTrackSvgRef = useRef<SVGSVGElement | null>(null)
+
+  const handleTrackPointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
+    if (!dayTrackSvgRef.current) return
+    e.preventDefault()
+    const pct = dayTrackPctFromClientX(dayTrackSvgRef.current, e.clientX)
+    trackDragPctRef.current = pct
+    setTrackDragPct(pct)
+  }
+
+  useEffect(() => {
+    if (trackDragPct === null) return
+
+    const handleMove = (e: PointerEvent) => {
+      if (!dayTrackSvgRef.current) return
+      const pct = dayTrackPctFromClientX(dayTrackSvgRef.current, e.clientX)
+      trackDragPctRef.current = pct
+      setTrackDragPct(pct)
+    }
+
+    const handleUp = () => {
+      const finalPct = trackDragPctRef.current
+      if (dayTrack && finalPct !== null) {
+        const seg = dayTrack.segments[dayTrackSegmentIndexForPct(dayTrack, finalPct)]
+        if (seg && availableMealTypes.includes(seg.label)) {
+          setSelectedMeal(seg.label)
+        }
+      }
+      // Snapping into place (back onto the selected segment) is itself the
+      // confirmation cue, same weight as a Log/Delete tap.
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      trackDragPctRef.current = null
+      setTrackDragPct(null)
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackDragPct !== null])
+
+  // Where the head actually sits: live under the pointer while dragging,
+  // otherwise resting at the midpoint of whichever segment matches the
+  // currently selected meal (falling back to the real "now" position if,
+  // for some reason, the selected meal isn't one of today's segments).
+  const headPct = useMemo(() => {
+    if (trackDragPct !== null) return trackDragPct
+    if (!dayTrack) return 0
+    const seg = dayTrack.segments.find((s) => s.label === selectedMeal)
+    return seg ? seg.startPct + seg.widthPct / 2 : dayTrack.markerPct
+  }, [trackDragPct, dayTrack, selectedMeal])
 
   // A light haptic tap when the day track crosses from one meal period
   // into the next (e.g. Breakfast -> Lunch) — a quiet "something changed"
@@ -1128,7 +1219,7 @@ export default function DashboardPage() {
                       the reveal (and the blue outline) stop exactly at "now" and
                       never bleed into the untraveled portion. Sammy's head rides
                       the wave, idling slowly between +65 and -65 degrees. */}
-                  <svg viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible' }}>
+                  <svg ref={dayTrackSvgRef} viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible', touchAction: 'none' }}>
                     <defs>
                       {/* Soft neon fade at the leading edge of the completed
                           portion, where the glowing stroke gives way to the
@@ -1175,22 +1266,39 @@ export default function DashboardPage() {
                       return <circle key={i} cx={tx} cy={ty} r="2" fill="#3f7fb0" fillOpacity="0.6" />
                     })}
                     {(() => {
-                      const t = dayTrack.markerPct / 100
+                      const t = headPct / 100
                       const [mx, my] = wavePoint(t)
                       return (
-                        <g style={{ transition: 'transform 1000ms linear' }} transform={`translate(${mx} ${my})`}>
+                        <g
+                          style={{ transition: trackDragPct !== null ? 'none' : 'transform 400ms ease-out' }}
+                          transform={`translate(${mx} ${my})`}
+                        >
                           {/* Soft gradient fade marking the edge of the completed
                               (neon) portion of the track, right where the head
                               currently sits. */}
-                          <circle cx={0} cy={0} r={15} fill="url(#dayTrackEdgeGlow)" />
+                          <circle cx={0} cy={0} r={17} fill="url(#dayTrackEdgeGlow)" />
+                          {/* Invisible, generously-sized hit target so the head is
+                              easy to grab on a touchscreen — the drawn head itself
+                              is much smaller than a comfortable tap/drag target. */}
+                          <circle
+                            cx={0}
+                            cy={0}
+                            r={22}
+                            fill="transparent"
+                            style={{ cursor: trackDragPct !== null ? 'grabbing' : 'grab', touchAction: 'none' }}
+                            onPointerDown={handleTrackPointerDown}
+                          />
                           {/* Just the head now — no body/slide profile. Mirrored
                               across the y-axis from its original orientation and
                               scaled up for visibility, idling slowly and continuously
                               between +65 and -65 degrees, independent of the track
-                              position underneath it. */}
+                              position underneath it. Dragging it elsewhere on the
+                              track switches which meal period's menu is shown below;
+                              the gold/blue fill still always reflects the real time
+                              of day regardless of where the head itself is parked. */}
                           <g
-                            transform="scale(-1.6, 1.6)"
-                            style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))' }}
+                            transform="scale(-1.9, 1.9)"
+                            style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))', pointerEvents: 'none' }}
                           >
                             <g>
                               <animateTransform
@@ -1216,7 +1324,7 @@ export default function DashboardPage() {
                         key={`${seg.label}-label-${i}`}
                         style={{ width: `${seg.widthPct}%` }}
                         className={`text-center font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-bold uppercase tracking-wider transition-colors duration-500 ${
-                          i === dayTrack.activeIndex ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
+                          i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
                         {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
