@@ -124,7 +124,7 @@ export default function AuthPage() {
         {showForgotPassword ? (
           <form onSubmit={handleForgotPassword} className="space-y-3">
             <div>
-              <label className="block font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
                 Email Address
               </label>
               <input
@@ -156,7 +156,7 @@ export default function AuthPage() {
         ) : (
           <form onSubmit={handleAuth} className="space-y-3">
             <div>
-              <label className="block font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
                 Email Address
               </label>
               <input
@@ -170,7 +170,7 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="block font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
                 Password
               </label>
               <PasswordInput
@@ -254,10 +254,10 @@ export default function AuthPage() {
       </div>
 
       {/* Footer Branding */}
-      <p className="mt-8 font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#c2c6d0]/50">
+      <p className="mt-8 text-xs text-[#c2c6d0]/50">
         UC Santa Cruz • Dining Tracker
       </p>
-      <p className="mt-2 font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#c2c6d0]/50 max-w-xs text-center leading-relaxed">
+      <p className="mt-2 text-xs text-[#c2c6d0]/50 max-w-xs text-center leading-relaxed">
         Built for UCSC dining. See the daily menu, log what you eat, track detailed macros.
       </p>
     </div>

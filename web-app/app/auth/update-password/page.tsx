@@ -55,7 +55,7 @@ export default function UpdatePasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
               New Password
             </label>
             <PasswordInput
@@ -66,7 +66,7 @@ export default function UpdatePasswordPage() {
           </div>
 
           <div>
-            <label className="block font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
               Confirm Password
             </label>
             <PasswordInput
