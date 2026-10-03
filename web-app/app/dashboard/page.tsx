@@ -1219,8 +1219,8 @@ export default function DashboardPage() {
                     type="button"
                     onClick={() => setSelectedDayOffset(offset)}
                     className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedDayOffset === offset
-                      ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
-                      : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                      ? 'bg-[#d6b93a]/15 text-[#d6b93a] border border-[#d6b93a]/40'
+                      : 'text-[#c2c6d0] hover:text-[#dae2fd] border border-transparent'
                       }`}
                   >
                     {getDayOffsetLabel(offset)}
@@ -1470,12 +1470,12 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
                               className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
-                                ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a] shadow-sm'
+                                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                                 : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                                 }`}
                             >
                               {parentLabel && (
-                                <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#6b5300]/70' : 'text-[#a1c9ff]'}`}>
+                                <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#d6b93a]/70' : 'text-[#a1c9ff]'}`}>
                                   {parentLabel}
                                 </span>
                               )}
@@ -1574,7 +1574,7 @@ export default function DashboardPage() {
                                                 type="button"
                                                 onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
                                                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${isSelected
-                                                  ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                                  ? 'bg-[#d6b93a]/15 text-[#d6b93a]'
                                                   : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                                                   }`}
                                               >
@@ -1625,7 +1625,7 @@ export default function DashboardPage() {
                     className={
                       showCalendar
                         ? 'text-xs text-[#c2c6d0]/70 mt-0.5'
-                        : `text-sm font-bold mt-0.5 ${goalMode === 'recommended' ? 'text-[#a1c9ff]' : 'text-[#ffe6ab]'}`
+                        : 'text-sm font-bold mt-0.5 text-[#c2c6d0]'
                     }
                   >
                     {showCalendar
@@ -1640,7 +1640,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
                     className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${showCalendar
-                      ? 'bg-[#d6b93a] text-[#6b5300] border-[#d6b93a]'
+                      ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                       : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                       }`}
                   >
