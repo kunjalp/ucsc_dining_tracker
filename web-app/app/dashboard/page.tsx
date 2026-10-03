@@ -1192,7 +1192,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[134px] px-5 max-w-[1200px] mx-auto pb-[130px]">
+      <main className="pt-[134px] px-5 max-w-md mx-auto pb-[130px]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
             A slim single-row strip (value against target + a thin progress bar per
