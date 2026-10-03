@@ -1161,25 +1161,32 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="pt-[150px] px-5 max-w-[1200px] mx-auto pb-[130px]">
 
-        {/* Live macro totals banner — Log Menu only; Progress has its own rings for this */}
+        {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
+            A slim single-row strip (value against target + a thin progress bar per
+            macro) instead of four separate boxed tiles stacked 2x2 — same information,
+            a fraction of the height. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
-            <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="text-xs font-semibold text-[#d8b61c] uppercase tracking-wider">Calories</p>
-              <p className="text-lg font-black mt-1">{Math.round(totals.calories)} kcal</p>
-            </div>
-            <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="text-xs font-semibold text-[#5bb448] uppercase tracking-wider">Protein</p>
-              <p className="text-lg font-black mt-1">{Math.round(totals.protein)}g</p>
-            </div>
-            <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="text-xs font-semibold text-[#bd5db8] uppercase tracking-wider">Carbs</p>
-              <p className="text-lg font-black mt-1">{Math.round(totals.carbs)}g</p>
-            </div>
-            <div className="bg-white/5 p-3 rounded-xl text-center">
-              <p className="text-xs font-semibold text-[#fb7185] uppercase tracking-wider">Fat</p>
-              <p className="text-lg font-black mt-1">{Math.round(totals.fat)}g</p>
-            </div>
+          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+            {[
+              { label: 'Cal', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
+              { label: 'Protein', value: totals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
+              { label: 'Carbs', value: totals.carbs, goal: goalCarbs, color: '#bd5db8', unit: 'g' },
+              { label: 'Fat', value: totals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
+            ].map((m, i) => (
+              <div key={m.label} className={`flex-1 min-w-0 ${i > 0 ? 'border-l border-white/10 pl-4' : ''}`}>
+                <p className="text-[10px] font-semibold text-[#c2c6d0]/70 uppercase tracking-wider truncate">{m.label}</p>
+                <p className="text-sm font-black mt-0.5 truncate" style={{ color: m.color }}>
+                  {Math.round(m.value)}{m.unit}
+                  <span className="text-[#c2c6d0]/50 font-semibold"> / {Math.round(m.goal)}{m.unit}</span>
+                </p>
+                <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.min((m.value / Math.max(m.goal, 1)) * 100, 100)}%`, backgroundColor: m.color }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
