@@ -1192,7 +1192,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[134px] px-5 max-w-2xl mx-auto pb-[130px]">
+      <main className="pt-[134px] px-5 max-w-6xl mx-auto pb-[130px]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
             A slim single-row strip (value against target + a thin progress bar per
@@ -1226,7 +1226,8 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="space-y-6">
             {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 space-y-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+            <div className="rounded-2xl p-5 lg:p-8 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 lg:grid lg:grid-cols-[360px_1fr] lg:gap-10 lg:items-start">
+              <div className="space-y-4 lg:sticky lg:top-[150px] lg:self-start">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
@@ -1471,7 +1472,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+              </div>
 
+              <div className="space-y-4 lg:space-y-6">
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
@@ -1651,6 +1654,7 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
+              </div>
             </div>
           </div>
         ) : (
