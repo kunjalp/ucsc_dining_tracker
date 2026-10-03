@@ -172,42 +172,10 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 // light-blue accent streak, echoing the highlight patches on the real
 // logo's gold band. Positioned/rotated entirely by the parent <g>'s
 // transform, so this just draws the shape centered on its own origin.
-// The slug's body/slide profile: stays put on the path, no rotation of its
-// own. Only the head (eyes + antennae) idles independently, below.
-function SlugBody() {
-  return (
-    <>
-      <path
-        d="M -16 0 C -16 -7 -6 -10 4 -9 C 12 -8.3 16 -4 16 0 C 16 4.5 10 8 0 8 C -9 8 -16 5.5 -16 0 Z"
-        fill="#d6b93a"
-        stroke="#0b1326"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M -2 -8.3 C 4 -8.6 10 -6.5 14 -2.5"
-        fill="none"
-        stroke="#a1c9ff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        opacity="0.85"
-      />
-      <path
-        d="M -10 6.5 C -4 8 4 7.6 10 5.5"
-        fill="none"
-        stroke="#a1c9ff"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        opacity="0.55"
-      />
-    </>
-  )
-}
-
-// The head (eye + antennae), drawn in coordinates relative to its own pivot
-// (the point where it joins the body) so the parent <g> can rotate it about
-// that point with a plain CSS transform. Idles continuously between +70 and
-// -70 degrees via the `animate-head-idle` keyframes, independent of the
-// body's position on the wave.
+// Just the head now (eye + antennae) — the body was dropped so the track
+// reads as a cleaner, more abstract glowing trail with Sammy's head riding
+// it, rather than a literal little creature. Drawn relative to its own
+// pivot (0, 0) so the parent <g> can rotate it in place.
 function SlugHead() {
   return (
     <>
@@ -1160,6 +1128,15 @@ export default function DashboardPage() {
                       side profile rides the wave itself, rocking between +70 and
                       -70 degrees in step with the wave's own rise and fall. */}
                   <svg viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible' }}>
+                    <defs>
+                      {/* Soft neon fade at the leading edge of the completed
+                          portion, where the glowing stroke gives way to the
+                          plain unlit track. */}
+                      <radialGradient id="dayTrackEdgeGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#a1c9ff" stopOpacity="0.85" />
+                        <stop offset="100%" stopColor="#a1c9ff" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
                     <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
                     <path
                       d={DAY_TRACK_PATH}
@@ -1197,27 +1174,20 @@ export default function DashboardPage() {
                       const t = dayTrack.markerPct / 100
                       const [mx, my] = wavePoint(t)
                       return (
-                        <g
-                          style={{
-                            transition: 'transform 1000ms linear',
-                            filter:
-                              'drop-shadow(0 0 3px rgba(161,201,255,0.85)) drop-shadow(0 0 6px rgba(161,201,255,0.45))',
-                          }}
-                          transform={`translate(${mx} ${my})`}
-                        >
-                          {/* Stationary body/slide profile — holds its position on
-                              the path without rotating itself. */}
-                          <SlugBody />
-                          {/* The head pivots at the point where it joins the body
-                              (-14, -2) and idles continuously between +70 and -70
-                              degrees, independent of the body underneath it. */}
-                          <g transform="translate(-14 -2)">
+                        <g style={{ transition: 'transform 1000ms linear' }} transform={`translate(${mx} ${my})`}>
+                          {/* Soft gradient fade marking the edge of the completed
+                              (neon) portion of the track, right where the head
+                              currently sits. */}
+                          <circle cx={0} cy={0} r={11} fill="url(#dayTrackEdgeGlow)" />
+                          {/* Just the head now — no body/slide profile. Mirrored
+                              across the y-axis from its original orientation, and
+                              idling continuously between +70 and -70 degrees,
+                              independent of the track position underneath it. */}
+                          <g
+                            transform="scale(-1, 1)"
+                            style={{ filter: 'drop-shadow(0 0 3px rgba(161,201,255,0.9)) drop-shadow(0 0 6px rgba(161,201,255,0.5))' }}
+                          >
                             <g>
-                              {/* Idles continuously between +70 and -70 degrees,
-                                  rotating around the pivot (the local origin here,
-                                  since the parent <g> above is already translated
-                                  to the head's attachment point) — independent of
-                                  the body's position/motion on the wave. */}
                               <animateTransform
                                 attributeName="transform"
                                 type="rotate"
