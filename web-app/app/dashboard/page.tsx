@@ -1183,12 +1183,12 @@ export default function DashboardPage() {
                   cafes/markets with a single period (e.g. "Menu", "ALL") skip straight
                   to the items instead of showing a single, un-clickable-feeling tab. */}
               {availableMealTypes.length > 1 && showMenuSection && (
-                <div className="flex bg-[#171f33] p-2 rounded-xl gap-1">
+                <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                   {availableMealTypes.map(meal => (
                     <button
                       key={meal}
                       onClick={() => setSelectedMeal(meal)}
-                      className={`flex-1 px-2 py-2.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedMeal === meal
+                      className={`flex-1 px-2 py-1.5 text-[11px] font-semibold rounded-lg transition-all whitespace-nowrap ${selectedMeal === meal
                         ? 'bg-[#d6b93a] text-[#6b5300] shadow-md shadow-[#d6b93a]/20'
                         : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                         }`}
