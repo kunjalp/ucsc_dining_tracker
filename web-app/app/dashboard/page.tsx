@@ -558,14 +558,11 @@ export default function DashboardPage() {
     }
   }, [selectedHall, mealCountdown])
 
-  // Show scrollbar on Log Menu, hide it on Progress
+  // Hide the scrollbar everywhere — a visible one is a tell that this is a
+  // web page rather than a native app.
   useEffect(() => {
-    if (activeTab === 'progress') {
-      document.body.classList.add('hide-scrollbar')
-    } else {
-      document.body.classList.remove('hide-scrollbar')
-    }
-  }, [activeTab])
+    document.body.classList.add('hide-scrollbar')
+  }, [])
 
   // Reset filters when location or meal type changes
   useEffect(() => {
@@ -1150,12 +1147,12 @@ export default function DashboardPage() {
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
       {/* TopAppBar */}
-      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-4 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
             alt="Sammy's Palate"
-            className="h-11 w-11 object-contain shrink-0"
+            className="h-9 w-9 object-contain shrink-0"
           />
 
           {/* Stacked container */}
@@ -1186,7 +1183,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[150px] px-5 max-w-[1200px] mx-auto pb-[130px]">
+      <main className="pt-[134px] px-5 max-w-[1200px] mx-auto pb-[130px]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
             A slim single-row strip (value against target + a thin progress bar per
@@ -1221,7 +1218,6 @@ export default function DashboardPage() {
           <div className="space-y-6">
             {/* Hall + meal selector */}
             <div className="rounded-2xl p-5 space-y-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
-              <h2 className="text-lg font-bold tracking-tight">Select Dining Location</h2>
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
@@ -1471,7 +1467,6 @@ export default function DashboardPage() {
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
-                    <p className="text-[11px] font-bold text-[#c2c6d0]">Search & Station Filters</p>
                     <div className="relative w-full">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
                       <input
@@ -1549,7 +1544,7 @@ export default function DashboardPage() {
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
                         <div key={parent} className="space-y-3">
                           <div className="flex items-center">
-                            <span className="text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
+                            <span className="text-sm font-black tracking-wide text-[#a1c9ff] uppercase">
                               {cleanStationName(parent)}
                             </span>
                             <div className="flex-1 h-px bg-white/10 ml-4" />
@@ -1574,21 +1569,21 @@ export default function DashboardPage() {
                                       <div>
                                         <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
                                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                                          Serving Size: {food.portion || '1 serving'}
+                                          {food.portion || '1 serving'}
                                         </p>
                                         <div className="flex gap-3 mt-1.5 text-xs font-semibold">
-                                          <span className="text-[#d8b61c]">Cals: {food.calories}</span>
-                                          <span className="text-[#5bb448]">P: {food.protein}g</span>
-                                          <span className="text-[#bd5db8]">C: {food.carbs}g</span>
-                                          <span className="text-[#fb7185]">F: {food.fat}g</span>
+                                          <span className="text-[#d8b61c]">Cals: {Math.round(food.calories)}</span>
+                                          <span className="text-[#5bb448]">P: {Math.round(food.protein)}g</span>
+                                          <span className="text-[#bd5db8]">C: {Math.round(food.carbs)}g</span>
+                                          <span className="text-[#fb7185]">F: {Math.round(food.fat)}g</span>
                                         </div>
                                       </div>
 
                                       <div className="flex items-center justify-between w-full gap-3">
                                         <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                                           {[
-                                            { label: '1/4x', value: 0.25 },
-                                            { label: '1/2x', value: 0.5 },
+                                            { label: '0.25x', value: 0.25 },
+                                            { label: '0.5x', value: 0.5 },
                                             { label: '1x', value: 1.0 },
                                             { label: '1.5x', value: 1.5 },
                                             { label: '2x', value: 2 }
@@ -1646,7 +1641,7 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
-                    {showCalendar ? 'Past Rings Calendar' : "Today's Progress Breakdown"}
+                    {showCalendar ? 'Past Rings Calendar' : 'Today'}
                   </h2>
                   <p
                     className={
@@ -1804,7 +1799,7 @@ export default function DashboardPage() {
                       <div>
                         <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                          {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings}x serving(s)
+                          {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings} serving{log.servings !== 1 ? 's' : ''}
                         </p>
                         <div className="flex gap-2 mt-1 text-xs text-[#c2c6d0]">
                           <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
@@ -1817,7 +1812,8 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handleDeleteLog(log.id)}
                         disabled={!!justDeleted[log.id]}
-                        className={`flex min-w-[76px] items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
+                        aria-label="Delete this log entry"
+                        className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
                             ? 'bg-[#ffb4ab] text-[#5c1a13]'
                             : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
                           }`}
@@ -1825,10 +1821,7 @@ export default function DashboardPage() {
                         {justDeleted[log.id] ? (
                           <Check size={14} strokeWidth={3} className="animate-check-pop" />
                         ) : (
-                          <>
-                            <Trash2 size={12} />
-                            Delete
-                          </>
+                          <Trash2 size={14} />
                         )}
                       </button>
                     </div>
