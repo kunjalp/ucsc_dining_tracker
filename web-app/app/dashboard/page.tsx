@@ -621,12 +621,19 @@ export default function DashboardPage() {
   useEffect(() => {
     const syncMealTypes = async () => {
       const types = await fetchMealTypesForHall(selectedHall, selectedDayOffset)
-      if (types.length > 0 && !types.includes(selectedMeal)) {
+      // 'Brunch' is a display-only grouping (the hardcoded weekend day-track
+      // shows one combined segment) — the real scraped data never has a
+      // literal 'Brunch' meal_type, only 'Breakfast'/'Lunch', so check those
+      // instead of the display label when deciding if a selection is covered.
+      const isAvailable = (label: string | null) =>
+        !label ? false : label === 'Brunch' ? (types.includes('Breakfast') || types.includes('Lunch')) : types.includes(label)
+      if (types.length > 0 && !isAvailable(selectedMeal)) {
         // Prefer whichever period is live right now (today only) over just
         // falling back to the first tab, so switching to a hall you haven't
         // viewed yet still opens on "now" instead of always Breakfast.
         const current = selectedDayOffset === 0 ? getCurrentMealPeriodLabel(selectedHall) : null
-        setSelectedMeal(current && types.includes(current) ? current : types[0])
+        const trackDefault = dayTrack?.segments[0]?.label ?? types[0]
+        setSelectedMeal(current && isAvailable(current) ? current : trackDefault)
       }
     }
     syncMealTypes()
@@ -718,7 +725,11 @@ export default function DashboardPage() {
 
     const dateStr = getDateStrForOffset(selectedDayOffset)
 
-    const { data, error } = await supabase
+    // 'Brunch' is a display-only grouping used by the hardcoded day-track
+    // schedule for weekend hours — the real scraped data still stores
+    // weekend items under the literal 'Breakfast'/'Lunch' meal_type values,
+    // never 'Brunch' itself, so that one selection has to match both.
+    let menuQuery = supabase
       .from('daily_menus')
       .select(`
         food_item_id, dining_hall, meal_type, station,
@@ -728,7 +739,12 @@ export default function DashboardPage() {
       `)
       .eq('date', dateStr)
       .eq('dining_hall', selectedHall)
-      .eq('meal_type', selectedMeal)
+
+    menuQuery = selectedMeal === 'Brunch'
+      ? menuQuery.in('meal_type', ['Breakfast', 'Lunch'])
+      : menuQuery.eq('meal_type', selectedMeal)
+
+    const { data, error } = await menuQuery
 
     if (!error && data) {
       setMenu(data as unknown as MenuEntry[])
