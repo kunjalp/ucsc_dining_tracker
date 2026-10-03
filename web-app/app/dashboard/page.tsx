@@ -21,6 +21,7 @@ import {
   User,
   Trash2,
   Check,
+  Plus,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -351,6 +352,10 @@ export default function DashboardPage() {
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
   const [servings, setServings] = useState<{ [key: string]: number }>({})
+  // Portion picker is collapsed by default on every food row — tapping the
+  // + button reveals the 1/4x..2x pills (and the actual Log button) for that
+  // one item only, instead of showing all five pills on every row all the time.
+  const [expandedFoodId, setExpandedFoodId] = useState<string | null>(null)
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
@@ -1532,65 +1537,76 @@ export default function DashboardPage() {
                                 {entries.map((entry) => {
                                   const food = entry.food_items
                                   if (!food) return null
+                                  const isExpanded = expandedFoodId === food.recipe_id
                                   return (
-                                    <article
-                                      key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
-                                    >
-                                      <div>
-                                        <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
-                                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                                          Serving Size: {food.portion || '1 serving'}
-                                        </p>
-                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold">
-                                          <span className="text-[#d8b61c]">Cals: {food.calories}</span>
-                                          <span className="text-[#5bb448]">P: {food.protein}g</span>
-                                          <span className="text-[#bd5db8]">C: {food.carbs}g</span>
-                                          <span className="text-[#fb7185]">F: {food.fat}g</span>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center justify-between w-full gap-3">
-                                        <div className="flex bg-[#171f33] p-1 rounded-xl gap-1">
-                                          {[
-                                            { label: '1/4x', value: 0.25 },
-                                            { label: '1/2x', value: 0.5 },
-                                            { label: '1x', value: 1.0 },
-                                            { label: '1.5x', value: 1.5 },
-                                            { label: '2x', value: 2 }
-                                          ].map((opt) => {
-                                            const currentVal = servings[food.recipe_id] ?? 1.0
-                                            const isSelected = currentVal === opt.value
-                                            return (
-                                              <button
-                                                key={opt.label}
-                                                type="button"
-                                                onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${isSelected
-                                                  ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
-                                                  : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                                  }`}
-                                              >
-                                                {opt.label}
-                                              </button>
-                                            )
-                                          })}
+                                    <article key={food.recipe_id} className="-mx-3 px-3">
+                                      <div className="py-3 flex items-center justify-between gap-3 rounded-xl hover:bg-white/5 transition-colors">
+                                        <div className="min-w-0 flex-1">
+                                          <h4 className="font-bold text-[#dae2fd] truncate">{food.name}</h4>
+                                          <p className="text-xs text-[#c2c6d0]/70 mt-0.5 truncate">
+                                            {food.portion || '1 serving'} · {Math.round(food.calories)} kcal · {Math.round(food.protein)}P {Math.round(food.carbs)}C {Math.round(food.fat)}F
+                                          </p>
                                         </div>
                                         <button
-                                          onClick={() => handleLogFood(food.recipe_id)}
+                                          type="button"
+                                          onClick={() => setExpandedFoodId(isExpanded ? null : food.recipe_id)}
                                           disabled={!!justLogged[food.recipe_id]}
-                                          className={`flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                            ? 'bg-[#5bb448] text-white shadow-[#5bb448]/25'
-                                            : 'bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105'
+                                          aria-label={isExpanded ? 'Hide portion picker' : 'Add this item'}
+                                          className={`shrink-0 flex items-center justify-center w-9 h-9 rounded-full font-bold transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
+                                            ? 'bg-[#5bb448] text-white'
+                                            : isExpanded
+                                              ? 'bg-white/10 text-[#dae2fd] rotate-45'
+                                              : 'bg-[#d6b93a] text-[#6b5300] hover:brightness-105'
                                             }`}
                                         >
                                           {justLogged[food.recipe_id] ? (
-                                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
+                                            <Check size={16} strokeWidth={3} className="animate-check-pop" />
                                           ) : (
-                                            'Log'
+                                            <Plus size={18} strokeWidth={2.5} />
                                           )}
                                         </button>
                                       </div>
+
+                                      {/* Portion picker + the actual Log confirm — collapsed until the
+                                          + button above is tapped, instead of showing on every row always. */}
+                                      {isExpanded && (
+                                        <div className="pb-3 flex items-center justify-between gap-3">
+                                          <div className="flex bg-[#171f33] p-1 rounded-xl gap-1">
+                                            {[
+                                              { label: '1/4x', value: 0.25 },
+                                              { label: '1/2x', value: 0.5 },
+                                              { label: '1x', value: 1.0 },
+                                              { label: '1.5x', value: 1.5 },
+                                              { label: '2x', value: 2 }
+                                            ].map((opt) => {
+                                              const currentVal = servings[food.recipe_id] ?? 1.0
+                                              const isSelected = currentVal === opt.value
+                                              return (
+                                                <button
+                                                  key={opt.label}
+                                                  type="button"
+                                                  onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
+                                                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${isSelected
+                                                    ? 'bg-[#d6b93a] text-[#6b5300] shadow-sm'
+                                                    : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+                                                    }`}
+                                                >
+                                                  {opt.label}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          <button
+                                            onClick={() => {
+                                              handleLogFood(food.recipe_id)
+                                              setExpandedFoodId(null)
+                                            }}
+                                            className="flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105"
+                                          >
+                                            Log
+                                          </button>
+                                        </div>
+                                      )}
                                     </article>
                                   )
                                 })}
