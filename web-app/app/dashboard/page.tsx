@@ -747,7 +747,21 @@ export default function DashboardPage() {
     const { data, error } = await menuQuery
 
     if (!error && data) {
-      setMenu(data as unknown as MenuEntry[])
+      const rows = data as unknown as MenuEntry[]
+      // The 'Brunch' merge above (and possibly the source data itself) can
+      // return the exact same item twice — e.g. the same side dish tagged
+      // under both the 'Breakfast' and 'Lunch' rows for the day. De-dupe by
+      // the pairing that actually defines "the same item shown twice": the
+      // food itself at a given station, regardless of which literal
+      // meal_type row it came from.
+      const seen = new Set<string>()
+      const deduped = rows.filter((entry) => {
+        const key = `${entry.food_item_id}|${entry.station}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setMenu(deduped)
     }
     setLoading(false)
   }
@@ -858,6 +872,16 @@ export default function DashboardPage() {
     return menu.filter((entry) => {
       const food = entry.food_items
       if (!food) return false
+
+      // Skip items with no real nutrition data (0 cal, 0P, 0C, 0F across the
+      // board) — these are usually placeholder/condiment rows the site never
+      // filled in, not something anyone is actually tracking macros for.
+      const hasNutrition =
+        (food.calories ?? 0) !== 0 ||
+        (food.protein ?? 0) !== 0 ||
+        (food.carbs ?? 0) !== 0 ||
+        (food.fat ?? 0) !== 0
+      if (!hasNutrition) return false
 
       const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStation =
