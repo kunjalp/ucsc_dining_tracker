@@ -1120,13 +1120,14 @@ export default function DashboardPage() {
                 <div className="space-y-1.5 pt-1 pb-1">
                   {/* A rippling wave instead of a straight slider or a single arc —
                       echoes a slug's actual undulating crawl. Elapsed time is a
-                      glowing gold stroke drawn up to "now" using the path's own
-                      declared length (pathLength=100), so the dash math lines up
-                      directly with dayTrack.markerPct with no arc-length calculation
-                      needed; a light-blue dashed accent rides on top of it, echoing
-                      the highlight patches on the real logo's gold band. Sammy's
-                      side profile rides the wave itself, rocking between +70 and
-                      -70 degrees in step with the wave's own rise and fall. */}
+                      neon gold stroke with a glowing blue outline traced on both
+                      edges, drawn up to "now" using the path's own declared length
+                      (pathLength=100), so the dash math lines up directly with
+                      dayTrack.markerPct with no arc-length calculation needed —
+                      both strokes use a single dash spanning the whole path, so
+                      the reveal (and the blue outline) stop exactly at "now" and
+                      never bleed into the untraveled portion. Sammy's head rides
+                      the wave, idling between +70 and -70 degrees. */}
                   <svg viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible' }}>
                     <defs>
                       {/* Soft neon fade at the leading edge of the completed
@@ -1138,33 +1139,36 @@ export default function DashboardPage() {
                       </radialGradient>
                     </defs>
                     <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
+                    {/* Blue neon outline — wider than the gold fill and drawn
+                        underneath it, so a glowing blue edge shows on both sides
+                        of the gold. Revealed with the same single-dash-the-length-
+                        of-the-path trick as the gold stroke (not a repeating dash
+                        pattern), so it's strictly confined to the completed portion. */}
+                    <path
+                      d={DAY_TRACK_PATH}
+                      fill="none"
+                      stroke="#5ec4ff"
+                      strokeOpacity="1"
+                      strokeWidth="11"
+                      strokeLinecap="round"
+                      pathLength={100}
+                      strokeDasharray={100}
+                      strokeDashoffset={100 - dayTrack.markerPct}
+                      style={{ filter: 'drop-shadow(0 0 3px rgba(94,196,255,0.95)) drop-shadow(0 0 9px rgba(94,196,255,0.7))' }}
+                      className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+                    />
                     <path
                       d={DAY_TRACK_PATH}
                       fill="none"
                       stroke="#d6b93a"
-                      strokeOpacity="0.75"
+                      strokeOpacity="1"
                       strokeWidth="6"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
+                      style={{ filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.85))' }}
                       className="animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear"
-                    />
-                    {/* Blue glow accent strictly on the elapsed portion of the
-                        path (same dash-offset trick as the gold glow below it),
-                        echoing the logo's blue highlight patches on its gold band. */}
-                    <path
-                      d={DAY_TRACK_PATH}
-                      fill="none"
-                      stroke="#a1c9ff"
-                      strokeOpacity="0.9"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      pathLength={100}
-                      strokeDasharray="6 14"
-                      strokeDashoffset={100 - dayTrack.markerPct}
-                      style={{ filter: 'drop-shadow(0 0 2px rgba(161,201,255,0.8))' }}
-                      className="transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
@@ -1178,13 +1182,14 @@ export default function DashboardPage() {
                           {/* Soft gradient fade marking the edge of the completed
                               (neon) portion of the track, right where the head
                               currently sits. */}
-                          <circle cx={0} cy={0} r={11} fill="url(#dayTrackEdgeGlow)" />
+                          <circle cx={0} cy={0} r={15} fill="url(#dayTrackEdgeGlow)" />
                           {/* Just the head now — no body/slide profile. Mirrored
-                              across the y-axis from its original orientation, and
-                              idling continuously between +70 and -70 degrees,
-                              independent of the track position underneath it. */}
+                              across the y-axis from its original orientation and
+                              scaled up for visibility, idling continuously between
+                              +70 and -70 degrees, independent of the track position
+                              underneath it. */}
                           <g
-                            transform="scale(-1, 1)"
+                            transform="scale(-1.6, 1.6)"
                             style={{ filter: 'drop-shadow(0 0 3px rgba(161,201,255,0.9)) drop-shadow(0 0 6px rgba(161,201,255,0.5))' }}
                           >
                             <g>
