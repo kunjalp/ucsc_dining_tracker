@@ -426,12 +426,17 @@ export default function DashboardPage() {
   const [trackDragPct, setTrackDragPct] = useState<number | null>(null)
   const trackDragPctRef = useRef<number | null>(null)
   const dayTrackSvgRef = useRef<SVGSVGElement | null>(null)
+  // The zone (segment index) the drag is currently over, so we can fire a
+  // haptic exactly when it crosses into a new one — a "detent" tap as it
+  // locks into each zone in turn, not just once at the very end.
+  const dragSegmentIndexRef = useRef<number | null>(null)
 
   const handleTrackPointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
     if (!dayTrackSvgRef.current) return
     e.preventDefault()
     const pct = dayTrackPctFromClientX(dayTrackSvgRef.current, e.clientX)
     trackDragPctRef.current = pct
+    dragSegmentIndexRef.current = dayTrack ? dayTrackSegmentIndexForPct(dayTrack, pct) : null
     setTrackDragPct(pct)
   }
 
@@ -439,10 +444,15 @@ export default function DashboardPage() {
     if (trackDragPct === null) return
 
     const handleMove = (e: PointerEvent) => {
-      if (!dayTrackSvgRef.current) return
+      if (!dayTrackSvgRef.current || !dayTrack) return
       const pct = dayTrackPctFromClientX(dayTrackSvgRef.current, e.clientX)
       trackDragPctRef.current = pct
       setTrackDragPct(pct)
+      const zoneIndex = dayTrackSegmentIndexForPct(dayTrack, pct)
+      if (zoneIndex !== dragSegmentIndexRef.current) {
+        dragSegmentIndexRef.current = zoneIndex
+        Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      }
     }
 
     const handleUp = () => {
