@@ -1205,7 +1205,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 border border-white/10">
+              <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -1551,7 +1551,7 @@ export default function DashboardPage() {
                                       </div>
 
                                       <div className="flex items-center justify-between w-full gap-3">
-                                        <div className="flex bg-[#171f33] p-1 rounded-xl gap-1 border border-white/10">
+                                        <div className="flex bg-[#171f33] p-1 rounded-xl gap-1">
                                           {[
                                             { label: '1/4x', value: 0.25 },
                                             { label: '1/2x', value: 0.5 },
