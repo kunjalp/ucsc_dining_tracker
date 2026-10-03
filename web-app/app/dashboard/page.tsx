@@ -1558,7 +1558,7 @@ export default function DashboardPage() {
                           {subgroups.map(({ sub, entries }) => (
                             <div key={sub || 'none'} className="space-y-2">
                               {sub && (
-                                <p className="inline-block text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-md">
+                                <p className="inline-block text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-lg">
                                   {sub}
                                 </p>
                               )}
