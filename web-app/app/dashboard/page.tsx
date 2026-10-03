@@ -1358,7 +1358,7 @@ export default function DashboardPage() {
                                   keyTimes="0;0.5;1"
                                   calcMode="spline"
                                   keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                                  dur="4.6s"
+                                  dur="5.4s"
                                   repeatCount="indefinite"
                                 />
                                 <SlugHead />
