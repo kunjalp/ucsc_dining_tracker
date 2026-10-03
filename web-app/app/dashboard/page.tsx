@@ -1192,7 +1192,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-[134px] px-5 max-w-md mx-auto pb-[130px]">
+      <main className="pt-[134px] px-5 max-w-2xl mx-auto pb-[130px]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
             A slim single-row strip (value against target + a thin progress bar per
@@ -1598,7 +1598,7 @@ export default function DashboardPage() {
                                         </div>
                                       </div>
 
-                                      <div className="flex items-center justify-between w-full gap-3">
+                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
                                         <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
                                           {[
                                             { label: '0.25x', value: 0.25 },
