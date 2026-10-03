@@ -77,22 +77,6 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
-/* Slow continuous spin for the day track's slug marker — separate element
-   from its position wrapper so the rotation doesn't fight the translate()
-   used to center/place it. */
-@keyframes slug-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-slug-spin {
-  animation: slug-spin 16s linear infinite;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);

@@ -165,51 +165,85 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 // palette as the real logo and the rest of the app, not a generic dot.
 // x/y let it be placed as a nested <svg> inside the day track's own SVG,
 // centered on a point along the curved path.
-function SlugMarker({ size = 24, x = 0, y = 0 }: { size?: number; x?: number; y?: number }) {
+// The day track's moving marker, redrawn as a side-on "slide profile" of
+// Sammy's body — an elongated, tapered shape with tiny antennae — instead
+// of the circular shell badge, so it reads as something sliding along a
+// surface rather than a token riding a progress bar. Gold body with a
+// light-blue accent streak, echoing the highlight patches on the real
+// logo's gold band. Positioned/rotated entirely by the parent <g>'s
+// transform, so this just draws the shape centered on its own origin.
+function SlugProfile() {
   return (
-    <svg x={x} y={y} width={size} height={size} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
-      <circle cx="50" cy="50" r="44" fill="none" stroke="#a1c9ff" strokeWidth="3" />
-      <circle
-        cx="50" cy="50" r="34"
-        fill="none"
-        stroke="#d6b93a"
-        strokeWidth="18"
-        strokeDasharray="177 37"
-        transform="rotate(231 50 50)"
+    <>
+      <path
+        d="M -16 0 C -16 -7 -6 -10 4 -9 C 12 -8.3 16 -4 16 0 C 16 4.5 10 8 0 8 C -9 8 -16 5.5 -16 0 Z"
+        fill="#d6b93a"
+        stroke="#0b1326"
+        strokeWidth="1.2"
       />
-      <circle cx="50" cy="50" r="18" fill="#0b1326" />
-      <circle cx="8.7" cy="34.9" r="9" fill="#d6b93a" stroke="#0b1326" strokeWidth="2" />
-      <line x1="6" y1="28" x2="2" y2="17" stroke="#d6b93a" strokeWidth="3" strokeLinecap="round" />
-      <line x1="14" y1="28" x2="17" y2="18" stroke="#d6b93a" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="2" cy="15" r="2.5" fill="#d6b93a" />
-      <circle cx="17.5" cy="16" r="2.5" fill="#d6b93a" />
-    </svg>
+      <path
+        d="M -2 -8.3 C 4 -8.6 10 -6.5 14 -2.5"
+        fill="none"
+        stroke="#a1c9ff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+      <path
+        d="M -10 6.5 C -4 8 4 7.6 10 5.5"
+        fill="none"
+        stroke="#a1c9ff"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        opacity="0.55"
+      />
+      <circle cx="-14" cy="-2" r="3.4" fill="#d6b93a" stroke="#0b1326" strokeWidth="1" />
+      <line x1="-16" y1="-4.5" x2="-19" y2="-9.5" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="-13" y1="-5" x2="-14" y2="-10" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="-19.5" cy="-10.3" r="1.5" fill="#d6b93a" />
+      <circle cx="-14.3" cy="-10.8" r="1.5" fill="#d6b93a" />
+    </>
   )
 }
 
-// The day track's curved path — a gentle arc echoing the inner curl of
-// Sammy's shell, instead of a straight slider-style bar. A quadratic bezier
-// is enough: start, a raised control point, end. These pure helpers turn a
-// 0-1 position along it into an (x, y) point or a tangent angle (so the
-// marker can tilt to face the direction it's crawling).
+// The day track's path: a gentle, multi-ripple wave echoing a slug's actual
+// undulating crawl, instead of a single smooth arc. Horizontal position is
+// strictly linear in t (0-1 left to right), so segment widths/percentages
+// stay simple — only the vertical offset follows the wave.
 type Point = [number, number]
 
-function bezierPoint(t: number, p0: Point, p1: Point, p2: Point): Point {
-  const x = (1 - t) * (1 - t) * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0]
-  const y = (1 - t) * (1 - t) * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]
+const WAVE_X0 = 10
+const WAVE_X1 = 290
+const WAVE_BASE_Y = 32
+const WAVE_AMPLITUDE = 12
+const WAVE_CYCLES = 1.5 // how many full ripples across the track
+
+function wavePoint(t: number): Point {
+  const x = WAVE_X0 + t * (WAVE_X1 - WAVE_X0)
+  const y = WAVE_BASE_Y - WAVE_AMPLITUDE * Math.sin(2 * Math.PI * WAVE_CYCLES * t)
   return [x, y]
 }
 
-function bezierTangentAngle(t: number, p0: Point, p1: Point, p2: Point): number {
-  const dx = 2 * (1 - t) * (p1[0] - p0[0]) + 2 * t * (p2[0] - p1[0])
-  const dy = 2 * (1 - t) * (p1[1] - p0[1]) + 2 * t * (p2[1] - p1[1])
-  return (Math.atan2(dy, dx) * 180) / Math.PI
+// The marker's rock/tilt as it rides the wave — same phase as the wave's
+// actual slope (steepest where the wave is steepest, level at each crest
+// and trough), but capped at exactly +/-70 degrees rather than the much
+// steeper angle the raw geometry implies, so it reads as a deliberate
+// rocking motion rather than a spin.
+function waveRotation(t: number): number {
+  return -70 * Math.cos(2 * Math.PI * WAVE_CYCLES * t)
 }
 
-const DAY_TRACK_P0: Point = [10, 40]
-const DAY_TRACK_P1: Point = [150, 16]
-const DAY_TRACK_P2: Point = [290, 40]
-const DAY_TRACK_PATH = `M ${DAY_TRACK_P0[0]} ${DAY_TRACK_P0[1]} Q ${DAY_TRACK_P1[0]} ${DAY_TRACK_P1[1]} ${DAY_TRACK_P2[0]} ${DAY_TRACK_P2[1]}`
+function buildWavePath(samples = 60): string {
+  let d = ''
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples
+    const [x, y] = wavePoint(t)
+    d += (i === 0 ? 'M ' : 'L ') + x.toFixed(2) + ' ' + y.toFixed(2) + ' '
+  }
+  return d
+}
+
+const DAY_TRACK_PATH = buildWavePath()
 
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
@@ -1111,14 +1145,16 @@ export default function DashboardPage() {
                   crosses into the next period. */}
               {dayTrack && (
                 <div className="space-y-1.5 pt-1 pb-1">
-                  {/* A gentle arc instead of a straight slider — echoes the curl of
-                      Sammy's shell. Elapsed time is a glowing gold stroke drawn up to
-                      "now" using the path's own declared length (pathLength=100), so
-                      the dash math lines up directly with dayTrack.markerPct with no
-                      arc-length calculation needed. Sammy rides the curve itself,
-                      tilted to its tangent, with a slow independent spin layered on
-                      top — like a wheel rolling along the path. */}
-                  <svg viewBox="0 0 300 56" className="w-full" style={{ height: 52, overflow: 'visible' }}>
+                  {/* A rippling wave instead of a straight slider or a single arc —
+                      echoes a slug's actual undulating crawl. Elapsed time is a
+                      glowing gold stroke drawn up to "now" using the path's own
+                      declared length (pathLength=100), so the dash math lines up
+                      directly with dayTrack.markerPct with no arc-length calculation
+                      needed; a light-blue dashed accent rides on top of it, echoing
+                      the highlight patches on the real logo's gold band. Sammy's
+                      side profile rides the wave itself, rocking between +70 and
+                      -70 degrees in step with the wave's own rise and fall. */}
+                  <svg viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible' }}>
                     <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
                     <path
                       d={DAY_TRACK_PATH}
@@ -1132,26 +1168,33 @@ export default function DashboardPage() {
                       strokeDashoffset={100 - dayTrack.markerPct}
                       className="animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear"
                     />
+                    <path
+                      d={DAY_TRACK_PATH}
+                      fill="none"
+                      stroke="#a1c9ff"
+                      strokeOpacity="0.8"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      pathLength={100}
+                      strokeDasharray="6 14"
+                    />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
-                      const [tx, ty] = bezierPoint(pct / 100, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
+                      const [tx, ty] = wavePoint(pct / 100)
                       return <circle key={i} cx={tx} cy={ty} r="2" fill="#a1c9ff" fillOpacity="0.6" />
                     })}
                     {(() => {
                       const t = dayTrack.markerPct / 100
-                      const [mx, my] = bezierPoint(t, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
-                      const angle = bezierTangentAngle(t, DAY_TRACK_P0, DAY_TRACK_P1, DAY_TRACK_P2)
+                      const [mx, my] = wavePoint(t)
+                      const angle = waveRotation(t)
                       return (
-                        <g style={{ transition: 'transform 1000ms linear' }} transform={`translate(${mx} ${my}) rotate(${angle})`}>
-                          <g
-                            className="animate-slug-spin"
-                            style={{
-                              filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.65))',
-                              transformBox: 'fill-box',
-                              transformOrigin: 'center',
-                            }}
-                          >
-                            <SlugMarker x={-11} y={-11} size={22} />
-                          </g>
+                        <g
+                          style={{
+                            transition: 'transform 1000ms linear',
+                            filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.6))',
+                          }}
+                          transform={`translate(${mx} ${my}) rotate(${angle})`}
+                        >
+                          <SlugProfile />
                         </g>
                       )
                     })()}
