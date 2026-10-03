@@ -1270,13 +1270,13 @@ export default function DashboardPage() {
                       const [mx, my] = wavePoint(t)
                       return (
                         <g
-                          style={{ transition: trackDragPct !== null ? 'none' : 'transform 400ms ease-out' }}
+                          style={{ transition: trackDragPct !== null ? 'none' : 'transform 900ms ease-out' }}
                           transform={`translate(${mx} ${my})`}
                         >
                           {/* Soft gradient fade marking the edge of the completed
                               (neon) portion of the track, right where the head
                               currently sits. */}
-                          <circle cx={0} cy={0} r={17} fill="url(#dayTrackEdgeGlow)" />
+                          <circle cx={0} cy={0} r={20} fill="url(#dayTrackEdgeGlow)" />
                           {/* Invisible, generously-sized hit target so the head is
                               easy to grab on a touchscreen — the drawn head itself
                               is much smaller than a comfortable tap/drag target. */}
@@ -1297,7 +1297,7 @@ export default function DashboardPage() {
                               the gold/blue fill still always reflects the real time
                               of day regardless of where the head itself is parked. */}
                           <g
-                            transform="scale(-1.9, 1.9)"
+                            transform="scale(-2.2, 2.2)"
                             style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))', pointerEvents: 'none' }}
                           >
                             <g>
