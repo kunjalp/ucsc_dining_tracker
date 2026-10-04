@@ -1381,7 +1381,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-[134px] px-5 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px]">
+      <main className="pt-[104px] px-3 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
