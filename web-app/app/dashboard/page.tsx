@@ -246,6 +246,74 @@ function dayTrackSegmentIndexForPct(track: DayTrack, pct: number): number {
   return track.segments.length - 1
 }
 
+// Eases a displayed number toward a target value instead of snapping to
+// it instantly — the ring's stroke already animates on change, so the
+// number next to it should move too, or the two visually fight each other.
+function useCountUp(target: number, duration = 500) {
+  const [display, setDisplay] = useState(target)
+  const fromRef = useRef(target)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const from = fromRef.current
+    const to = target
+    if (from === to) return
+
+    const start = performance.now()
+    const tick = (now: number) => {
+      const elapsed = now - start
+      const t = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      setDisplay(from + (to - from) * eased)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        fromRef.current = to
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [target, duration])
+
+  return display
+}
+
+// One column of the live macro totals strip. Pulled out of the inline
+// .map() below because useCountUp is a hook — hooks can't be called from
+// inside an array callback, each column needs its own instance of it.
+interface MacroBarItemProps {
+  label: string
+  value: number
+  goal: number
+  color: string
+  unit: string
+  bordered: boolean
+}
+
+function MacroBarItem({ label, value, goal, color, unit, bordered }: MacroBarItemProps) {
+  const animatedValue = useCountUp(value)
+
+  return (
+    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
+      <p className="text-[10px] font-semibold text-[#c2c6d0]/70 truncate">{label}</p>
+      <p className="text-sm font-black mt-0.5 leading-tight" style={{ color }}>
+        {Math.round(animatedValue)}{unit}
+      </p>
+      <p className="text-[11px] font-semibold text-[#c2c6d0]/50 leading-tight">
+        / {Math.round(goal)}{unit}
+      </p>
+      <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min((animatedValue / Math.max(goal, 1)) * 100, 100)}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  )
+}
+
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
   value: number
@@ -264,6 +332,10 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
 
   const percentage = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
   const strokeDashoffset = circumference - (percentage / 100) * circumference
+  // The ring's own stroke keeps animating via the CSS transition below off
+  // the raw value; only the two text numbers ease toward it, so they move
+  // in sync with the stroke instead of snapping ahead of it.
+  const animatedValue = useCountUp(value)
 
   return (
     <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10">
@@ -293,7 +365,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
 
         <div className="absolute text-center">
           <span className="text-base font-black tracking-tight text-[#dae2fd]">
-            {goal > 0 ? Math.round((value / goal) * 100) : 0}%
+            {goal > 0 ? Math.round((animatedValue / goal) * 100) : 0}%
           </span>
         </div>
       </div>
@@ -301,7 +373,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
       <div className="text-center mt-2">
         <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
         <p className="text-xs text-[#c2c6d0] font-semibold mt-0.5">
-          {Math.round(value)} / {goal} {unit}
+          {Math.round(animatedValue)} / {goal} {unit}
         </p>
       </div>
     </div>
@@ -359,6 +431,17 @@ export default function DashboardPage() {
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
   const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})
+  // Swipe-to-delete on meal history rows: which row (if any) currently has its
+  // delete button revealed, and the live drag offset while a swipe is in progress.
+  // Mirrors the day-track drag pattern above (state for render, ref for the
+  // window pointer handlers to read without a stale closure).
+  const [openSwipeLogId, setOpenSwipeLogId] = useState<string | null>(null)
+  const [swipeDragOffset, setSwipeDragOffset] = useState(0)
+  const [isSwipeDragging, setIsSwipeDragging] = useState<string | null>(null)
+  const swipeDraggingRef = useRef<string | null>(null)
+  const swipeDragOffsetRef = useRef(0)
+  const swipeStartXRef = useRef(0)
+  const swipeStartOpenRef = useRef(false)
   const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
@@ -998,6 +1081,7 @@ export default function DashboardPage() {
 
 
   const handleToggleStationFilter = (station: string) => {
+    Haptics.selectionChanged().catch(() => {})
     setActiveStationFilters((prev) =>
       prev.includes(station) ? prev.filter((s) => s !== station) : [...prev, station]
     )
@@ -1109,6 +1193,56 @@ export default function DashboardPage() {
     }
   }
 
+  // Swipe-to-delete on a meal history row: dragging the row left reveals a
+  // red delete button behind it, mirroring the day-track pointer-drag pattern
+  // above. SWIPE_REVEAL_WIDTH is how far the row needs to travel to fully
+  // reveal the button; past half that, releasing snaps it open instead of shut.
+  const SWIPE_REVEAL_WIDTH = 76
+
+  const handleSwipePointerDown = (logId: string, e: React.PointerEvent<HTMLDivElement>) => {
+    swipeDraggingRef.current = logId
+    swipeStartXRef.current = e.clientX
+    swipeStartOpenRef.current = openSwipeLogId === logId
+    swipeDragOffsetRef.current = swipeStartOpenRef.current ? -SWIPE_REVEAL_WIDTH : 0
+    setIsSwipeDragging(logId)
+  }
+
+  useEffect(() => {
+    if (isSwipeDragging === null) return
+
+    const handleMove = (e: PointerEvent) => {
+      if (swipeDraggingRef.current === null) return
+      const dx = e.clientX - swipeStartXRef.current
+      const base = swipeStartOpenRef.current ? -SWIPE_REVEAL_WIDTH : 0
+      const next = Math.min(0, Math.max(-SWIPE_REVEAL_WIDTH, base + dx))
+      swipeDragOffsetRef.current = next
+      setSwipeDragOffset(next)
+    }
+
+    const handleUp = () => {
+      const logId = swipeDraggingRef.current
+      const finalOffset = swipeDragOffsetRef.current
+      if (logId !== null) {
+        const shouldOpen = finalOffset <= -SWIPE_REVEAL_WIDTH / 2
+        if (shouldOpen !== swipeStartOpenRef.current) {
+          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+        }
+        setOpenSwipeLogId(shouldOpen ? logId : null)
+      }
+      swipeDraggingRef.current = null
+      swipeDragOffsetRef.current = 0
+      setSwipeDragOffset(0)
+      setIsSwipeDragging(null)
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+  }, [isSwipeDragging])
+
   // 8. Delete a logged meal
   const handleDeleteLog = async (logId: string) => {
     const { error } = await supabase
@@ -1125,6 +1259,9 @@ export default function DashboardPage() {
       // Show the checkmark briefly before the row actually disappears,
       // same pattern as the Log button's confirmation.
       setJustDeleted(prev => ({ ...prev, [logId]: true }))
+      // Deleting a swiped-open row should close it rather than leave the
+      // delete button exposed under a row that's about to vanish.
+      setOpenSwipeLogId(prev => (prev === logId ? null : prev))
       setTimeout(() => {
         fetchTodayTotals()
         if (showCalendar) fetchHistoricalLogs() // Also sync up calendar dynamically
@@ -1260,21 +1397,7 @@ export default function DashboardPage() {
               { label: 'Carbs', value: totals.carbs, goal: goalCarbs, color: '#bd5db8', unit: 'g' },
               { label: 'Fat', value: totals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
             ].map((m, i) => (
-              <div key={m.label} className={`flex-1 min-w-0 ${i > 0 ? 'border-l border-white/10 pl-4' : ''}`}>
-                <p className="text-[10px] font-semibold text-[#c2c6d0]/70 truncate">{m.label}</p>
-                <p className="text-sm font-black mt-0.5 leading-tight" style={{ color: m.color }}>
-                  {Math.round(m.value)}{m.unit}
-                </p>
-                <p className="text-[11px] font-semibold text-[#c2c6d0]/50 leading-tight">
-                  / {Math.round(m.goal)}{m.unit}
-                </p>
-                <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min((m.value / Math.max(m.goal, 1)) * 100, 100)}%`, backgroundColor: m.color }}
-                  />
-                </div>
-              </div>
+              <MacroBarItem key={m.label} label={m.label} value={m.value} goal={m.goal} color={m.color} unit={m.unit} bordered={i > 0} />
             ))}
           </div>
         )}
@@ -1286,7 +1409,10 @@ export default function DashboardPage() {
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
-                  onChange={(e) => setSelectedHall(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedHall(e.target.value)
+                    Haptics.selectionChanged().catch(() => {})
+                  }}
                   className="flex-1 rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 >
                   <optgroup label="Dining Halls">
@@ -1305,8 +1431,11 @@ export default function DashboardPage() {
                   <button
                     key={offset}
                     type="button"
-                    onClick={() => setSelectedDayOffset(offset)}
-                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${selectedDayOffset === offset
+                    onClick={() => {
+                      setSelectedDayOffset(offset)
+                      Haptics.selectionChanged().catch(() => {})
+                    }}
+                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
                       ? 'bg-[#d6b93a]/15 text-[#d6b93a] border border-[#d6b93a]/40'
                       : 'text-[#c2c6d0] hover:text-[#dae2fd] border border-transparent'
                       }`}
@@ -1508,7 +1637,7 @@ export default function DashboardPage() {
                           setSelectedMeal(seg.label)
                           Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
                         }}
-                        className={`text-center py-1 text-[9px] font-bold transition-colors duration-500 ${
+                        className={`text-center py-1 text-[9px] font-bold transition-colors duration-500 active:scale-90 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
                         }`}
                       >
@@ -1546,7 +1675,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={() => setSearchQuery('')}
                           aria-label="Clear search"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c2c6d0] hover:text-[#dae2fd] transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c2c6d0] hover:text-[#dae2fd] transition-colors active:scale-90"
                         >
                           <X size={16} />
                         </button>
@@ -1566,7 +1695,7 @@ export default function DashboardPage() {
                               key={station}
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
-                              className={`px-3 py-1.5 rounded-full border transition flex flex-col items-center leading-tight ${isActive
+                              className={`px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
                                 ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                                 : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                                 }`}
@@ -1607,7 +1736,21 @@ export default function DashboardPage() {
                   </h2>
 
                   {loading ? (
-                    <div className="py-12 text-center text-[#c2c6d0] font-medium">Loading items...</div>
+                    <div className="space-y-1">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="py-4 flex items-center justify-between gap-4 animate-pulse"
+                          style={{ animationDelay: `${i * 120}ms` }}
+                        >
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
+                            <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
+                          </div>
+                          <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
                   ) : Object.keys(groupedMenu).length === 0 ? (
                     <div className="py-12 text-center text-[#c2c6d0] font-medium">
                       {menu.length === 0
@@ -1633,13 +1776,14 @@ export default function DashboardPage() {
                                 </p>
                               )}
                               <div className="divide-y divide-white/10">
-                                {entries.map((entry) => {
+                                {entries.map((entry, entryIndex) => {
                                   const food = entry.food_items
                                   if (!food) return null
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors"
+                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
+                                      style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
                                       <div>
                                         <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
@@ -1670,7 +1814,7 @@ export default function DashboardPage() {
                                                 key={opt.label}
                                                 type="button"
                                                 onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${isSelected
+                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-90 ${isSelected
                                                   ? 'bg-[#d6b93a]/15 text-[#d6b93a]'
                                                   : 'text-[#c2c6d0] hover:text-[#dae2fd]'
                                                   }`}
@@ -1736,7 +1880,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition border ${showCalendar
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 border ${showCalendar
                       ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                       : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
                       }`}
@@ -1748,7 +1892,7 @@ export default function DashboardPage() {
                   {/* Set Targets button now opens the SetTargetsModal */}
                   <button
                     onClick={() => setIsTargetsModalOpen(true)}
-                    className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition border border-gray-700"
+                    className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition active:scale-95 border border-gray-700"
                   >
                     Set Targets
                   </button>
@@ -1775,7 +1919,7 @@ export default function DashboardPage() {
                         key={macro.key}
                         type="button"
                         onClick={() => setCalendarMacro(macro.key as any)}
-                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all whitespace-nowrap"
+                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all active:scale-95 whitespace-nowrap"
                         style={
                           calendarMacro === macro.key
                             ? { backgroundColor: macro.color, color: macro.text }
@@ -1792,7 +1936,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition"
+                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition active:scale-90"
                         aria-label="Previous month"
                       >
                         <ChevronLeft size={16} strokeWidth={2.5} />
@@ -1806,7 +1950,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={goToNextMonth}
                         disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label="Next month"
                       >
                         <ChevronRight size={16} strokeWidth={2.5} />
@@ -1869,38 +2013,65 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-white/10">
-                  {loggedMeals.map((log) => (
-                    <div key={log.id} className="py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
-                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                          {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings} serving{log.servings !== 1 ? 's' : ''}
-                        </p>
-                        <div className="flex gap-2 mt-1 text-xs text-[#c2c6d0]">
-                          <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
-                          <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
-                          <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
-                          <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
-                        </div>
+                  {loggedMeals.map((log) => {
+                    const swipeOffset = isSwipeDragging === log.id
+                      ? swipeDragOffset
+                      : openSwipeLogId === log.id ? -SWIPE_REVEAL_WIDTH : 0
+                    return (
+                    <div key={log.id} className="relative overflow-hidden">
+                      {/* Delete button revealed behind the row as it's swiped left */}
+                      <div className="absolute inset-y-0 right-0 flex items-center">
+                        <button
+                          onClick={() => handleDeleteLog(log.id)}
+                          disabled={!!justDeleted[log.id]}
+                          aria-label="Delete this log entry"
+                          style={{ width: SWIPE_REVEAL_WIDTH }}
+                          className="h-full flex items-center justify-center bg-[#ffb4ab] text-[#5c1a13] active:scale-95 transition-transform"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteLog(log.id)}
-                        disabled={!!justDeleted[log.id]}
-                        aria-label="Delete this log entry"
-                        className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
-                            ? 'bg-[#ffb4ab] text-[#5c1a13]'
-                            : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
-                          }`}
+                      <div
+                        onPointerDown={(e) => handleSwipePointerDown(log.id, e)}
+                        style={{
+                          transform: `translateX(${swipeOffset}px)`,
+                          transition: isSwipeDragging === log.id ? 'none' : 'transform 0.25s ease-out',
+                        }}
+                        className="relative bg-[#141b2e] py-4 flex items-center justify-between gap-4 touch-pan-y"
                       >
-                        {justDeleted[log.id] ? (
-                          <Check size={14} strokeWidth={3} className="animate-check-pop" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                      </button>
+                        <div>
+                          <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
+                          <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                            {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings} serving{log.servings !== 1 ? 's' : ''}
+                          </p>
+                          <div className="flex gap-2 mt-1 text-xs text-[#c2c6d0]">
+                            <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
+                            <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
+                            <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
+                            <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteLog(log.id)}
+                          disabled={!!justDeleted[log.id]}
+                          aria-label="Delete this log entry"
+                          className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
+                              ? 'bg-[#ffb4ab] text-[#5c1a13]'
+                              : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
+                            }`}
+                        >
+                          {justDeleted[log.id] ? (
+                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1913,8 +2084,11 @@ export default function DashboardPage() {
       <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
         <div className="max-w-md mx-auto flex justify-around">
           <button
-            onClick={() => setActiveTab('log')}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            onClick={() => {
+              setActiveTab('log')
+              Haptics.selectionChanged().catch(() => {})
+            }}
+            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all active:scale-90 ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
               }`}
           >
             <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
@@ -1922,8 +2096,11 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('progress')}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            onClick={() => {
+              setActiveTab('progress')
+              Haptics.selectionChanged().catch(() => {})
+            }}
+            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all active:scale-90 ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
               }`}
           >
             <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
@@ -1990,7 +2167,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={dismissWelcome}
-              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold"
+              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold active:scale-95 transition-transform"
             >
               Got it
             </button>

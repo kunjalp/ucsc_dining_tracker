@@ -78,6 +78,24 @@ body.hide-scrollbar::-webkit-scrollbar {
 .animate-ring-toast {
   animation: ring-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+/* Staggered entrance for menu item rows when a list first renders (hall
+   switch, day switch, station filter change) — "both" fill mode keeps
+   each row invisible until its own delayed start instead of flashing in
+   at 0% opacity for everyone first. */
+@keyframes row-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-row-in {
+  animation: row-fade-in 0.35s ease-out both;
+}
 
 /* Pulsing glow for the day track's filled (gold) portion. */
 @keyframes glow-pulse {

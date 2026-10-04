@@ -132,7 +132,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#c2c6d0] hover:text-[#dae2fd] hover:bg-white/10 transition"
+            className="p-1.5 rounded-full text-[#c2c6d0] hover:text-[#dae2fd] hover:bg-white/10 transition active:scale-90"
             aria-label="Close"
           >
             <X size={18} />
@@ -144,7 +144,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={() => setMode('recommended')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
               mode === 'recommended'
                 ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                 : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
@@ -155,7 +155,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={() => setMode('manual')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
               mode === 'manual'
                 ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
                 : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
@@ -273,14 +273,14 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 text-xs font-bold text-[#c2c6d0] bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition border border-white/10"
+            className="flex-1 text-xs font-bold text-[#c2c6d0] bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition active:scale-95 border border-white/10"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 bg-[#d6b93a] hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl transition"
+            className="flex-1 bg-[#d6b93a] hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl transition active:scale-95"
           >
             Save Targets
           </button>

@@ -297,7 +297,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       <div className="w-full max-w-sm max-h-[78vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-4 relative my-auto">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition"
+          className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition active:scale-90"
           aria-label="Close"
         >
           <X size={18} />
@@ -311,7 +311,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="relative w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group disabled:opacity-60"
+            className="relative w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
             aria-label="Change profile picture"
           >
             {avatarUrl ? (
@@ -334,7 +334,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="mt-1.5 text-xs font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition disabled:opacity-60"
+            className="mt-1.5 text-xs font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition active:scale-95 disabled:opacity-60"
           >
             {uploadingAvatar ? 'Uploading...' : 'Change photo'}
           </button>
@@ -389,7 +389,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
           >
             <LogOut size={14} />
             {signingOut ? 'Signing out...' : 'Sign out'}
@@ -399,7 +399,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition"
+              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
             >
               Cancel
             </button>
@@ -418,7 +418,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-2 text-sm font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-2 text-sm font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition active:scale-95"
             >
               <Trash2 size={14} />
               Delete account
@@ -449,7 +449,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     setDeleteConfirmText('')
                     setDeleteError(null)
                   }}
-                  className="flex-1 rounded-lg border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition"
+                  className="flex-1 rounded-lg border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
                 >
                   Cancel
                 </button>
@@ -457,7 +457,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmText !== 'DELETE' || deleting}
-                  className="flex-1 rounded-lg bg-[#ffb4ab] py-1.5 text-xs font-bold text-[#4c0519] hover:brightness-105 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-[#ffb4ab] py-1.5 text-xs font-bold text-[#4c0519] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {deleting ? 'Deleting...' : 'Delete permanently'}
                 </button>
