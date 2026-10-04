@@ -1003,6 +1003,44 @@ export default function DashboardPage() {
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
 
+  // "What fits right now" — once a hall and meal are picked, reframe the
+  // menu around what's actually left in today's goals instead of making the
+  // student scan the whole list themselves. Candidates are today's items
+  // that wouldn't blow the remaining calorie budget on their own, ranked by
+  // protein first since that's usually the harder macro to hit. Hidden once
+  // either calories or protein for the day are already met -- there's
+  // nothing meaningful left to suggest fitting in.
+  const whatFitsNow = useMemo(() => {
+    const remainingCalories = Math.max(goalCalories - totals.calories, 0)
+    const remainingProtein = Math.max(goalProtein - totals.protein, 0)
+    if (goalCalories <= 0 || remainingCalories <= 0 || remainingProtein <= 0) {
+      return { remainingCalories, remainingProtein, items: [] as FoodItem[] }
+    }
+
+    const seen = new Set<string>()
+    const candidates: FoodItem[] = []
+    menu.forEach((entry) => {
+      const food = entry.food_items
+      if (!food || seen.has(food.recipe_id)) return
+      const hasNutrition =
+        (food.calories ?? 0) !== 0 ||
+        (food.protein ?? 0) !== 0 ||
+        (food.carbs ?? 0) !== 0 ||
+        (food.fat ?? 0) !== 0
+      if (!hasNutrition) return
+      // Leave headroom: a single item shouldn't eat the whole remaining budget
+      if (food.calories > remainingCalories * 0.9) return
+      seen.add(food.recipe_id)
+      candidates.push(food)
+    })
+
+    const items = candidates
+      .sort((a, b) => b.protein - a.protein || a.calories - b.calories)
+      .slice(0, 3)
+
+    return { remainingCalories, remainingProtein, items }
+  }, [menu, totals, goalCalories, goalProtein])
+
   // 3. Filter raw items first by search input & clicked station pills
   const filteredMenu = useMemo(() => {
     return menu.filter((entry) => {
@@ -1381,7 +1419,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content */}
-      <main className="pt-[104px] px-3 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px] lg:px-5">
+      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
@@ -1722,6 +1760,37 @@ export default function DashboardPage() {
                   {selectedDayOffset === 0
                     ? `${locationLabel} is Closed`
                     : `${locationLabel} is Closed ${getDayOffsetLabel(selectedDayOffset)}`}
+                </div>
+              )}
+
+              {/* "What fits right now" — surfaces once a hall/meal is picked, reframing
+                  the menu around what's left in today's goals instead of just listing it.
+                  Tapping a suggestion searches it up in the full list below instead of
+                  logging it directly, so portion size still gets picked deliberately. */}
+              {showMenuSection && whatFitsNow.items.length > 0 && (
+                <div className="rounded-2xl p-4 space-y-3 bg-[#141b2e] border border-[#5bb448]/25">
+                  <p className="text-sm font-semibold text-[#dae2fd] leading-snug">
+                    You've got <span className="text-[#5bb448] font-bold">{Math.round(whatFitsNow.remainingProtein)}g protein</span> and{' '}
+                    <span className="text-[#d8b61c] font-bold">{Math.round(whatFitsNow.remainingCalories)} cal</span> left today — here's what works
+                  </p>
+                  <div className="divide-y divide-white/10">
+                    {whatFitsNow.items.map((food) => (
+                      <button
+                        key={food.recipe_id}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery(food.name)
+                          Haptics.selectionChanged().catch(() => {})
+                        }}
+                        className="w-full flex items-center justify-between gap-3 py-2.5 text-left active:scale-[0.98] transition-transform"
+                      >
+                        <span className="font-bold text-sm text-[#dae2fd]">{food.name}</span>
+                        <span className="shrink-0 text-xs font-semibold text-[#c2c6d0]/70">
+                          {Math.round(food.calories)} cal · {Math.round(food.protein)}g protein
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 

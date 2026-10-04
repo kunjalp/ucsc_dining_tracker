@@ -27,6 +27,14 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.app-main-top {
+  /* Clears the fixed header (its own safe-area inset + content height)
+     plus a small breathing gap, on every device -- a flat px guess here
+     (like the old pt-[104px]) ignores the notch/status-bar inset the
+     header itself adds, so content can ride up under it on those devices. */
+  padding-top: calc(env(safe-area-inset-top) + 76px);
+}
+
 html {
   overscroll-behavior: none;
   /* Scales every rem-based Tailwind text size (text-sm, text-xs, etc.) down
