@@ -19,20 +19,33 @@ interface UserProfileModalProps {
   onSave: (profile: UserProfile) => void
 }
 
-// Only options UCSC's own nutrition site actually publishes data for:
-// Vegetarian/Vegan/Gluten-Free come from the dietary icons on each item's
-// real nutrition label, Dairy-Free/Nut Allergy from that label's allergens
-// text. Halal, Kosher and Pescatarian have no icon or tag anywhere on
-// UCSC's site (e.g. "Halal Chicken" and "Kosher Salt" are just item
-// names) -- a filter for them would silently do nothing, which is worse
-// than not offering it, so they're left out rather than faked.
-const DIETARY_OPTIONS = [
-  'Vegetarian',
-  'Vegan',
-  'Gluten-Free',
-  'Dairy-Free',
-  'Nut Allergy',
+// Only options UCSC's own nutrition site actually publishes data for.
+// Two kinds, matched differently in app/dashboard/page.tsx:
+//  - DIET_TYPE_OPTIONS: a positive dietary icon on the item's real label
+//    (Vegetarian/Vegan) -- include only items carrying that icon.
+//  - ALLERGEN_OPTIONS: one of the exact allergen words UCSC lists on the
+//    label's ALLERGENS line -- exclude any item whose allergens mention
+//    it. Covers the same set the label itself marks.
+// Halal, Kosher and Pescatarian have no icon or tag anywhere on UCSC's
+// site (e.g. "Halal Chicken" and "Kosher Salt" are just item names) --
+// a filter for them would silently do nothing, which is worse than not
+// offering it, so they're left out rather than faked.
+const DIET_TYPE_OPTIONS = ['Vegetarian', 'Vegan']
+
+const ALLERGEN_OPTIONS = [
+  'Milk',
+  'Egg',
+  'Wheat',
+  'Gluten',
+  'Soy',
+  'Sesame',
+  'Peanut',
+  'Tree Nut',
+  'Fish',
+  'Shellfish',
 ]
+
+const DIETARY_OPTIONS = [...DIET_TYPE_OPTIONS, ...ALLERGEN_OPTIONS]
 
 export default function UserProfileModal({ currentProfile, onClose, onSave }: UserProfileModalProps) {
   const supabase = createClient()
@@ -400,29 +413,57 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               <ChevronDown size={16} className={`shrink-0 text-[#c2c6d0] transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {dietaryDropdownOpen && (
-              <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-[#171f33]/60 p-2.5">
-                {DIETARY_OPTIONS.map((pref) => {
-                  const selected = dietaryPreferences.includes(pref)
-                  return (
-                    <button
-                      key={pref}
-                      type="button"
-                      onClick={() => toggleDietaryPreference(pref)}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-                        selected
-                          ? 'bg-[#d6b93a] text-[#6b5300]'
-                          : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
-                      }`}
-                    >
-                      {selected && <Check size={12} />}
-                      {pref}
-                    </button>
-                  )
-                })}
+              <div className="mt-2 flex flex-col gap-2.5 rounded-xl border border-white/10 bg-[#171f33]/60 p-2.5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1.5">Diet type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DIET_TYPE_OPTIONS.map((pref) => {
+                      const selected = dietaryPreferences.includes(pref)
+                      return (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => toggleDietaryPreference(pref)}
+                        className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                          selected
+                            ? 'bg-[#d6b93a] text-[#6b5300]'
+                            : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
+                        }`}
+                      >
+                        {selected && <Check size={12} />}
+                        {pref}
+                      </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1.5">Avoid (allergens)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ALLERGEN_OPTIONS.map((pref) => {
+                      const selected = dietaryPreferences.includes(pref)
+                      return (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => toggleDietaryPreference(pref)}
+                        className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                          selected
+                            ? 'bg-[#d6b93a] text-[#6b5300]'
+                            : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
+                        }`}
+                      >
+                        {selected && <Check size={12} />}
+                        {pref}
+                      </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             )}
             <p className="text-[10px] text-[#c2c6d0]/60 mt-1">
-              The dining hall menu will filter to items matching your picks.
+              The dining hall menu will include only items matching your diet type, and hide any item whose allergens match what you're avoiding.
             </p>
           </div>
           {error && (

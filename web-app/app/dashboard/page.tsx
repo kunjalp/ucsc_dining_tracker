@@ -1010,26 +1010,41 @@ export default function DashboardPage() {
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
 
+  // Allergen avoidance: the exact words UCSC lists on each item's real
+  // ALLERGENS line (e.g. "Wheat, Soy, Gluten, Sesame, Alcohol"). Selecting
+  // one excludes any item whose allergens text mentions it. Word-boundary
+  // matched so 'Fish' never matches inside 'Shellfish'.
+  const ALLERGEN_PATTERNS: Record<string, RegExp> = {
+    Milk: /\bmilk\b|dairy/i,
+    Egg: /\beggs?\b/i,
+    Wheat: /\bwheat\b/i,
+    Gluten: /\bgluten\b/i,
+    Soy: /\bsoy\b/i,
+    Sesame: /\bsesame\b/i,
+    Peanut: /\bpeanuts?\b/i,
+    'Tree Nut': /\btree nuts?\b/i,
+    Fish: /\bfish\b/i,
+    Shellfish: /\bshellfish\b/i,
+  }
+
   // Dietary-preference matching, grounded only in real data UCSC publishes
-  // on each item's nutrition label (dietary icon list + allergens text) --
-  // never a guess from the item's name. An item that hasn't been scraped
-  // for label data yet (dietary_tags/allergens still null) fails every
-  // check rather than being assumed safe, since a false "this is
-  // dairy-free" is worse than an item temporarily missing from the list.
+  // on each item's nutrition label (dietary icon list for diet type,
+  // allergens text for allergen avoidance) -- never a guess from the
+  // item's name. An item that hasn't been scraped for label data yet
+  // (dietary_tags/allergens still null) fails every check rather than
+  // being assumed safe, since a false "this has no milk" is worse than
+  // an item temporarily missing from the list.
   const foodMatchesDietaryPreference = (food: FoodItem, pref: string): boolean => {
     switch (pref) {
       case 'Vegetarian':
         return !!food.dietary_tags?.some((t) => /vegetarian|vegan/i.test(t))
       case 'Vegan':
         return !!food.dietary_tags?.some((t) => /vegan/i.test(t))
-      case 'Gluten-Free':
-        return !!food.dietary_tags?.some((t) => /gluten/i.test(t))
-      case 'Dairy-Free':
-        return food.allergens != null && !/milk|dairy/i.test(food.allergens)
-      case 'Nut Allergy':
-        return food.allergens != null && !/\bnuts?\b|peanut/i.test(food.allergens)
-      default:
-        return true
+      default: {
+        const pattern = ALLERGEN_PATTERNS[pref]
+        if (!pattern) return true
+        return food.allergens != null && !pattern.test(food.allergens)
+      }
     }
   }
   // 3. Filter raw items first by search input & clicked station pills
