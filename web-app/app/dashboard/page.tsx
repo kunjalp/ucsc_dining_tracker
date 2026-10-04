@@ -1258,16 +1258,18 @@ export default function DashboardPage() {
         {activeTab === 'log' && (
           <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
             {[
-              { label: 'Cal', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
+              { label: 'Calories', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
               { label: 'Protein', value: totals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
               { label: 'Carbs', value: totals.carbs, goal: goalCarbs, color: '#bd5db8', unit: 'g' },
               { label: 'Fat', value: totals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
             ].map((m, i) => (
               <div key={m.label} className={`flex-1 min-w-0 ${i > 0 ? 'border-l border-white/10 pl-4' : ''}`}>
                 <p className="text-[10px] font-semibold text-[#c2c6d0]/70 truncate">{m.label}</p>
-                <p className="text-sm font-black mt-0.5 truncate" style={{ color: m.color }}>
+                <p className="text-sm font-black mt-0.5 leading-tight" style={{ color: m.color }}>
                   {Math.round(m.value)}{m.unit}
-                  <span className="text-[#c2c6d0]/50 font-semibold"> / {Math.round(m.goal)}{m.unit}</span>
+                </p>
+                <p className="text-[11px] font-semibold text-[#c2c6d0]/50 leading-tight">
+                  / {Math.round(m.goal)}{m.unit}
                 </p>
                 <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
                   <div
