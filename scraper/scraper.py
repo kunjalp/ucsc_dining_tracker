@@ -402,10 +402,15 @@ def fetch_item_label(page, hall_name: str, scrape_date: str, recnum: str) -> dic
         f"&dtdate={quote(dt_str, safe='')}"
         f"&RecNumAndPort={quote(recnum, safe='')}"
     )
+    # networkidle can hang indefinitely on this site (lingering
+    # analytics/ad requests never go quiet), which was silently failing
+    # every single label fetch. domcontentloaded + an explicit wait for
+    # the one element we actually need is far more reliable.
     try:
-        page.goto(url, wait_until="networkidle", timeout=NAV_TIMEOUT_MS)
+        page.goto(url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
+        page.wait_for_selector(".labelingredientsvalue, .labelbody", timeout=NAV_TIMEOUT_MS)
     except Exception as e:
-        print(f"      ⚠️ Label fetch failed for {recnum}: {e}")
+        print(f"      ⚠️ Label fetch failed for {recnum}: {e} (url={url})")
         return None
 
     soup = BeautifulSoup(page.content(), "html.parser")
@@ -506,7 +511,10 @@ def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None
             label = fetch_item_label(page, hall_name, scrape_date, item["recipe_id"])
             if label:
                 item.update(label)
-            KNOWN_LABEL_RECIPE_IDS.add(item["recipe_id"])
+                # Only remember it as "done" on success -- a failed fetch
+                # (timeout, selector not found) should be retried on the
+                # next scrape instead of being silently skipped forever.
+                KNOWN_LABEL_RECIPE_IDS.add(item["recipe_id"])
 
         rows = []
         for item in items:
