@@ -33,6 +33,9 @@ interface FoodItem {
   carbs: number
   sugar: number
   fat: number
+  ingredients?: string | null
+  allergens?: string | null
+  dietary_tags?: string[] | null
 }
 
 interface MenuEntry {
@@ -455,6 +458,9 @@ export default function DashboardPage() {
   const [goalFat, setGoalFat] = useState(70)
   const [ringClosedToast, setRingClosedToast] = useState<string | null>(null)
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
+  // Food detail sheet -- tapping an item's name opens it with that item's
+  // ingredients/allergens/dietary icons (closed = null).
+  const [detailFood, setDetailFood] = useState<FoodItem | null>(null)
 
   // One-time welcome card for brand-new users — shown once, ever, gated by
   // a localStorage flag, then dismissed for good once they tap "Got it."
@@ -870,7 +876,8 @@ export default function DashboardPage() {
       .select(`
         food_item_id, dining_hall, meal_type, station,
         food_items:food_item_id (
-          recipe_id, name, portion, calories, protein, carbs, sugar, fat
+          recipe_id, name, portion, calories, protein, carbs, sugar, fat,
+          ingredients, allergens, dietary_tags
         )
       `)
       .eq('date', dateStr)
@@ -1002,44 +1009,6 @@ export default function DashboardPage() {
     const unique = Array.from(new Set(stations))
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
-
-  // "What fits right now" — once a hall and meal are picked, reframe the
-  // menu around what's actually left in today's goals instead of making the
-  // student scan the whole list themselves. Candidates are today's items
-  // that wouldn't blow the remaining calorie budget on their own, ranked by
-  // protein first since that's usually the harder macro to hit. Hidden once
-  // either calories or protein for the day are already met -- there's
-  // nothing meaningful left to suggest fitting in.
-  const whatFitsNow = useMemo(() => {
-    const remainingCalories = Math.max(goalCalories - totals.calories, 0)
-    const remainingProtein = Math.max(goalProtein - totals.protein, 0)
-    if (goalCalories <= 0 || remainingCalories <= 0 || remainingProtein <= 0) {
-      return { remainingCalories, remainingProtein, items: [] as FoodItem[] }
-    }
-
-    const seen = new Set<string>()
-    const candidates: FoodItem[] = []
-    menu.forEach((entry) => {
-      const food = entry.food_items
-      if (!food || seen.has(food.recipe_id)) return
-      const hasNutrition =
-        (food.calories ?? 0) !== 0 ||
-        (food.protein ?? 0) !== 0 ||
-        (food.carbs ?? 0) !== 0 ||
-        (food.fat ?? 0) !== 0
-      if (!hasNutrition) return
-      // Leave headroom: a single item shouldn't eat the whole remaining budget
-      if (food.calories > remainingCalories * 0.9) return
-      seen.add(food.recipe_id)
-      candidates.push(food)
-    })
-
-    const items = candidates
-      .sort((a, b) => b.protein - a.protein || a.calories - b.calories)
-      .slice(0, 3)
-
-    return { remainingCalories, remainingProtein, items }
-  }, [menu, totals, goalCalories, goalProtein])
 
   // 3. Filter raw items first by search input & clicked station pills
   const filteredMenu = useMemo(() => {
@@ -1763,37 +1732,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* "What fits right now" — surfaces once a hall/meal is picked, reframing
-                  the menu around what's left in today's goals instead of just listing it.
-                  Tapping a suggestion searches it up in the full list below instead of
-                  logging it directly, so portion size still gets picked deliberately. */}
-              {showMenuSection && whatFitsNow.items.length > 0 && (
-                <div className="rounded-2xl p-4 space-y-3 bg-[#141b2e] border border-[#5bb448]/25">
-                  <p className="text-sm font-semibold text-[#dae2fd] leading-snug">
-                    You've got <span className="text-[#5bb448] font-bold">{Math.round(whatFitsNow.remainingProtein)}g protein</span> and{' '}
-                    <span className="text-[#d8b61c] font-bold">{Math.round(whatFitsNow.remainingCalories)} cal</span> left today — here's what works
-                  </p>
-                  <div className="divide-y divide-white/10">
-                    {whatFitsNow.items.map((food) => (
-                      <button
-                        key={food.recipe_id}
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery(food.name)
-                          Haptics.selectionChanged().catch(() => {})
-                        }}
-                        className="w-full flex items-center justify-between gap-3 py-2.5 text-left active:scale-[0.98] transition-transform"
-                      >
-                        <span className="font-bold text-sm text-[#dae2fd]">{food.name}</span>
-                        <span className="shrink-0 text-xs font-semibold text-[#c2c6d0]/70">
-                          {Math.round(food.calories)} cal · {Math.round(food.protein)}g protein
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Menu items — hidden when the hall is closed right now, except when it's
                   opening later today (previewing today's already-scraped menu before open) */}
               {showMenuSection && (
@@ -1854,7 +1792,16 @@ export default function DashboardPage() {
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
                                       <div>
-                                        <h4 className="font-bold text-[#dae2fd]">{food.name}</h4>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDetailFood(food)
+                                            Haptics.selectionChanged().catch(() => {})
+                                          }}
+                                          className="font-bold text-[#dae2fd] text-left underline decoration-dotted decoration-[#c2c6d0]/40 underline-offset-4 active:opacity-70"
+                                        >
+                                          {food.name}
+                                        </button>
                                         <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
                                           {food.portion || '1 serving'}
                                         </p>
@@ -2221,6 +2168,82 @@ export default function DashboardPage() {
             >
               Got it
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Food detail sheet -- tapping an item's name slides this up from the
+          bottom edge to a centered card, rather than docking as a classic
+          bottom sheet. Ingredients/allergens/dietary icons come from UCSC's
+          nutrition label page; older recipes the scraper hasn't captured a
+          label for yet just omit those sections instead of showing nothing. */}
+      {detailFood && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="food-detail-title"
+        >
+          <div
+            className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm animate-sheet-backdrop"
+            onClick={() => setDetailFood(null)}
+          />
+          <div className="relative w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd] animate-slide-up-center">
+            <button
+              type="button"
+              onClick={() => setDetailFood(null)}
+              aria-label="Close"
+              className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition active:scale-90"
+            >
+              <X size={18} />
+            </button>
+
+            <h2 id="food-detail-title" className="text-lg font-bold tracking-tight text-[#dae2fd] pr-8">
+              {detailFood.name}
+            </h2>
+            <p className="text-xs text-[#c2c6d0]/70 mt-1">{detailFood.portion || '1 serving'}</p>
+
+            <div className="flex gap-3 mt-4 text-xs font-semibold">
+              <span className="text-[#d8b61c]">Cals: {Math.round(detailFood.calories)}</span>
+              <span className="text-[#5bb448]">P: {Math.round(detailFood.protein)}g</span>
+              <span className="text-[#bd5db8]">C: {Math.round(detailFood.carbs)}g</span>
+              <span className="text-[#fb7185]">F: {Math.round(detailFood.fat)}g</span>
+            </div>
+
+            {detailFood.dietary_tags && detailFood.dietary_tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-4">
+                {detailFood.dietary_tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-[#5bb448]/15 text-[#5bb448]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {detailFood.ingredients ? (
+              <div className="mt-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#c2c6d0]/60 mb-1.5">Ingredients</p>
+                <p className="text-sm leading-relaxed text-[#c2c6d0]">{detailFood.ingredients}</p>
+              </div>
+            ) : (
+              <p className="mt-5 text-sm text-[#c2c6d0]/60 italic">
+                Ingredient list not available for this item yet.
+              </p>
+            )}
+
+            {detailFood.allergens && (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#c2c6d0]/60 mb-1.5">Allergens</p>
+                <p className="text-sm leading-relaxed text-[#fb7185]">{detailFood.allergens}</p>
+              </div>
+            )}
+
+            <p className="mt-5 text-[11px] leading-relaxed text-[#c2c6d0]/40">
+              From UCSC Dining's published nutrition label. Always confirm with staff if you have a serious allergy.
+            </p>
           </div>
         </div>
       )}

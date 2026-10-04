@@ -113,6 +113,12 @@ DINING_HALLS = [
 
 NAV_TIMEOUT_MS = 20000
 
+# recipe_ids we've already fetched a nutrition label for (ingredients,
+# allergens, dietary icons) -- populated from the DB at the top of main(),
+# then grown in place as scrape_hall() sees new recipes, so one run never
+# fetches the same item's label twice, no matter how many halls/meals share it.
+KNOWN_LABEL_RECIPE_IDS: set[str] = set()
+
 # nutrition.sa.ucsc.edu's stable per-location ID (the "locationNum" query
 # param). These don't change even though the on-page link text does (e.g.
 # "Perk Coffee Bar" becomes "Perk Coffee Bar - open 9/21" as that date
@@ -375,6 +381,47 @@ def parse_report(html: str) -> list[dict]:
 
     return results
 
+def fetch_item_label(page, hall_name: str, scrape_date: str, recnum: str) -> dict | None:
+    """Fetch one recipe's nutrition LABEL page -- a different page than the
+    report parse_report() reads, keyed by the same RecNumAndPort id we
+    already extract. This is the only place UCSC publishes a real
+    ingredient statement, allergen statement, and the dietary icon legend
+    (vegetarian/vegan/gluten-friendly/egg/etc, by each icon's alt text) --
+    none of that exists on the listing or report pages. Called once per
+    never-before-seen recipe_id (see KNOWN_LABEL_RECIPE_IDS in main()), not
+    on every scrape, since the label itself doesn't change once captured."""
+    loc_num = HALL_LOCATION_NUMS.get(hall_name)
+    if not loc_num:
+        return None
+
+    year, month, day = scrape_date.split("-")
+    dt_str = f"{int(month)}/{int(day)}/{year}"
+    url = (
+        f"{BASE_URL}label.aspx?locationNum={loc_num}"
+        f"&locationName={quote(hall_name)}"
+        f"&dtdate={quote(dt_str, safe='')}"
+        f"&RecNumAndPort={quote(recnum, safe='')}"
+    )
+    try:
+        page.goto(url, wait_until="networkidle", timeout=NAV_TIMEOUT_MS)
+    except Exception as e:
+        print(f"      ⚠️ Label fetch failed for {recnum}: {e}")
+        return None
+
+    soup = BeautifulSoup(page.content(), "html.parser")
+    ingredients_el = soup.select_one(".labelingredientsvalue")
+    allergens_el = soup.select_one(".labelallergensvalue")
+    tags = [
+        img.get("alt", "").strip()
+        for img in soup.select(".labelwebcodesvalue img")
+        if img.get("alt", "").strip()
+    ]
+    return {
+        "ingredients": ingredients_el.get_text(strip=True) if ingredients_el else None,
+        "allergens": allergens_el.get_text(strip=True) if allergens_el else None,
+        "dietary_tags": tags or None,
+    }
+
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
@@ -385,7 +432,10 @@ def upsert_food_items(items: list[dict]):
     # Only keep columns that actually exist in the food_items table — items
     # also carry a "station" field used for daily_menus, which food_items
     # doesn't have and will reject.
-    FOOD_ITEM_COLUMNS = {"recipe_id", "name", "portion", "calories", "protein", "carbs", "sugar", "fat"}
+    FOOD_ITEM_COLUMNS = {
+        "recipe_id", "name", "portion", "calories", "protein", "carbs", "sugar", "fat",
+        "ingredients", "allergens", "dietary_tags",
+    }
     cleaned = [{k: v for k, v in item.items() if k in FOOD_ITEM_COLUMNS} for item in items]
     deduped = list({item["recipe_id"]: item for item in cleaned}.values())
     supabase.table("food_items").upsert(deduped, on_conflict="recipe_id").execute()
@@ -444,6 +494,19 @@ def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None
         print(f"      🎉 Parsed {len(items)} item(s).")
         if not items:
             continue
+
+        # Fill in ingredients/allergens/dietary icons for any recipe we've
+        # never captured a label for before. One extra page load each, so
+        # this only costs anything on an item's first appearance anywhere
+        # in the whole scrape (KNOWN_LABEL_RECIPE_IDS is shared across every
+        # hall and meal in this run, and persists across days via the DB).
+        for item in items:
+            if item["recipe_id"] in KNOWN_LABEL_RECIPE_IDS:
+                continue
+            label = fetch_item_label(page, hall_name, scrape_date, item["recipe_id"])
+            if label:
+                item.update(label)
+            KNOWN_LABEL_RECIPE_IDS.add(item["recipe_id"])
 
         rows = []
         for item in items:
@@ -680,6 +743,15 @@ def upsert_hall_statuses(statuses: list[dict]):
 def main():
     print("🚀 Running UCSC Dining database update pipeline...")
     scrape_date = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+
+    global KNOWN_LABEL_RECIPE_IDS
+    try:
+        existing = supabase.table("food_items").select("recipe_id").not_.is_("ingredients", "null").execute()
+        KNOWN_LABEL_RECIPE_IDS = {row["recipe_id"] for row in existing.data}
+        print(f"   📎 {len(KNOWN_LABEL_RECIPE_IDS)} recipe(s) already have label data -- skipping those.")
+    except Exception as e:
+        print(f"   ⚠️ Could not preload known labels, will fetch all as new: {e}")
+        KNOWN_LABEL_RECIPE_IDS = set()
 
     grand_total = 0
     with sync_playwright() as p:

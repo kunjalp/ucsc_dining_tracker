@@ -119,6 +119,36 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
+/* Food detail sheet: slides up from off-screen-bottom and settles
+   centered on the viewport, rather than docking to the bottom edge. */
+@keyframes slide-up-to-center {
+  from {
+    transform: translateY(65vh) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up-center {
+  animation: slide-up-to-center 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheet-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-sheet-backdrop {
+  animation: sheet-backdrop-in 0.25s ease-out both;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
