@@ -1239,10 +1239,9 @@ export default function DashboardPage() {
           wrapper) on purpose so this fixed banner always sits relative to
           the viewport, not to a zoomed ancestor. */}
       {ringClosedToast && (
-        <div className="fixed top-[84px] left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#121c33]/95 backdrop-blur-xl border border-[#d6b93a]/40 shadow-[0_8px_30px_-6px_rgba(214,185,58,0.35)] animate-ring-toast">
-            <span className="text-base leading-none">🎉</span>
-            <span className="text-sm font-bold text-[#EDEFF5] whitespace-nowrap">{ringClosedToast}</span>
+        <div className="fixed top-[130px] left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center">
+          <div className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#121c33]/95 backdrop-blur-xl border border-[#d6b93a]/40 shadow-[0_8px_30px_-6px_rgba(214,185,58,0.35)] animate-ring-toast">
+            <span className="text-base font-bold text-[#EDEFF5] whitespace-nowrap">{ringClosedToast}</span>
           </div>
         </div>
       )}
