@@ -1010,6 +1010,28 @@ export default function DashboardPage() {
     return unique.sort((a, b) => getStationSortIndex(a) - getStationSortIndex(b))
   }, [menu])
 
+  // Dietary-preference matching, grounded only in real data UCSC publishes
+  // on each item's nutrition label (dietary icon list + allergens text) --
+  // never a guess from the item's name. An item that hasn't been scraped
+  // for label data yet (dietary_tags/allergens still null) fails every
+  // check rather than being assumed safe, since a false "this is
+  // dairy-free" is worse than an item temporarily missing from the list.
+  const foodMatchesDietaryPreference = (food: FoodItem, pref: string): boolean => {
+    switch (pref) {
+      case 'Vegetarian':
+        return !!food.dietary_tags?.some((t) => /vegetarian|vegan/i.test(t))
+      case 'Vegan':
+        return !!food.dietary_tags?.some((t) => /vegan/i.test(t))
+      case 'Gluten-Free':
+        return !!food.dietary_tags?.some((t) => /gluten/i.test(t))
+      case 'Dairy-Free':
+        return food.allergens != null && !/milk|dairy/i.test(food.allergens)
+      case 'Nut Allergy':
+        return food.allergens != null && !/\bnuts?\b|peanut/i.test(food.allergens)
+      default:
+        return true
+    }
+  }
   // 3. Filter raw items first by search input & clicked station pills
   const filteredMenu = useMemo(() => {
     return menu.filter((entry) => {
@@ -1030,10 +1052,13 @@ export default function DashboardPage() {
       const matchesStation =
         activeStationFilters.length === 0 ||
         activeStationFilters.includes(getEffectiveStation(entry))
+      const matchesDiet = userProfile.dietaryPreferences.every((pref) =>
+        foodMatchesDietaryPreference(food, pref)
+      )
 
-      return matchesSearch && matchesStation
+      return matchesSearch && matchesStation && matchesDiet
     })
-  }, [menu, searchQuery, activeStationFilters])
+  }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences])
 
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, User, Camera, LogOut, Trash2, Check } from 'lucide-react'
+import { X, User, Camera, LogOut, Trash2, Check, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
 export interface UserProfile {
@@ -19,14 +19,18 @@ interface UserProfileModalProps {
   onSave: (profile: UserProfile) => void
 }
 
+// Only options UCSC's own nutrition site actually publishes data for:
+// Vegetarian/Vegan/Gluten-Free come from the dietary icons on each item's
+// real nutrition label, Dairy-Free/Nut Allergy from that label's allergens
+// text. Halal, Kosher and Pescatarian have no icon or tag anywhere on
+// UCSC's site (e.g. "Halal Chicken" and "Kosher Salt" are just item
+// names) -- a filter for them would silently do nothing, which is worse
+// than not offering it, so they're left out rather than faked.
 const DIETARY_OPTIONS = [
   'Vegetarian',
   'Vegan',
-  'Pescatarian',
   'Gluten-Free',
   'Dairy-Free',
-  'Halal',
-  'Kosher',
   'Nut Allergy',
 ]
 
@@ -39,6 +43,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [email, setEmail] = useState(currentProfile.email)
   const [avatarUrl, setAvatarUrl] = useState(currentProfile.avatarUrl)
   const [dietaryPreferences, setDietaryPreferences] = useState<string[]>(currentProfile.dietaryPreferences)
+  const [dietaryDropdownOpen, setDietaryDropdownOpen] = useState(false)
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -378,6 +383,47 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 Changing your email will send a confirmation link to the new address before it takes effect.
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+              Dietary Preferences
+            </label>
+            <button
+              type="button"
+              onClick={() => setDietaryDropdownOpen((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm font-medium text-[#dae2fd] active:scale-[0.98] transition"
+            >
+              <span className={dietaryPreferences.length ? 'text-[#dae2fd] truncate text-left' : 'text-[#c2c6d0]/40 text-left'}>
+                {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
+              </span>
+              <ChevronDown size={16} className={`shrink-0 text-[#c2c6d0] transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dietaryDropdownOpen && (
+              <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-[#171f33]/60 p-2.5">
+                {DIETARY_OPTIONS.map((pref) => {
+                  const selected = dietaryPreferences.includes(pref)
+                  return (
+                    <button
+                      key={pref}
+                      type="button"
+                      onClick={() => toggleDietaryPreference(pref)}
+                      className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                        selected
+                          ? 'bg-[#d6b93a] text-[#6b5300]'
+                          : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
+                      }`}
+                    >
+                      {selected && <Check size={12} />}
+                      {pref}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-[#c2c6d0]/60 mt-1">
+              The dining hall menu will filter to items matching your picks.
+            </p>
           </div>
           {error && (
             <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-3 py-1.5">
