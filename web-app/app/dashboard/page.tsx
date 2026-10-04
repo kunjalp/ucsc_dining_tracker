@@ -1196,8 +1196,6 @@ export default function DashboardPage() {
       className="min-h-screen bg-[#0b1326] text-[#dae2fd] relative overflow-x-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
-      {/* Ambient background glow */}
-      <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
       {/* TopAppBar */}
       <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
@@ -1255,7 +1253,7 @@ export default function DashboardPage() {
             macro) instead of four separate boxed tiles stacked 2x2 — same information,
             a fraction of the height. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)]">
+          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[#141b2e] border border-white/10">
             {[
               { label: 'Calories', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
               { label: 'Protein', value: totals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
@@ -1284,7 +1282,7 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="space-y-6">
             {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 space-y-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+            <div className="rounded-2xl p-5 space-y-4 bg-[#141b2e] border border-white/10">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
@@ -1686,8 +1684,8 @@ export default function DashboardPage() {
                                           onClick={() => handleLogFood(food.recipe_id)}
                                           disabled={!!justLogged[food.recipe_id]}
                                           className={`flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                            ? 'bg-[#5bb448] text-white shadow-[#5bb448]/25'
-                                            : 'bg-[#d6b93a] text-[#6b5300] shadow-[#d6b93a]/20 hover:brightness-105'
+                                            ? 'bg-[#5bb448] text-white'
+                                            : 'bg-[#d6b93a] text-[#6b5300] hover:brightness-105'
                                             }`}
                                         >
                                           {justLogged[food.recipe_id] ? (
@@ -1714,7 +1712,7 @@ export default function DashboardPage() {
         ) : (
           /* PROGRESS TAB */
           <div className="space-y-6">
-            <div className="rounded-2xl p-4 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+            <div className="rounded-2xl p-4 bg-[#141b2e] border border-white/10">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
@@ -1862,7 +1860,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Meal history */}
-            <div className="rounded-2xl p-5 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5">
+            <div className="rounded-2xl p-5 bg-[#141b2e] border border-white/10">
               <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
               {loggedMeals.length === 0 ? (
@@ -1980,7 +1978,7 @@ export default function DashboardPage() {
           aria-labelledby="welcome-title"
         >
           <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
-          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd]">
+          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd]">
             <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-[#dae2fd] mb-3">
               Welcome to Sammy's Palate
             </h2>
@@ -1992,7 +1990,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={dismissWelcome}
-              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold shadow-md shadow-[#d6b93a]/20"
+              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold"
             >
               Got it
             </button>
