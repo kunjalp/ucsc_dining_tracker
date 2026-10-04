@@ -312,7 +312,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-black/60 backdrop-blur-sm overflow-y-auto py-8">
-      <div className="w-full max-w-sm max-h-[78vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-4 relative my-auto">
+      <div className="w-full max-w-sm max-h-[88vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-3.5 relative my-auto">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition active:scale-90"
@@ -321,24 +321,24 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           <X size={18} />
         </button>
 
-        <h2 className="text-base font-bold tracking-tight text-[#dae2fd] mb-3">Edit User Profile</h2>
+        <h2 className="text-sm font-bold tracking-tight text-[#dae2fd] mb-2">Edit User Profile</h2>
 
         {/* Avatar */}
-        <div className="flex flex-col items-center mb-3">
+        <div className="flex flex-col items-center mb-2">
           <button
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="relative w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
+            className="relative w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
             aria-label="Change profile picture"
           >
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <User size={22} className="text-[#c2c6d0]" />
+              <User size={18} className="text-[#c2c6d0]" />
             )}
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-              <Camera size={16} className="text-white" />
+              <Camera size={14} className="text-white" />
             </div>
           </button>
           <input
@@ -352,21 +352,21 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="mt-1.5 text-xs font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition active:scale-95 disabled:opacity-60"
+            className="mt-1 text-[11px] font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition active:scale-95 disabled:opacity-60"
           >
             {uploadingAvatar ? 'Uploading...' : 'Change photo'}
           </button>
 
           {memberSinceLabel && (
-            <p className="text-[10px] text-[#c2c6d0]/60 mt-1">
+            <p className="text-[10px] text-[#c2c6d0]/60 mt-0.5">
               Member since {memberSinceLabel}
             </p>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-2.5">
+        <form onSubmit={handleSubmit} className="space-y-1.5">
           <div>
-            <label htmlFor="nickname" className="block text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="nickname" className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
               Nickname
             </label>
             <input
@@ -375,12 +375,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="e.g. bananaslug23"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label htmlFor="email" className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
               Email
             </label>
             <input
@@ -389,7 +389,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@ucsc.edu"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
             />
             {emailChanged && (
               <p className="text-[10px] text-[#a1c9ff] mt-1">
@@ -399,13 +399,13 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
               Dietary Preferences
             </label>
             <button
               type="button"
               onClick={() => setDietaryDropdownOpen((o) => !o)}
-              className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#171f33] p-2.5 text-sm font-medium text-[#dae2fd] active:scale-[0.98] transition"
+              className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] font-medium text-[#dae2fd] active:scale-[0.98] transition"
             >
               <span className={dietaryPreferences.length ? 'text-[#dae2fd] truncate text-left' : 'text-[#c2c6d0]/40 text-left'}>
                 {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
@@ -413,9 +413,9 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               <ChevronDown size={16} className={`shrink-0 text-[#c2c6d0] transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {dietaryDropdownOpen && (
-              <div className="mt-2 flex flex-col gap-2.5 rounded-xl border border-white/10 bg-[#171f33]/60 p-2.5">
+              <div className="mt-1.5 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-[#171f33]/60 p-2">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1.5">Diet type</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1">Diet type</p>
                   <div className="flex flex-wrap gap-2">
                     {DIET_TYPE_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
@@ -424,7 +424,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                         key={pref}
                         type="button"
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
                           selected
                             ? 'bg-[#d6b93a] text-[#6b5300]'
                             : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
@@ -438,7 +438,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1.5">Avoid (allergens)</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1">Avoid (allergens)</p>
                   <div className="flex flex-wrap gap-2">
                     {ALLERGEN_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
@@ -447,7 +447,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                         key={pref}
                         type="button"
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
                           selected
                             ? 'bg-[#d6b93a] text-[#6b5300]'
                             : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
@@ -462,12 +462,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 </div>
               </div>
             )}
-            <p className="text-[10px] text-[#c2c6d0]/60 mt-1">
+            <p className="text-[10px] text-[#c2c6d0]/60 mt-0.5">
               The dining hall menu will include only items matching your diet type, and hide any item whose allergens match what you're avoiding.
             </p>
           </div>
           {error && (
-            <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-3 py-1.5">
+            <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-2.5 py-1">
               {error}
             </p>
           )}
@@ -476,42 +476,42 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
           >
-            <LogOut size={14} />
+            <LogOut size={13} />
             {signingOut ? 'Signing out...' : 'Sign out'}
           </button>
 
-          <div className="flex gap-3 pt-1.5">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
+              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-[#d6b93a] py-2 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#d6b93a] py-1.5 text-xs font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
         </form>
 
-        <div className="mt-3 pt-3 border-t border-[#ffb4ab]/20">
+        <div className="mt-2 pt-2 border-t border-[#ffb4ab]/20">
           {!deleteConfirmOpen ? (
             <button
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-2 text-sm font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition active:scale-95"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-1.5 text-xs font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition active:scale-95"
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} />
               Delete account
             </button>
           ) : (
-            <div className="rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 p-3 space-y-2">
+            <div className="rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 p-2.5 space-y-1.5">
               <p className="text-xs font-semibold text-[#ffb4ab]">
                 This permanently deletes your account and all logged meals. This cannot be undone.
               </p>
@@ -522,7 +522,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full rounded-lg border border-[#ffb4ab]/30 bg-[#171f33] p-2 text-sm text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#ffb4ab]/40"
+                className="w-full rounded-lg border border-[#ffb4ab]/30 bg-[#171f33] p-1.5 text-xs text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#ffb4ab]/40"
                 placeholder="DELETE"
               />
               {deleteError && (
