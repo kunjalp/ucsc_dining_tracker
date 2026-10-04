@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, type DayTrack } from '@/lib/diningHours'
-import { Haptics, ImpactStyle } from '@capacitor/haptics'
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
@@ -370,6 +370,7 @@ export default function DashboardPage() {
   const [goalProtein, setGoalProtein] = useState(120)
   const [goalCarbs, setGoalCarbs] = useState(250)
   const [goalFat, setGoalFat] = useState(70)
+  const [ringClosedToast, setRingClosedToast] = useState<string | null>(null)
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
 
   // One-time welcome card for brand-new users — shown once, ever, gated by
@@ -566,6 +567,49 @@ export default function DashboardPage() {
       closingSoonFiredRef.current = false
     }
   }, [selectedHall, mealCountdown])
+
+  // A celebratory haptic + on-screen toast the moment a macro ring
+  // first closes (crosses from under-goal to at/over-goal). Skipped on
+  // the very first totals fetch (nothing "just happened" yet), same
+  // guard pattern as the day-track crossing effect above, so opening the
+  // app with an already-closed ring from earlier today stays silent.
+  const prevRingsClosedRef = useRef<{ cal: boolean; protein: boolean; carbs: boolean; fat: boolean } | null>(null)
+  const ringToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const closed = {
+      cal: goalCalories > 0 && totals.calories >= goalCalories,
+      protein: goalProtein > 0 && totals.protein >= goalProtein,
+      carbs: goalCarbs > 0 && totals.carbs >= goalCarbs,
+      fat: goalFat > 0 && totals.fat >= goalFat,
+    }
+
+    const prev = prevRingsClosedRef.current
+    if (prev === null) {
+      prevRingsClosedRef.current = closed
+      return
+    }
+
+    const ringLabels: { key: keyof typeof closed; name: string }[] = [
+      { key: 'cal', name: 'Calorie' },
+      { key: 'protein', name: 'Protein' },
+      { key: 'carbs', name: 'Carbs' },
+      { key: 'fat', name: 'Fat' },
+    ]
+    const newlyClosed = ringLabels.filter(({ key }) => closed[key] && !prev[key]).map(({ name }) => name)
+
+    if (newlyClosed.length > 0) {
+      Haptics.notification({ type: NotificationType.Success }).catch(() => {})
+      const message =
+        newlyClosed.length === 1
+          ? `${newlyClosed[0]} ring closed!`
+          : `${newlyClosed.slice(0, -1).join(', ')} & ${newlyClosed[newlyClosed.length - 1]} rings closed!`
+      setRingClosedToast(message)
+      if (ringToastTimeoutRef.current) clearTimeout(ringToastTimeoutRef.current)
+      ringToastTimeoutRef.current = setTimeout(() => setRingClosedToast(null), 3200)
+    }
+
+    prevRingsClosedRef.current = closed
+  }, [totals, goalCalories, goalProtein, goalCarbs, goalFat])
 
   // Hide the scrollbar everywhere — a visible one is a tell that this is a
   // web page rather than a native app.
@@ -1190,6 +1234,18 @@ export default function DashboardPage() {
           </button>
         </div>
       </header>
+
+      {/* Ring-closed toast — kept outside <main> (and its desktop zoom
+          wrapper) on purpose so this fixed banner always sits relative to
+          the viewport, not to a zoomed ancestor. */}
+      {ringClosedToast && (
+        <div className="fixed top-[84px] left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#121c33]/95 backdrop-blur-xl border border-[#d6b93a]/40 shadow-[0_8px_30px_-6px_rgba(214,185,58,0.35)] animate-ring-toast">
+            <span className="text-base leading-none">🎉</span>
+            <span className="text-sm font-bold text-[#EDEFF5] whitespace-nowrap">{ringClosedToast}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="pt-[134px] px-5 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px]">
