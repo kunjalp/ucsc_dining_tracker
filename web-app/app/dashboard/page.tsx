@@ -431,17 +431,17 @@ export default function DashboardPage() {
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
   const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})
-  // Swipe-to-delete on meal history rows: which row (if any) currently has its
-  // delete button revealed, and the live drag offset while a swipe is in progress.
-  // Mirrors the day-track drag pattern above (state for render, ref for the
-  // window pointer handlers to read without a stale closure).
-  const [openSwipeLogId, setOpenSwipeLogId] = useState<string | null>(null)
+  // Swipe-to-delete on meal history rows: dragging a row left past a threshold
+  // deletes it directly, with a red trash background growing behind it as it
+  // travels. State/ref pairing mirrors the day-track drag pattern above (state
+  // for render, ref for the window pointer handlers to read without a stale
+  // closure).
   const [swipeDragOffset, setSwipeDragOffset] = useState(0)
   const [isSwipeDragging, setIsSwipeDragging] = useState<string | null>(null)
   const swipeDraggingRef = useRef<string | null>(null)
   const swipeDragOffsetRef = useRef(0)
   const swipeStartXRef = useRef(0)
-  const swipeStartOpenRef = useRef(false)
+  const swipePassedThresholdRef = useRef(false)
   const [goalMode, setGoalMode] = useState<'recommended' | 'manual'>('recommended')
 
   // SEARCH & STATION FILTER STATES
@@ -1193,17 +1193,18 @@ export default function DashboardPage() {
     }
   }
 
-  // Swipe-to-delete on a meal history row: dragging the row left reveals a
-  // red delete button behind it, mirroring the day-track pointer-drag pattern
-  // above. SWIPE_REVEAL_WIDTH is how far the row needs to travel to fully
-  // reveal the button; past half that, releasing snaps it open instead of shut.
-  const SWIPE_REVEAL_WIDTH = 76
+  // Swipe-to-delete on a meal history row: drag left past SWIPE_DELETE_THRESHOLD
+  // and releasing deletes the row immediately — no second tap on a revealed
+  // button. SWIPE_MAX_DRAG caps how far the row can travel so the red
+  // background behind it doesn't stretch past the point it needs to.
+  const SWIPE_DELETE_THRESHOLD = 90
+  const SWIPE_MAX_DRAG = 160
 
   const handleSwipePointerDown = (logId: string, e: React.PointerEvent<HTMLDivElement>) => {
     swipeDraggingRef.current = logId
     swipeStartXRef.current = e.clientX
-    swipeStartOpenRef.current = openSwipeLogId === logId
-    swipeDragOffsetRef.current = swipeStartOpenRef.current ? -SWIPE_REVEAL_WIDTH : 0
+    swipeDragOffsetRef.current = 0
+    swipePassedThresholdRef.current = false
     setIsSwipeDragging(logId)
   }
 
@@ -1213,24 +1214,25 @@ export default function DashboardPage() {
     const handleMove = (e: PointerEvent) => {
       if (swipeDraggingRef.current === null) return
       const dx = e.clientX - swipeStartXRef.current
-      const base = swipeStartOpenRef.current ? -SWIPE_REVEAL_WIDTH : 0
-      const next = Math.min(0, Math.max(-SWIPE_REVEAL_WIDTH, base + dx))
+      const next = Math.min(0, Math.max(-SWIPE_MAX_DRAG, dx))
       swipeDragOffsetRef.current = next
       setSwipeDragOffset(next)
+      const passedThreshold = next <= -SWIPE_DELETE_THRESHOLD
+      if (passedThreshold !== swipePassedThresholdRef.current) {
+        swipePassedThresholdRef.current = passedThreshold
+        Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      }
     }
 
     const handleUp = () => {
       const logId = swipeDraggingRef.current
       const finalOffset = swipeDragOffsetRef.current
-      if (logId !== null) {
-        const shouldOpen = finalOffset <= -SWIPE_REVEAL_WIDTH / 2
-        if (shouldOpen !== swipeStartOpenRef.current) {
-          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
-        }
-        setOpenSwipeLogId(shouldOpen ? logId : null)
+      if (logId !== null && finalOffset <= -SWIPE_DELETE_THRESHOLD) {
+        handleDeleteLog(logId)
       }
       swipeDraggingRef.current = null
       swipeDragOffsetRef.current = 0
+      swipePassedThresholdRef.current = false
       setSwipeDragOffset(0)
       setIsSwipeDragging(null)
     }
@@ -1259,9 +1261,6 @@ export default function DashboardPage() {
       // Show the checkmark briefly before the row actually disappears,
       // same pattern as the Log button's confirmation.
       setJustDeleted(prev => ({ ...prev, [logId]: true }))
-      // Deleting a swiped-open row should close it rather than leave the
-      // delete button exposed under a row that's about to vanish.
-      setOpenSwipeLogId(prev => (prev === logId ? null : prev))
       setTimeout(() => {
         fetchTodayTotals()
         if (showCalendar) fetchHistoricalLogs() // Also sync up calendar dynamically
@@ -2014,31 +2013,29 @@ export default function DashboardPage() {
               ) : (
                 <div className="divide-y divide-white/10">
                   {loggedMeals.map((log) => {
-                    const swipeOffset = isSwipeDragging === log.id
-                      ? swipeDragOffset
-                      : openSwipeLogId === log.id ? -SWIPE_REVEAL_WIDTH : 0
+                    const swipeOffset = justDeleted[log.id]
+                      ? -400
+                      : (isSwipeDragging === log.id ? swipeDragOffset : 0)
                     return (
-                    <div key={log.id} className="relative overflow-hidden">
-                      {/* Delete button revealed behind the row as it's swiped left */}
-                      <div className="absolute inset-y-0 right-0 flex items-center">
-                        <button
-                          onClick={() => handleDeleteLog(log.id)}
-                          disabled={!!justDeleted[log.id]}
-                          aria-label="Delete this log entry"
-                          style={{ width: SWIPE_REVEAL_WIDTH }}
-                          className="h-full flex items-center justify-center bg-[#ffb4ab] text-[#5c1a13] active:scale-95 transition-transform"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                    <div key={log.id} className="relative overflow-hidden rounded-xl">
+                      {/* Single delete surface, revealed as the row is swiped left */}
+                      <button
+                        onClick={() => handleDeleteLog(log.id)}
+                        disabled={!!justDeleted[log.id]}
+                        aria-label="Delete this log entry"
+                        className="absolute inset-0 flex items-center justify-end pr-6 bg-[#ffb4ab] text-[#5c1a13]"
+                      >
+                        <Trash2 size={18} />
+                      </button>
 
                       <div
                         onPointerDown={(e) => handleSwipePointerDown(log.id, e)}
                         style={{
                           transform: `translateX(${swipeOffset}px)`,
-                          transition: isSwipeDragging === log.id ? 'none' : 'transform 0.25s ease-out',
+                          opacity: justDeleted[log.id] ? 0 : 1,
+                          transition: isSwipeDragging === log.id ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
                         }}
-                        className="relative bg-[#141b2e] py-4 flex items-center justify-between gap-4 touch-pan-y"
+                        className="relative bg-[#141b2e] py-4 flex items-center gap-4 touch-pan-y"
                       >
                         <div>
                           <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
@@ -2052,22 +2049,6 @@ export default function DashboardPage() {
                             <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
                           </div>
                         </div>
-
-                        <button
-                          onClick={() => handleDeleteLog(log.id)}
-                          disabled={!!justDeleted[log.id]}
-                          aria-label="Delete this log entry"
-                          className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300 active:scale-95 ${justDeleted[log.id]
-                              ? 'bg-[#ffb4ab] text-[#5c1a13]'
-                              : 'text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20'
-                            }`}
-                        >
-                          {justDeleted[log.id] ? (
-                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
-                          ) : (
-                            <Trash2 size={14} />
-                          )}
-                        </button>
                       </div>
                     </div>
                     )
