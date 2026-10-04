@@ -406,7 +406,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-[#d6b93a] py-2 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition shadow-md shadow-[#d6b93a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#d6b93a] py-2 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>

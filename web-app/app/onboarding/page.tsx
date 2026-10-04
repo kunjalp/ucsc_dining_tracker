@@ -50,9 +50,7 @@ export default function OnboardingPage() {
             className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
-            <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
-
-            <div className="w-full max-w-xs rounded-2xl p-6 bg-[rgba(30,41,59,0.6)] backdrop-blur-2xl border-t border-l border-white/15 border-b border-r border-white/5 shadow-[0_10px_40px_-10px_rgba(0,60,108,0.4)] text-center">
+            <div className="w-full max-w-xs rounded-2xl p-6 bg-[#141b2e] border border-white/10 text-center">
                 <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] mb-2">
                     Welcome to Sammy's Palate!
                 </h1>
@@ -73,7 +71,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={() => setShowModal(true)}
                         disabled={saving}
-                        className="flex-1 rounded-xl bg-[#d6b93a] py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition shadow-md shadow-[#d6b93a]/20 disabled:opacity-60"
+                        className="flex-1 rounded-xl bg-[#d6b93a] py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-60"
                     >
                         Now
                     </button>
