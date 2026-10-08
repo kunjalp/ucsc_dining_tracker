@@ -71,7 +71,7 @@ def main():
         for i, row in enumerate(rows, 1):
             recipe_id = row["recipe_id"]
             label = fetch_item_label(page, ANCHOR_HALL, today, recipe_id)
-            if label and (label.get("ingredients") or label.get("allergens") or label.get("dietary_tags")):
+            if label and label.get("ingredients") is not None:
                 try:
                     supabase.table("food_items").update(label).eq("recipe_id", recipe_id).execute()
                     filled += 1

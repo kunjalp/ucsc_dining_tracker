@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
 
-from scraper import DINING_HALLS, HALL_LOCATION_NUMS, scrape_hall
+from scraper import DINING_HALLS, HALL_LOCATION_NUMS, scrape_hall, backfill_missing_labels
 
 DAYS_AHEAD = 3  # scrape today + this many days into the future — one more than DAY_OFFSETS in dashboard/page.tsx actually shows
 
@@ -52,6 +52,11 @@ def main():
                     except Exception as e:
                         print(f"   💥 Error scraping '{hall_name}' for {scrape_date}: {e}")
                         continue
+
+            try:
+                backfill_missing_labels(page)
+            except Exception as e:
+                print(f"   💥 Label backfill failed: {e}")
         finally:
             browser.close()
 

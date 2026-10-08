@@ -113,7 +113,7 @@ DINING_HALLS = [
 
 NAV_TIMEOUT_MS = 20000
 
-# recipe_ids we've already fetched a nutrition label for (ingredients,
+# (unused now -- labels are backfilled after the scrape) recipe_ids we've already fetched a nutrition label for (ingredients,
 # allergens, dietary icons) -- populated from the DB at the top of main(),
 # then grown in place as scrape_hall() sees new recipes, so one run never
 # fetches the same item's label twice, no matter how many halls/meals share it.
@@ -466,6 +466,59 @@ def replace_daily_menus(hall_name: str, meal_type: str, scrape_date: str, rows: 
     supabase.table("daily_menus").insert(deduped).execute()
 
 
+
+LABEL_BACKFILL_ANCHOR_HALL = "John R. Lewis & College Nine Dining Hall"
+LABEL_BACKFILL_MAX_ITEMS = 2000
+LABEL_BACKFILL_TIME_BUDGET_SECONDS = 25 * 60
+
+
+def backfill_missing_labels(page, max_items: int = LABEL_BACKFILL_MAX_ITEMS,
+                            time_budget: int = LABEL_BACKFILL_TIME_BUDGET_SECONDS) -> tuple[int, int]:
+    """Fetch ingredients/allergens/dietary icons for every food_items row
+    that still has ingredients IS NULL. Runs AFTER the menu scrape (so a slow
+    or failed label page can never block a menu write), and covers new items
+    from any day the scrapers touched. label.aspx ignores the hall/date in
+    its URL (verified manually), so one anchor hall + today is used for all.
+    A row whose label page loaded but listed no ingredients gets '' (not
+    NULL) so it isn't retried on every future run. Returns (filled, failed)."""
+    import time
+    today = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+    try:
+        rows = (
+            supabase.table("food_items")
+            .select("recipe_id, name")
+            .is_("ingredients", "null")
+            .limit(max_items)
+            .execute()
+            .data
+        )
+    except Exception as e:
+        print(f"   ⚠️ Could not load items missing labels: {e}")
+        return 0, 0
+
+    print(f"\n🏷️ Backfilling labels for {len(rows)} item(s) missing ingredients...")
+    filled = failed = 0
+    started = time.monotonic()
+    for i, row in enumerate(rows, 1):
+        if time.monotonic() - started > time_budget:
+            print(f"   ⏱️ Label time budget reached after {i - 1} item(s); the rest will be retried next run.")
+            break
+        label = fetch_item_label(page, LABEL_BACKFILL_ANCHOR_HALL, today, row["recipe_id"])
+        if label and label.get("ingredients") is not None:
+            try:
+                supabase.table("food_items").update(label).eq("recipe_id", row["recipe_id"]).execute()
+                filled += 1
+            except Exception as e:
+                print(f"   💥 Label DB update failed for {row['recipe_id']}: {e}")
+                failed += 1
+        else:
+            failed += 1
+        if i % 100 == 0:
+            print(f"   ...{i}/{len(rows)} ({filled} filled, {failed} failed)")
+    print(f"   ✅ Labels: {filled} filled, {failed} failed/retry later.")
+    return filled, failed
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -499,22 +552,6 @@ def scrape_hall(page, hall_name: str, scrape_date: str, target_date: date | None
         print(f"      🎉 Parsed {len(items)} item(s).")
         if not items:
             continue
-
-        # Fill in ingredients/allergens/dietary icons for any recipe we've
-        # never captured a label for before. One extra page load each, so
-        # this only costs anything on an item's first appearance anywhere
-        # in the whole scrape (KNOWN_LABEL_RECIPE_IDS is shared across every
-        # hall and meal in this run, and persists across days via the DB).
-        for item in items:
-            if item["recipe_id"] in KNOWN_LABEL_RECIPE_IDS:
-                continue
-            label = fetch_item_label(page, hall_name, scrape_date, item["recipe_id"])
-            if label:
-                item.update(label)
-                # Only remember it as "done" on success -- a failed fetch
-                # (timeout, selector not found) should be retried on the
-                # next scrape instead of being silently skipped forever.
-                KNOWN_LABEL_RECIPE_IDS.add(item["recipe_id"])
 
         rows = []
         for item in items:
@@ -752,15 +789,6 @@ def main():
     print("🚀 Running UCSC Dining database update pipeline...")
     scrape_date = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
 
-    global KNOWN_LABEL_RECIPE_IDS
-    try:
-        existing = supabase.table("food_items").select("recipe_id").not_.is_("ingredients", "null").execute()
-        KNOWN_LABEL_RECIPE_IDS = {row["recipe_id"] for row in existing.data}
-        print(f"   📎 {len(KNOWN_LABEL_RECIPE_IDS)} recipe(s) already have label data -- skipping those.")
-    except Exception as e:
-        print(f"   ⚠️ Could not preload known labels, will fetch all as new: {e}")
-        KNOWN_LABEL_RECIPE_IDS = set()
-
     grand_total = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -782,6 +810,11 @@ def main():
                 except Exception as e:
                     print(f"   💥 Error scraping '{hall_name}': {e}")
                     continue
+
+            try:
+                backfill_missing_labels(browser_holder["page"])
+            except Exception as e:
+                print(f"   💥 Label backfill failed: {e}")
         finally:
             try:
                 browser_holder["browser"].close()
