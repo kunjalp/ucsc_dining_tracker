@@ -1527,12 +1527,12 @@ export default function DashboardPage() {
       )}
 
       {/* Undo toast for a removed meal log -- sits just above the floating tab
-          bar (12px gap + ~64px bar + 12px, over the home-indicator inset)
+          bar (12px gap + ~50px bar + 10px, over the home-indicator inset)
           for UNDO_WINDOW_MS. */}
       {undoLog && (
         <div
           className="fixed left-0 right-0 z-[60] px-4 flex justify-center"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
         >
           <div
             role="status"
@@ -1554,7 +1554,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content */}
-      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+140px)] lg:max-w-[1100px] lg:px-5">
+      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+124px)] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
@@ -1598,7 +1598,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
+              <div className="flex bg-surface-2 p-1 rounded-xl gap-1">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -1607,7 +1607,7 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
+                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
                       ? 'bg-gold/15 text-gold border border-gold/40'
                       : 'text-fg-muted hover:text-fg border border-transparent'
                       }`}
@@ -1811,11 +1811,20 @@ export default function DashboardPage() {
                         }}
                         aria-label={`Show ${seg.label} menu`}
                         aria-pressed={i === dayTrackSegmentIndexForPct(dayTrack, headPct)}
-                        className={`text-center py-1 text-9 font-bold transition-colors duration-500 active:scale-90 ${
+                        className={`@container relative text-center py-1 text-9 font-bold whitespace-nowrap transition-colors duration-500 active:scale-90 after:absolute after:inset-x-0 after:content-[''] after:-inset-y-3 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-gold' : 'text-fg-muted'
                         }`}
                       >
-                        {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
+                        {/* Full meal names; only "Late Night" shortens, and only when
+                            its segment is narrower than the full words need */}
+                        {seg.label === 'Late Night' ? (
+                          <>
+                            <span className="hidden @[3.5rem]:inline">Late Night</span>
+                            <span className="@[3.5rem]:hidden">Late</span>
+                          </>
+                        ) : (
+                          seg.label
+                        )}
                       </button>
                     ))}
                   </div>
@@ -2274,11 +2283,11 @@ export default function DashboardPage() {
       >
         <nav
           aria-label="Main"
-          className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1.5 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
+          className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
           <span
             aria-hidden="true"
-            className="absolute inset-y-1.5 left-1.5 w-[calc(50%-0.375rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
             style={{ transform: activeTab === 'progress' ? 'translateX(100%)' : 'translateX(0)' }}
           />
           <button
@@ -2288,11 +2297,11 @@ export default function DashboardPage() {
               Haptics.selectionChanged().catch(() => {})
             }}
             aria-current={activeTab === 'log' ? 'page' : undefined}
-            className={`relative z-10 min-h-tap flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-colors active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'log' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full transition-colors after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'log' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
-            <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="text-10 font-bold">Menu</span>
+            <UtensilsCrossed size={20} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
+            <span className="text-10 font-bold leading-none mt-0.5">Menu</span>
           </button>
 
           <button
@@ -2302,11 +2311,11 @@ export default function DashboardPage() {
               Haptics.selectionChanged().catch(() => {})
             }}
             aria-current={activeTab === 'progress' ? 'page' : undefined}
-            className={`relative z-10 min-h-tap flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-colors active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'progress' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full transition-colors after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'progress' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
-            <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="text-10 font-bold">Progress</span>
+            <LineChart size={20} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
+            <span className="text-10 font-bold leading-none mt-0.5">Progress</span>
           </button>
         </nav>
       </div>
@@ -2480,7 +2489,7 @@ export default function DashboardPage() {
                         setServings((prev) => ({ ...prev, [detailFood.recipe_id]: value }))
                         Haptics.selectionChanged().catch(() => {})
                       }}
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 tabular-nums ${isSelected
+                      className={`relative flex-1 py-1.5 text-xs font-bold rounded-lg after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 transition-all active:scale-95 tabular-nums ${isSelected
                         ? 'bg-gold/15 text-gold border border-gold/40'
                         : 'text-fg-muted hover:text-fg border border-transparent'
                         }`}

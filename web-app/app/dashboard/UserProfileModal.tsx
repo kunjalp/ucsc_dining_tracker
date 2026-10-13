@@ -437,7 +437,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2/60 p-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Diet type</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {DIET_TYPE_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
                       return (
@@ -446,13 +446,13 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                         type="button"
                         aria-pressed={selected}
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`min-h-tap flex items-center gap-1 rounded-full px-3.5 text-sm font-semibold transition active:scale-95 ${
+                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
                           selected
                             ? 'bg-gold text-on-gold'
                             : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
                         }`}
                       >
-                        {selected && <Check size={14} />}
+                        {selected && <Check size={12} />}
                         {pref}
                       </button>
                       )
@@ -461,7 +461,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Avoid (allergens)</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {ALLERGEN_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
                       return (
@@ -470,13 +470,13 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                         type="button"
                         aria-pressed={selected}
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`min-h-tap flex items-center gap-1 rounded-full px-3.5 text-sm font-semibold transition active:scale-95 ${
+                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
                           selected
                             ? 'bg-gold text-on-gold'
                             : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
                         }`}
                       >
-                        {selected && <Check size={14} />}
+                        {selected && <Check size={12} />}
                         {pref}
                       </button>
                       )
@@ -503,7 +503,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     role="radio"
                     aria-checked={selected}
                     onClick={() => handlePickTextSize(option.value)}
-                    className={`min-h-tap px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border ${
+                    className={`relative py-1.5 px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${
                       selected
                         ? 'bg-gold/15 text-gold border-gold/40'
                         : 'text-fg-muted hover:text-fg border-transparent'
