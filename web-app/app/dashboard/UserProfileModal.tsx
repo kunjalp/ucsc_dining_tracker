@@ -311,34 +311,35 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-black/60 backdrop-blur-sm overflow-y-auto py-8">
-      <div className="w-full max-w-sm max-h-[88vh] overflow-y-auto rounded-2xl bg-[#131c33] border border-white/10 shadow-2xl p-3.5 relative my-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm overflow-y-auto py-6">
+      <div className="w-full max-w-sm max-h-[92vh] overflow-y-auto rounded-2xl bg-surface border border-white/10 shadow-2xl p-4 relative my-auto text-fg">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition active:scale-90"
+          className="absolute top-1.5 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
           aria-label="Close"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
 
-        <h2 className="text-sm font-bold tracking-tight text-[#dae2fd] mb-2">Edit User Profile</h2>
+        <h2 className="text-lg font-bold tracking-tight text-fg mb-3 pr-10">Edit Profile</h2>
 
-        {/* Avatar */}
-        <div className="flex flex-col items-center mb-2">
+        {/* Avatar -- inline row (photo + change link + member since) instead of a
+            centered stack, so 44px targets still fit on one screen. */}
+        <div className="flex items-center gap-3 mb-3">
           <button
             type="button"
             onClick={handleAvatarClick}
             disabled={uploadingAvatar}
-            className="relative w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
+            className="relative size-14 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
             aria-label="Change profile picture"
           >
             {avatarUrl ? (
-              <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <User size={18} className="text-[#c2c6d0]" />
+              <User size={22} className="text-fg-muted" />
             )}
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-              <Camera size={14} className="text-white" />
+              <Camera size={16} className="text-white" />
             </div>
           </button>
           <input
@@ -348,25 +349,26 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             onChange={handleAvatarChange}
             className="hidden"
           />
-          <button
-            type="button"
-            onClick={handleAvatarClick}
-            disabled={uploadingAvatar}
-            className="mt-1 text-[11px] font-bold text-[#a1c9ff] hover:text-[#dae2fd] transition active:scale-95 disabled:opacity-60"
-          >
-            {uploadingAvatar ? 'Uploading...' : 'Change photo'}
-          </button>
-
-          {memberSinceLabel && (
-            <p className="text-[10px] text-[#c2c6d0]/60 mt-0.5">
-              Member since {memberSinceLabel}
-            </p>
-          )}
+          <div className="min-w-0">
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploadingAvatar}
+              className="min-h-tap text-sm font-semibold text-sky hover:text-fg transition active:scale-95 disabled:opacity-60"
+            >
+              {uploadingAvatar ? 'Uploading...' : 'Change photo'}
+            </button>
+            {memberSinceLabel && (
+              <p className="text-xs text-fg-muted -mt-1.5">
+                Member since {memberSinceLabel}
+              </p>
+            )}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label htmlFor="nickname" className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
+            <label htmlFor="nickname" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
               Nickname
             </label>
             <input
@@ -375,12 +377,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="e.g. bananaslug23"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
+            <label htmlFor="email" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
               Email
             </label>
             <input
@@ -389,33 +391,35 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@ucsc.edu"
-              className="w-full rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/40"
+              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
             />
             {emailChanged && (
-              <p className="text-[10px] text-[#a1c9ff] mt-1">
-                Changing your email will send a confirmation link to the new address before it takes effect.
+              <p className="text-xs text-sky mt-1">
+                We'll email a confirmation link to the new address before it takes effect.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#c2c6d0] uppercase tracking-wider mb-0.5">
+            <p id="dietary-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
               Dietary Preferences
-            </label>
+            </p>
             <button
               type="button"
               onClick={() => setDietaryDropdownOpen((o) => !o)}
-              className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#171f33] p-2 text-[13px] font-medium text-[#dae2fd] active:scale-[0.98] transition"
+              aria-expanded={dietaryDropdownOpen}
+              aria-labelledby="dietary-label"
+              className="w-full min-h-tap flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-surface-2 px-3 text-base font-medium text-fg active:scale-[0.98] transition"
             >
-              <span className={dietaryPreferences.length ? 'text-[#dae2fd] truncate text-left' : 'text-[#c2c6d0]/40 text-left'}>
+              <span className={dietaryPreferences.length ? 'text-fg truncate text-left' : 'text-fg-muted text-left'}>
                 {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
               </span>
-              <ChevronDown size={16} className={`shrink-0 text-[#c2c6d0] transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={18} className={`shrink-0 text-fg-muted transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {dietaryDropdownOpen && (
-              <div className="mt-1.5 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-[#171f33]/60 p-2">
+              <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2/60 p-3">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1">Diet type</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Diet type</p>
                   <div className="flex flex-wrap gap-2">
                     {DIET_TYPE_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
@@ -423,14 +427,15 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                       <button
                         key={pref}
                         type="button"
+                        aria-pressed={selected}
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
+                        className={`min-h-tap flex items-center gap-1 rounded-full px-3.5 text-sm font-semibold transition active:scale-95 ${
                           selected
-                            ? 'bg-[#d6b93a] text-[#6b5300]'
-                            : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
+                            ? 'bg-gold text-on-gold'
+                            : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
                         }`}
                       >
-                        {selected && <Check size={12} />}
+                        {selected && <Check size={14} />}
                         {pref}
                       </button>
                       )
@@ -438,7 +443,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c2c6d0]/60 mb-1">Avoid (allergens)</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Avoid (allergens)</p>
                   <div className="flex flex-wrap gap-2">
                     {ALLERGEN_OPTIONS.map((pref) => {
                       const selected = dietaryPreferences.includes(pref)
@@ -446,14 +451,15 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                       <button
                         key={pref}
                         type="button"
+                        aria-pressed={selected}
                         onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
+                        className={`min-h-tap flex items-center gap-1 rounded-full px-3.5 text-sm font-semibold transition active:scale-95 ${
                           selected
-                            ? 'bg-[#d6b93a] text-[#6b5300]'
-                            : 'bg-white/5 text-[#c2c6d0] border border-white/15 hover:bg-white/10'
+                            ? 'bg-gold text-on-gold'
+                            : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
                         }`}
                       >
-                        {selected && <Check size={12} />}
+                        {selected && <Check size={14} />}
                         {pref}
                       </button>
                       )
@@ -462,71 +468,77 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 </div>
               </div>
             )}
-            <p className="text-[10px] text-[#c2c6d0]/60 mt-0.5">
-              The dining hall menu will include only items matching your diet type, and hide any item whose allergens match what you're avoiding.
+            <p className="text-xs text-fg-muted mt-1">
+              Menu shows only your diet type and hides items with these allergens.
             </p>
           </div>
           {error && (
-            <p className="text-xs font-semibold text-[#ffb4ab] bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-lg px-2.5 py-1">
+            <p role="alert" className="text-sm font-medium text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
               {error}
             </p>
           )}
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
-          >
-            <LogOut size={13} />
-            {signingOut ? 'Signing out...' : 'Sign out'}
-          </button>
 
           <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
+              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-[#d6b93a] py-1.5 text-xs font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
         </form>
 
-        <div className="mt-2 pt-2 border-t border-[#ffb4ab]/20">
+        {/* Account actions -- Sign out and Delete share one row (moved below Save,
+            out of the middle of the form) to keep the modal on one screen. */}
+        <div className="mt-3 pt-3 border-t border-white/10">
           {!deleteConfirmOpen ? (
-            <button
-              type="button"
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 py-1.5 text-xs font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition active:scale-95"
-            >
-              <Trash2 size={13} />
-              Delete account
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex-1 min-h-tap flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
+              >
+                <LogOut size={16} />
+                {signingOut ? 'Signing out...' : 'Sign out'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="flex-1 min-h-tap flex items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/5 text-sm font-semibold text-danger hover:bg-danger/10 transition active:scale-95"
+              >
+                <Trash2 size={16} />
+                Delete account
+              </button>
+            </div>
           ) : (
-            <div className="rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 p-2.5 space-y-1.5">
-              <p className="text-xs font-semibold text-[#ffb4ab]">
+            <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 space-y-2">
+              <p className="text-sm font-semibold text-danger">
                 This permanently deletes your account and all logged meals. This cannot be undone.
               </p>
-              <p className="text-[10px] text-[#c2c6d0]">
-                Type <span className="font-bold text-[#dae2fd]">DELETE</span> to confirm.
-              </p>
+              <label htmlFor="delete-confirm" className="block text-xs text-fg-muted">
+                Type <span className="font-bold text-fg">DELETE</span> to confirm.
+              </label>
               <input
+                id="delete-confirm"
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full rounded-lg border border-[#ffb4ab]/30 bg-[#171f33] p-1.5 text-xs text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#ffb4ab]/40"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                className="w-full min-h-tap rounded-lg border border-danger/30 bg-surface-2 px-3 text-base text-fg focus:outline-none focus:ring-2 focus:ring-danger/40"
                 placeholder="DELETE"
               />
               {deleteError && (
-                <p className="text-xs font-semibold text-[#ffb4ab]">{deleteError}</p>
+                <p role="alert" className="text-sm font-medium text-danger">{deleteError}</p>
               )}
               <div className="flex gap-2">
                 <button
@@ -536,7 +548,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     setDeleteConfirmText('')
                     setDeleteError(null)
                   }}
-                  className="flex-1 rounded-lg border border-white/15 bg-white/5 py-1.5 text-xs font-bold text-[#c2c6d0] hover:bg-white/10 transition active:scale-95"
+                  className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
                 >
                   Cancel
                 </button>
@@ -544,7 +556,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmText !== 'DELETE' || deleting}
-                  className="flex-1 rounded-lg bg-[#ffb4ab] py-1.5 text-xs font-bold text-[#4c0519] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {deleting ? 'Deleting...' : 'Delete permanently'}
                 </button>

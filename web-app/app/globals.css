@@ -12,6 +12,32 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Sammy's Palate design tokens. Every text/background pair below clears
+   WCAG AA (4.5:1) on `surface` -- use these instead of raw hex or opacity
+   tricks like text-[#c2c6d0]/50, which drop muted text under 3.5:1.
+   Type scale is Tailwind's default (html stays at 100%): text-xs (12px) is
+   the floor for any visible text, text-base (16px) for body and every input
+   (anything smaller makes iOS zoom the page on focus). `static` so the
+   vars always exist for inline styles (SVG strokes, var(--color-gold)). */
+@theme static {
+  --color-app: #0b1326;          /* page background */
+  --color-surface: #141b2e;      /* cards */
+  --color-surface-2: #1c2640;    /* inputs, segmented controls, sheets */
+  --color-fg: #dae2fd;           /* primary text */
+  --color-fg-muted: #9aa3b8;     /* secondary text -- 6.8:1 on surface */
+  --color-gold: #d6b93a;         /* primary actions, selected state */
+  --color-on-gold: #0b1326;      /* text/icons on gold -- 9.6:1 */
+  --color-sky: #a1c9ff;          /* links, info, station headers */
+  --color-danger: #ff8a80;       /* allergens, destructive actions */
+  --color-macro-cal: #d8b61c;
+  --color-macro-protein: #5bb448;
+  --color-macro-carbs: #d17ccd;  /* was #bd5db8 (4.4:1) */
+  --color-macro-fat: #fb7185;
+
+  /* Minimum iOS touch target (44pt): h-tap, min-h-tap, size-tap, min-w-tap */
+  --spacing-tap: 2.75rem;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -37,10 +63,6 @@
 
 html {
   overscroll-behavior: none;
-  /* Scales every rem-based Tailwind text size (text-sm, text-xs, etc.) down
-     proportionally by ~6% — a slight overall shrink across the whole app
-     instead of hand-editing each text size individually. */
-  font-size: 93.75%;
 }
 
 body.hide-scrollbar {

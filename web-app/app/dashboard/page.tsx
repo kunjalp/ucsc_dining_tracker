@@ -21,6 +21,7 @@ import {
   User,
   Trash2,
   Check,
+  Plus,
   X,
 } from 'lucide-react'
 
@@ -299,12 +300,12 @@ function MacroBarItem({ label, value, goal, color, unit, bordered }: MacroBarIte
   const animatedValue = useCountUp(value)
 
   return (
-    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
-      <p className="text-[10px] font-semibold text-[#c2c6d0]/70 truncate">{label}</p>
-      <p className="text-sm font-black mt-0.5 leading-tight" style={{ color }}>
+    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-3' : ''}`}>
+      <p className="text-xs font-semibold text-fg-muted truncate">{label}</p>
+      <p className="text-base font-bold mt-0.5 leading-tight tabular-nums" style={{ color }}>
         {Math.round(animatedValue)}{unit}
       </p>
-      <p className="text-[11px] font-semibold text-[#c2c6d0]/50 leading-tight">
+      <p className="text-xs font-medium text-fg-muted leading-tight tabular-nums">
         / {Math.round(goal)}{unit}
       </p>
       <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
@@ -429,11 +430,18 @@ export default function DashboardPage() {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
-  const [servings, setServings] = useState<{ [key: string]: number }>({})
+  // Serving multiplier picked in the food detail sheet (reset to 1x each time it opens)
+  const [detailServings, setDetailServings] = useState(1)
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
   const [justDeleted, setJustDeleted] = useState<{ [key: string]: boolean }>({})
+  // Undo for deleted meal logs: rows are hidden immediately, the DB delete
+  // runs after UNDO_WINDOW_MS unless "Undo" is tapped first.
+  const UNDO_WINDOW_MS = 5000
+  const [hiddenLogIds, setHiddenLogIds] = useState<string[]>([])
+  const [undoLog, setUndoLog] = useState<MealLog | null>(null)
+  const pendingDeleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   // Swipe-to-delete on meal history rows: dragging a row left past a threshold
   // deletes it directly, with a red trash background growing behind it as it
   // travels. State/ref pairing mirrors the day-track drag pattern above (state
@@ -1203,11 +1211,16 @@ export default function DashboardPage() {
   }
 
   // 7. Log an item to Supabase meal_logs table
-  const handleLogFood = async (foodId: string) => {
+  // `count` is the serving multiplier: the menu row's + logs 1x, the food
+  // detail sheet passes whatever the student picked there.
+  // Resolves true once the log is saved, so callers (the detail sheet) can close.
+  const handleLogFood = async (foodId: string, count: number = 1): Promise<boolean> => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return alert('Please sign in first!')
+    if (!user) {
+      alert('Please sign in first!')
+      return false
+    }
 
-    const count = servings[foodId] || 1
     const todayStr = new Date().toLocaleDateString('en-CA', {
       timeZone: 'America/Los_Angeles'
     })
@@ -1225,6 +1238,7 @@ export default function DashboardPage() {
 
     if (error) {
       alert(`Logging failed: ${error.message}`)
+      return false
     } else {
       // Quick, light confirmation tap — this is a frequent, low-stakes action.
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
@@ -1237,12 +1251,13 @@ export default function DashboardPage() {
         })
       }, 1400)
       fetchTodayTotals()
+      return true
     }
   }
 
   // Swipe-to-delete on a meal history row: drag left past SWIPE_DELETE_THRESHOLD
-  // and releasing deletes the row immediately — no second tap on a revealed
-  // button. SWIPE_MAX_DRAG caps how far the row can travel so the red
+  // and releasing removes the row (same undo window as the trash button).
+  // SWIPE_MAX_DRAG caps how far the row can travel so the red
   // background behind it doesn't stretch past the point it needs to.
   const SWIPE_DELETE_THRESHOLD = 90
   const SWIPE_MAX_DRAG = 160
@@ -1292,8 +1307,36 @@ export default function DashboardPage() {
     }
   }, [isSwipeDragging])
 
-  // 8. Delete a logged meal
-  const handleDeleteLog = async (logId: string) => {
+  // 8. Delete a logged meal -- with an undo window. The row disappears (and
+  // drops out of the totals) right away, but the actual DB delete waits
+  // UNDO_WINDOW_MS so an accidental swipe/tap can be taken back.
+  const handleDeleteLog = (logId: string) => {
+    if (pendingDeleteTimersRef.current.has(logId)) return
+    const log = loggedMeals.find((l) => l.id === logId)
+
+    // Firmer tap than logging — deleting is the more deliberate, less
+    // frequent action, so it gets a touch more weight.
+    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
+    // justDeleted slides the row out; hiddenLogIds keeps it out of the list
+    // and totals until the delete commits (or is undone).
+    setJustDeleted(prev => ({ ...prev, [logId]: true }))
+    setHiddenLogIds(prev => [...prev, logId])
+    setTimeout(() => {
+      setJustDeleted(prev => {
+        const next = { ...prev }
+        delete next[logId]
+        return next
+      })
+    }, 300)
+    if (log) setUndoLog(log)
+
+    pendingDeleteTimersRef.current.set(logId, setTimeout(() => commitDeleteLog(logId), UNDO_WINDOW_MS))
+  }
+
+  const commitDeleteLog = async (logId: string) => {
+    pendingDeleteTimersRef.current.delete(logId)
+    setUndoLog(cur => (cur?.id === logId ? null : cur))
+
     const { error } = await supabase
       .from('meal_logs')
       .delete()
@@ -1302,18 +1345,60 @@ export default function DashboardPage() {
     if (error) {
       alert(`Could not delete log: ${error.message}`)
     } else {
-      // Firmer tap than logging — deleting is the more deliberate, less
-      // frequent action, so it gets a touch more weight.
-      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
-      // Show the checkmark briefly before the row actually disappears,
-      // same pattern as the Log button's confirmation.
-      setJustDeleted(prev => ({ ...prev, [logId]: true }))
-      setTimeout(() => {
-        fetchTodayTotals()
-        if (showCalendar) fetchHistoricalLogs() // Also sync up calendar dynamically
-      }, 350)
+      await fetchTodayTotals()
+      fetchHistoricalLogs() // keep the calendar in sync if it's open
     }
+    setHiddenLogIds(prev => prev.filter(id => id !== logId))
   }
+
+  const handleUndoDelete = () => {
+    if (!undoLog) return
+    const logId = undoLog.id
+    const timer = pendingDeleteTimersRef.current.get(logId)
+    if (timer) clearTimeout(timer)
+    pendingDeleteTimersRef.current.delete(logId)
+    setHiddenLogIds(prev => prev.filter(id => id !== logId))
+    setJustDeleted(prev => {
+      const next = { ...prev }
+      delete next[logId]
+      return next
+    })
+    setUndoLog(null)
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+  }
+
+  // Leaving the dashboard mid-undo-window still commits the delete the
+  // student asked for, rather than silently dropping it.
+  useEffect(() => {
+    const timers = pendingDeleteTimersRef.current
+    return () => {
+      timers.forEach((timer, logId) => {
+        clearTimeout(timer)
+        supabase.from('meal_logs').delete().eq('id', logId).then(() => {})
+      })
+      timers.clear()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Totals with pending (undo-able) deletes already subtracted, so the
+  // strip and rings react the moment a row is removed.
+  const displayTotals = useMemo(() => {
+    if (hiddenLogIds.length === 0) return totals
+    return loggedMeals
+      .filter((log) => !hiddenLogIds.includes(log.id))
+      .reduce((acc, log) => {
+        const item = log.food_items
+        const s = Number(log.servings) || 1
+        if (item) {
+          acc.calories += (Number(item.calories) || 0) * s
+          acc.protein += (Number(item.protein) || 0) * s
+          acc.carbs += (Number(item.carbs) || 0) * s
+          acc.fat += (Number(item.fat) || 0) * s
+        }
+        return acc
+      }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
+  }, [totals, loggedMeals, hiddenLogIds])
 
   // Group and sum macros by local date strings for our calendar render
   const getHistoricalSumForDate = (dateStr: string) => {
@@ -1427,6 +1512,32 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Undo toast for a removed meal log -- sits just above the bottom nav
+          (its own height + the home-indicator inset) for UNDO_WINDOW_MS. */}
+      {undoLog && (
+        <div
+          className="fixed left-0 right-0 z-[60] px-4 flex justify-center"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 84px)' }}
+        >
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-full max-w-md flex items-center gap-3 pl-4 pr-1 py-1 rounded-2xl bg-surface-2 border border-white/15 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.6)] animate-ring-toast"
+          >
+            <span className="flex-1 min-w-0 truncate text-sm text-fg">
+              Removed {undoLog.food_items?.name ?? 'entry'}
+            </span>
+            <button
+              type="button"
+              onClick={handleUndoDelete}
+              className="min-h-tap px-4 rounded-xl text-sm font-semibold text-gold hover:bg-gold/10 active:scale-95 transition"
+            >
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="app-main-top px-3 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
@@ -1436,12 +1547,12 @@ export default function DashboardPage() {
             macro) instead of four separate boxed tiles stacked 2x2 — same information,
             a fraction of the height. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-[#141b2e] border border-white/10">
+          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-3 bg-surface border border-white/10">
             {[
-              { label: 'Calories', value: totals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
-              { label: 'Protein', value: totals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
-              { label: 'Carbs', value: totals.carbs, goal: goalCarbs, color: '#bd5db8', unit: 'g' },
-              { label: 'Fat', value: totals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
+              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
+              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
+              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: '#d17ccd', unit: 'g' },
+              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
             ].map((m, i) => (
               <MacroBarItem key={m.label} label={m.label} value={m.value} goal={m.goal} color={m.color} unit={m.unit} bordered={i > 0} />
             ))}
@@ -1459,7 +1570,7 @@ export default function DashboardPage() {
                     setSelectedHall(e.target.value)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="flex-1 rounded-xl border border-white/10 bg-[#171f33] p-3 text-[#dae2fd] font-medium focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="flex-1 min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
                 >
                   <optgroup label="Dining Halls">
                     {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
@@ -1472,7 +1583,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
+              <div className="flex bg-surface-2 p-1 rounded-xl gap-1">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -1481,9 +1592,9 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
-                      ? 'bg-[#d6b93a]/15 text-[#d6b93a] border border-[#d6b93a]/40'
-                      : 'text-[#c2c6d0] hover:text-[#dae2fd] border border-transparent'
+                    className={`flex-1 min-h-tap px-2 text-sm font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
+                      ? 'bg-gold/15 text-gold border border-gold/40'
+                      : 'text-fg-muted hover:text-fg border border-transparent'
                       }`}
                   >
                     {getDayOffsetLabel(offset)}
@@ -1683,20 +1794,25 @@ export default function DashboardPage() {
                           setSelectedMeal(seg.label)
                           Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
                         }}
-                        className={`text-center py-1 text-[9px] font-bold transition-colors duration-500 active:scale-90 ${
-                          i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-[#d6b93a]' : 'text-[#c2c6d0]/40'
+                        aria-label={`Show ${seg.label} menu`}
+                        aria-pressed={i === dayTrackSegmentIndexForPct(dayTrack, headPct)}
+                        className={`min-h-tap px-0.5 text-center text-xs font-semibold truncate transition-colors duration-500 active:scale-95 ${
+                          i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-gold' : 'text-fg-muted'
                         }`}
                       >
-                        {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
+                        {/* Full name when the segment is wide enough, short form for narrow ones */}
+                        {seg.widthPct >= 20
+                          ? seg.label
+                          : seg.label === 'Late Night' ? 'Late' : seg.label === 'Breakfast' ? 'Bkfst' : seg.label}
                       </button>
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
                   <div className="flex justify-between">
-                    <span className="text-[10px] font-bold text-[#a1c9ff]">
+                    <span className="text-xs font-semibold text-sky">
                       {dayTrack.opensAt}
                     </span>
-                    <span className="text-[10px] font-bold text-[#a1c9ff]">
+                    <span className="text-xs font-semibold text-sky">
                       {dayTrack.closesAt}
                     </span>
                   </div>
@@ -1708,20 +1824,21 @@ export default function DashboardPage() {
                 {showMenuSection && (
                   <div className="pt-4 border-t border-white/10 space-y-3">
                     <div className="relative w-full">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c2c6d0]" size={16} />
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
                       <input
-                        type="text"
+                        type="search"
+                        aria-label="Search menu items"
                         placeholder="Search today's items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-[#171f33] pl-10 pr-9 py-2.5 text-[#dae2fd] font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40 placeholder-[#c2c6d0]/50"
+                        className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 pl-10 pr-11 text-fg font-medium text-base focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
                       />
                       {searchQuery && (
                         <button
                           type="button"
                           onClick={() => setSearchQuery('')}
                           aria-label="Clear search"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c2c6d0] hover:text-[#dae2fd] transition-colors active:scale-90"
+                          className="absolute right-0 top-0 size-tap flex items-center justify-center text-fg-muted hover:text-fg transition-colors active:scale-90"
                         >
                           <X size={16} />
                         </button>
@@ -1741,17 +1858,18 @@ export default function DashboardPage() {
                               key={station}
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
-                              className={`px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
-                                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                                : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                              aria-pressed={isActive}
+                              className={`min-h-tap px-3.5 py-1 rounded-full border transition active:scale-95 flex flex-col items-center justify-center leading-tight ${isActive
+                                ? 'bg-gold/15 text-gold border-gold/40'
+                                : 'bg-white/5 text-fg hover:bg-white/10 border-white/15'
                                 }`}
                             >
                               {parentLabel && (
-                                <span className={`text-[9px] font-semibold uppercase tracking-wide ${isActive ? 'text-[#d6b93a]/70' : 'text-[#a1c9ff]'}`}>
+                                <span className={`text-xs font-medium ${isActive ? 'text-gold' : 'text-sky'}`}>
                                   {parentLabel}
                                 </span>
                               )}
-                              <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
+                              <span className="text-sm font-semibold">{cleanStationName(subLabel)}</span>
                             </button>
                           )
                         })}
@@ -1791,9 +1909,10 @@ export default function DashboardPage() {
                         >
                           <div className="flex-1 space-y-2">
                             <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
-                            <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
+                            <div className="h-3 w-1/2 max-w-[140px] rounded bg-white/5" />
                           </div>
-                          <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
+                          <div className="h-6 w-10 rounded bg-white/5 shrink-0" />
+                          <div className="size-tap rounded-xl bg-white/5 shrink-0" />
                         </div>
                       ))}
                     </div>
@@ -1828,72 +1947,57 @@ export default function DashboardPage() {
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
+                                      className="py-3 flex items-center gap-3 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
-                                      <div>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setDetailFood(food)
-                                            Haptics.selectionChanged().catch(() => {})
-                                          }}
-                                          className="font-bold text-[#dae2fd] text-left underline decoration-dotted decoration-[#c2c6d0]/40 underline-offset-4 active:opacity-70"
-                                        >
+                                      {/* The whole text block opens the detail sheet (serving size,
+                                          ingredients, allergens) -- a big target instead of just the name. */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setDetailFood(food)
+                                          setDetailServings(1)
+                                          Haptics.selectionChanged().catch(() => {})
+                                        }}
+                                        className="flex-1 min-w-0 min-h-tap text-left active:opacity-70"
+                                      >
+                                        <span className="block text-base font-semibold text-fg leading-snug">
                                           {food.name}
-                                        </button>
-                                        <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
+                                        </span>
+                                        <span className="block text-xs text-fg-muted mt-0.5">
                                           {food.portion || '1 serving'}
-                                        </p>
-                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold">
-                                          <span className="text-[#d8b61c]">Cals: {Math.round(food.calories)}</span>
-                                          <span className="text-[#5bb448]">P: {Math.round(food.protein)}g</span>
-                                          <span className="text-[#bd5db8]">C: {Math.round(food.carbs)}g</span>
-                                          <span className="text-[#fb7185]">F: {Math.round(food.fat)}g</span>
-                                        </div>
+                                        </span>
+                                        <span className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
+                                          <span className="text-macro-protein">P {Math.round(food.protein)}g</span>
+                                          <span className="text-macro-carbs">C {Math.round(food.carbs)}g</span>
+                                          <span className="text-macro-fat">F {Math.round(food.fat)}g</span>
+                                        </span>
+                                      </button>
+
+                                      {/* Calories get their own column so they scan top-to-bottom */}
+                                      <div className="shrink-0 text-right tabular-nums">
+                                        <span className="block text-lg font-bold leading-none text-macro-cal">
+                                          {Math.round(food.calories)}
+                                        </span>
+                                        <span className="block text-xs text-fg-muted mt-0.5">cal</span>
                                       </div>
 
-                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
-                                        <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1">
-                                          {[
-                                            { label: '0.25x', value: 0.25 },
-                                            { label: '0.5x', value: 0.5 },
-                                            { label: '1x', value: 1.0 },
-                                            { label: '1.5x', value: 1.5 },
-                                            { label: '2x', value: 2 }
-                                          ].map((opt) => {
-                                            const currentVal = servings[food.recipe_id] ?? 1.0
-                                            const isSelected = currentVal === opt.value
-                                            return (
-                                              <button
-                                                key={opt.label}
-                                                type="button"
-                                                onClick={() => setServings({ ...servings, [food.recipe_id]: opt.value })}
-                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-90 ${isSelected
-                                                  ? 'bg-[#d6b93a]/15 text-[#d6b93a]'
-                                                  : 'text-[#c2c6d0] hover:text-[#dae2fd]'
-                                                  }`}
-                                              >
-                                                {opt.label}
-                                              </button>
-                                            )
-                                          })}
-                                        </div>
-                                        <button
-                                          onClick={() => handleLogFood(food.recipe_id)}
-                                          disabled={!!justLogged[food.recipe_id]}
-                                          className={`flex min-w-[52px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                            ? 'bg-[#5bb448] text-white'
-                                            : 'bg-[#d6b93a] text-[#6b5300] hover:brightness-105'
-                                            }`}
-                                        >
-                                          {justLogged[food.recipe_id] ? (
-                                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
-                                          ) : (
-                                            'Log'
-                                          )}
-                                        </button>
-                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLogFood(food.recipe_id, 1)}
+                                        disabled={!!justLogged[food.recipe_id]}
+                                        aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log 1 serving of ${food.name}`}
+                                        className={`size-tap shrink-0 flex items-center justify-center rounded-xl shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
+                                          ? 'bg-macro-protein text-on-gold'
+                                          : 'bg-gold text-on-gold hover:brightness-105'
+                                          }`}
+                                      >
+                                        {justLogged[food.recipe_id] ? (
+                                          <Check size={20} strokeWidth={3} className="animate-check-pop" />
+                                        ) : (
+                                          <Plus size={22} strokeWidth={2.75} />
+                                        )}
+                                      </button>
                                     </article>
                                   )
                                 })}
@@ -1956,10 +2060,10 @@ export default function DashboardPage() {
 
               {!showCalendar ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <ProgressRing value={totals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
-                  <ProgressRing value={totals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
-                  <ProgressRing value={totals.carbs} goal={goalCarbs} strokeColor="#bd5db8" labelColor="#bd5db8" label="Carbs" unit="g" />
-                  <ProgressRing value={totals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
+                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
+                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
+                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="#d17ccd" labelColor="#d17ccd" label="Carbs" unit="g" />
+                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1967,7 +2071,7 @@ export default function DashboardPage() {
                     {[
                       { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
                       { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
-                      { key: 'carbs', label: 'Carbs', color: '#bd5db8', text: '#612f5e' },
+                      { key: 'carbs', label: 'Carbs', color: '#d17ccd', text: '#612f5e' },
                       { key: 'fat', label: 'Fat', color: '#fb7185', text: '#4c0519' }
                     ].map((macro) => (
                       <button
@@ -2034,7 +2138,7 @@ export default function DashboardPage() {
                         } else if (calendarMacro === 'protein') {
                           actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = '#5bb448'; unit = 'g'
                         } else if (calendarMacro === 'carbs') {
-                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#bd5db8'; unit = 'g'
+                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#d17ccd'; unit = 'g'
                         } else if (calendarMacro === 'fat') {
                           actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = '#fb7185'; unit = 'g'
                         }
@@ -2059,30 +2163,35 @@ export default function DashboardPage() {
             </div>
 
             {/* Meal history */}
-            <div className="rounded-2xl p-5 bg-[#141b2e] border border-white/10">
+            <div className="rounded-2xl p-5 bg-surface border border-white/10">
               <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
-              {loggedMeals.length === 0 ? (
-                <div className="py-12 text-center text-[#c2c6d0] font-medium">
+              {/* Rows mid-undo stay mounted only while their slide-out plays */}
+              {(() => {
+                const visibleLogs = loggedMeals.filter(
+                  (log) => !hiddenLogIds.includes(log.id) || justDeleted[log.id]
+                )
+                return visibleLogs.length === 0 ? (
+                <div className="py-12 text-center text-fg-muted font-medium">
                   You haven't logged any foods today yet. Go back to Log Menu to add meals!
                 </div>
               ) : (
                 <div className="divide-y divide-white/10">
-                  {loggedMeals.map((log) => {
+                  {visibleLogs.map((log) => {
                     const swipeOffset = justDeleted[log.id]
                       ? -400
                       : (isSwipeDragging === log.id ? swipeDragOffset : 0)
+                    const s = log.servings
                     return (
                     <div key={log.id} className="relative overflow-hidden rounded-xl">
-                      {/* Single delete surface, revealed as the row is swiped left */}
-                      <button
-                        onClick={() => handleDeleteLog(log.id)}
-                        disabled={!!justDeleted[log.id]}
-                        aria-label="Delete this log entry"
-                        className="absolute inset-0 flex items-center justify-end pr-6 bg-[#ffb4ab] text-[#5c1a13]"
+                      {/* Red surface revealed as the row is swiped left (decorative --
+                          the trash button on the row is the accessible way to delete) */}
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
                       >
                         <Trash2 size={18} />
-                      </button>
+                      </div>
 
                       <div
                         onPointerDown={(e) => handleSwipePointerDown(log.id, e)}
@@ -2091,26 +2200,38 @@ export default function DashboardPage() {
                           opacity: justDeleted[log.id] ? 0 : 1,
                           transition: isSwipeDragging === log.id ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
                         }}
-                        className="relative bg-[#141b2e] py-4 flex items-center gap-4 touch-pan-y"
+                        className="relative bg-surface py-3 flex items-center gap-3 touch-pan-y"
                       >
-                        <div>
-                          <h4 className="font-bold text-[#dae2fd]">{log.food_items?.name}</h4>
-                          <p className="text-xs text-[#c2c6d0]/70 mt-0.5">
-                            {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {log.servings} serving{log.servings !== 1 ? 's' : ''}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</h3>
+                          <p className="text-xs text-fg-muted mt-0.5">
+                            {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {s} serving{s !== 1 ? 's' : ''}
                           </p>
-                          <div className="flex gap-2 mt-1 text-xs text-[#c2c6d0]">
-                            <span>Cals: {Math.round((log.food_items?.calories || 0) * log.servings)}</span>
-                            <span>P: {Math.round((log.food_items?.protein || 0) * log.servings)}g</span>
-                            <span>C: {Math.round((log.food_items?.carbs || 0) * log.servings)}g</span>
-                            <span>F: {Math.round((log.food_items?.fat || 0) * log.servings)}g</span>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
+                            <span className="text-macro-cal">{Math.round((log.food_items?.calories || 0) * s)} cal</span>
+                            <span className="text-macro-protein">P {Math.round((log.food_items?.protein || 0) * s)}g</span>
+                            <span className="text-macro-carbs">C {Math.round((log.food_items?.carbs || 0) * s)}g</span>
+                            <span className="text-macro-fat">F {Math.round((log.food_items?.fat || 0) * s)}g</span>
                           </div>
                         </div>
+                        {/* Visible delete -- swipe is a shortcut, not the only way */}
+                        <button
+                          type="button"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => handleDeleteLog(log.id)}
+                          disabled={!!justDeleted[log.id]}
+                          aria-label={`Remove ${log.food_items?.name ?? 'this entry'}`}
+                          className="size-tap shrink-0 flex items-center justify-center rounded-xl text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
                     )
                   })}
                 </div>
-              )}
+              )
+              })()}
             </div>
           </div>
         )}
@@ -2228,34 +2349,47 @@ export default function DashboardPage() {
             className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm animate-sheet-backdrop"
             onClick={() => setDetailFood(null)}
           />
-          <div className="relative w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd] animate-slide-up-center">
+          <div className="relative w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-2xl p-5 bg-surface-2 border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg animate-slide-up-center">
             <button
               type="button"
               onClick={() => setDetailFood(null)}
               aria-label="Close"
-              className="absolute top-3 right-3 p-1.5 rounded-full text-[#c2c6d0] hover:bg-white/10 hover:text-[#dae2fd] transition active:scale-90"
+              className="absolute top-1.5 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
 
-            <h2 id="food-detail-title" className="text-lg font-bold tracking-tight text-[#dae2fd] pr-8">
+            <h2 id="food-detail-title" className="text-xl font-bold tracking-tight text-fg pr-10">
               {detailFood.name}
             </h2>
-            <p className="text-xs text-[#c2c6d0]/70 mt-1">{detailFood.portion || '1 serving'}</p>
+            <p className="text-sm text-fg-muted mt-1">
+              {detailFood.portion || '1 serving'}
+              {detailServings !== 1 && ` × ${detailServings}`}
+            </p>
 
-            <div className="flex gap-3 mt-4 text-xs font-semibold">
-              <span className="text-[#d8b61c]">Cals: {Math.round(detailFood.calories)}</span>
-              <span className="text-[#5bb448]">P: {Math.round(detailFood.protein)}g</span>
-              <span className="text-[#bd5db8]">C: {Math.round(detailFood.carbs)}g</span>
-              <span className="text-[#fb7185]">F: {Math.round(detailFood.fat)}g</span>
+            {/* Macros scale with the serving picker below, so what you see is what gets logged */}
+            <div className="grid grid-cols-4 gap-2 mt-4 tabular-nums">
+              {[
+                { label: 'Cal', value: detailFood.calories, unit: '', cls: 'text-macro-cal' },
+                { label: 'Protein', value: detailFood.protein, unit: 'g', cls: 'text-macro-protein' },
+                { label: 'Carbs', value: detailFood.carbs, unit: 'g', cls: 'text-macro-carbs' },
+                { label: 'Fat', value: detailFood.fat, unit: 'g', cls: 'text-macro-fat' },
+              ].map((m) => (
+                <div key={m.label} className="rounded-xl bg-white/5 px-2 py-2 text-center">
+                  <span className={`block text-lg font-bold leading-tight ${m.cls}`}>
+                    {Math.round(m.value * detailServings)}{m.unit}
+                  </span>
+                  <span className="block text-xs text-fg-muted">{m.label}</span>
+                </div>
+              ))}
             </div>
 
             {detailFood.dietary_tags && detailFood.dietary_tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-4">
+              <div className="flex flex-wrap gap-2 mt-4">
                 {detailFood.dietary_tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-[#5bb448]/15 text-[#5bb448]"
+                    className="text-xs font-semibold px-2.5 py-1 rounded-md bg-macro-protein/15 text-macro-protein"
                   >
                     {tag}
                   </span>
@@ -2265,28 +2399,67 @@ export default function DashboardPage() {
 
             {detailFood.ingredients ? (
               <div className="mt-5">
-                <p className="text-xs font-bold uppercase tracking-wide text-[#c2c6d0]/60 mb-1.5">Ingredients</p>
-                <p className="text-sm leading-relaxed text-[#c2c6d0]">{detailFood.ingredients}</p>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-1.5">Ingredients</h3>
+                <p className="text-sm leading-relaxed text-fg">{detailFood.ingredients}</p>
               </div>
             ) : (
-              <p className="mt-5 text-sm text-[#c2c6d0]/60 italic">
+              <p className="mt-5 text-sm text-fg-muted italic">
                 Ingredient list not available for this item yet.
               </p>
             )}
 
             {detailFood.allergens && (
               <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-[#c2c6d0]/60 mb-1.5">Allergens</p>
-                <p className="text-sm leading-relaxed text-[#fb7185]">{detailFood.allergens}</p>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-1.5">Allergens</h3>
+                <p className="text-sm font-medium leading-relaxed text-danger">{detailFood.allergens}</p>
               </div>
             )}
 
-            <p className="mt-5 text-[11px] leading-relaxed text-[#c2c6d0]/40">
+            <p className="mt-4 text-xs leading-relaxed text-fg-muted">
               From UCSC Dining's published nutrition label. Always confirm with staff if you have a serious allergy.
             </p>
+
+            {/* Serving size + Log -- moved here from the menu row, which now logs 1x in one tap */}
+            <div className="mt-5 pt-4 border-t border-white/10">
+              <p id="detail-servings-label" className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-2">Servings</p>
+              <div role="radiogroup" aria-labelledby="detail-servings-label" className="flex bg-app/60 p-1 rounded-xl gap-1">
+                {[0.25, 0.5, 1, 1.5, 2].map((value) => {
+                  const isSelected = detailServings === value
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        setDetailServings(value)
+                        Haptics.selectionChanged().catch(() => {})
+                      }}
+                      className={`flex-1 min-h-tap text-sm font-semibold rounded-lg transition-all active:scale-95 tabular-nums ${isSelected
+                        ? 'bg-gold/15 text-gold border border-gold/40'
+                        : 'text-fg-muted hover:text-fg border border-transparent'
+                        }`}
+                    >
+                      {value}×
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const logged = await handleLogFood(detailFood.recipe_id, detailServings)
+                  if (logged) setDetailFood(null)
+                }}
+                className="mt-3 w-full min-h-tap flex items-center justify-center gap-2 rounded-xl bg-gold text-on-gold text-base font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition"
+              >
+                <Plus size={20} strokeWidth={2.75} />
+                Log {detailServings === 1 ? '1 serving' : `${detailServings} servings`}
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   )
-}
+}

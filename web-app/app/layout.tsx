@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // No maximumScale/userScalable: blocking pinch-zoom locks out low-vision
+  // users (WCAG 1.4.4). 16px inputs keep iOS from auto-zooming on focus.
   viewportFit: "cover",
 };
 
