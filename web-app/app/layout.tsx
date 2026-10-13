@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import DeepLinkHandler from './components/DeepLinkHandler'
+import { TEXT_SIZE_BOOT_SCRIPT } from '@/lib/textSize'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -44,7 +45,13 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      // The boot script below may set an inline font-size before hydration
+      suppressHydrationWarning
     >
+      <head>
+        {/* Applies the saved Text size before first paint (see lib/textSize.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <DeepLinkHandler />
         {children}

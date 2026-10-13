@@ -169,54 +169,54 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Age</label>
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Age</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={age}
                   onChange={(e) => setAge(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Biological Sex</label>
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Biological Sex</label>
                 <select
                   value={sex}
                   onChange={(e) => setSex(e.target.value as BiologicalSex)}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Height (in)</label>
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Height (in)</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={height}
                   onChange={(e) => setHeight(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Weight (lbs)</label>
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Weight (lbs)</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={weight}
                   onChange={(e) => setWeight(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1 mt-2">Goal</label>
+              <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1 mt-2">Goal</label>
               <select
                 value={goal}
                 onChange={(e) => setGoal(e.target.value as Goal)}
-                className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
               >
                 <option value="lose">Lose Weight</option>
                 <option value="maintain">Maintain Current Weight</option>
@@ -227,7 +227,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
             {/* Slider shows only if goal is not maintain */}
             {goal !== 'maintain' && (
               <div className="pt-2">
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-2">
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-2">
                   Rate: {rate} lb{rate > 1 ? 's' : ''} / week
                 </label>
                 <input
@@ -239,7 +239,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
                   onChange={(e) => setRate(Number(e.target.value))}
                   className="w-full accent-[#d6b93a]"
                 />
-                <div className="flex justify-between text-[10px] text-[#c2c6d0]/70 mt-1">
+                <div className="flex justify-between text-10 text-[#c2c6d0]/70 mt-1">
                   <span>0.5 lb</span><span>1.0 lb</span><span>1.5 lb</span><span>2.0 lb</span>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(manualTargets).map(([key, val]) => (
               <div key={key}>
-                <label className="block text-[10px] font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
                   {key === 'calories' ? 'Calories (kcal)' : `${key} (g)`}
                 </label>
                 <input
@@ -262,7 +262,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
                       [key]: Number(sanitizeDigits(e.target.value)) || 0,
                     })
                   }
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-sm font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
                 />
               </div>
             ))}

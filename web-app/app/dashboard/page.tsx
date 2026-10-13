@@ -8,6 +8,7 @@ import UserProfileModal, { UserProfile } from './UserProfileModal'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
+import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 
 import {
@@ -84,6 +85,9 @@ const getDayOffsetLabel = (offsetDays: number): string => {
   d.setDate(d.getDate() + offsetDays)
   return d.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long' })
 }
+
+// Serving multipliers offered on each menu row and in the food detail sheet
+const SERVING_OPTIONS = [0.25, 0.5, 1, 1.5, 2]
 
 // How many days ahead the app lets students browse. scrape_upcoming.py
 // actually scrapes one extra day beyond this (DAYS_AHEAD = 3) on purpose —
@@ -300,12 +304,12 @@ function MacroBarItem({ label, value, goal, color, unit, bordered }: MacroBarIte
   const animatedValue = useCountUp(value)
 
   return (
-    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-3' : ''}`}>
-      <p className="text-xs font-semibold text-fg-muted truncate">{label}</p>
-      <p className="text-base font-bold mt-0.5 leading-tight tabular-nums" style={{ color }}>
+    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
+      <p className="text-10 font-semibold text-fg-muted truncate">{label}</p>
+      <p className="text-sm font-black mt-0.5 leading-tight tabular-nums" style={{ color }}>
         {Math.round(animatedValue)}{unit}
       </p>
-      <p className="text-xs font-medium text-fg-muted leading-tight tabular-nums">
+      <p className="text-11 font-semibold text-fg-muted leading-tight tabular-nums">
         / {Math.round(goal)}{unit}
       </p>
       <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
@@ -430,7 +434,9 @@ export default function DashboardPage() {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
   const [hallStatus, setHallStatus] = useState<HallStatus | null>(null)
-  // Serving multiplier picked in the food detail sheet (reset to 1x each time it opens)
+  // Serving multiplier per menu row (pills under each item); defaults to 1x
+  const [servings, setServings] = useState<{ [key: string]: number }>({})
+  // Serving multiplier in the food detail sheet (opens at the row's current pick)
   const [detailServings, setDetailServings] = useState(1)
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
@@ -500,6 +506,7 @@ export default function DashboardPage() {
     avatarUrl: null,
     memberSince: null,
     dietaryPreferences: [],
+    textSize: DEFAULT_TEXT_SIZE,
   })
 
   // Calendar View State
@@ -744,12 +751,19 @@ export default function DashboardPage() {
           .eq('user_id', user.id)
           .maybeSingle()
 
+        // The account's saved Text size wins (it may have been changed on
+        // another device); fall back to whatever this device last used.
+        const savedTextSize = user.user_metadata?.text_size
+        const textSize = isTextSize(savedTextSize) ? savedTextSize : getLocalTextSize()
+        setLocalTextSize(textSize)
+
         setUserProfile({
           nickname: (user.user_metadata?.nickname as string) || '',
           email: user.email || '',
           avatarUrl: profileRow?.avatar_url || (user.user_metadata?.avatar_url as string) || null,
           memberSince: user.created_at || null,
           dietaryPreferences: (user.user_metadata?.dietary_preferences as string[]) || [],
+          textSize,
         })
       }
     }
@@ -1512,12 +1526,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Undo toast for a removed meal log -- sits just above the bottom nav
-          (its own height + the home-indicator inset) for UNDO_WINDOW_MS. */}
+      {/* Undo toast for a removed meal log -- sits just above the floating tab
+          bar (12px gap + ~64px bar + 12px, over the home-indicator inset)
+          for UNDO_WINDOW_MS. */}
       {undoLog && (
         <div
           className="fixed left-0 right-0 z-[60] px-4 flex justify-center"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 84px)' }}
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
         >
           <div
             role="status"
@@ -1539,7 +1554,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content */}
-      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[130px] lg:max-w-[1100px] lg:px-5">
+      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+140px)] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
         {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
@@ -1547,7 +1562,7 @@ export default function DashboardPage() {
             macro) instead of four separate boxed tiles stacked 2x2 — same information,
             a fraction of the height. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-3 bg-surface border border-white/10">
+          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-surface border border-white/10">
             {[
               { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
               { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
@@ -1570,7 +1585,7 @@ export default function DashboardPage() {
                     setSelectedHall(e.target.value)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="flex-1 min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  className="flex-1 rounded-xl border border-white/10 bg-surface-2 p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
                 >
                   <optgroup label="Dining Halls">
                     {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
@@ -1583,7 +1598,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-surface-2 p-1 rounded-xl gap-1">
+              <div className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -1592,7 +1607,7 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`flex-1 min-h-tap px-2 text-sm font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
+                    className={`flex-1 px-2 py-2 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap ${selectedDayOffset === offset
                       ? 'bg-gold/15 text-gold border border-gold/40'
                       : 'text-fg-muted hover:text-fg border border-transparent'
                       }`}
@@ -1796,23 +1811,20 @@ export default function DashboardPage() {
                         }}
                         aria-label={`Show ${seg.label} menu`}
                         aria-pressed={i === dayTrackSegmentIndexForPct(dayTrack, headPct)}
-                        className={`min-h-tap px-0.5 text-center text-xs font-semibold truncate transition-colors duration-500 active:scale-95 ${
+                        className={`text-center py-1 text-9 font-bold transition-colors duration-500 active:scale-90 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-gold' : 'text-fg-muted'
                         }`}
                       >
-                        {/* Full name when the segment is wide enough, short form for narrow ones */}
-                        {seg.widthPct >= 20
-                          ? seg.label
-                          : seg.label === 'Late Night' ? 'Late' : seg.label === 'Breakfast' ? 'Bkfst' : seg.label}
+                        {seg.label === 'Late Night' ? 'LN' : seg.label === 'Brunch' ? 'Br' : seg.label[0]}
                       </button>
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
                   <div className="flex justify-between">
-                    <span className="text-xs font-semibold text-sky">
+                    <span className="text-10 font-bold text-sky">
                       {dayTrack.opensAt}
                     </span>
-                    <span className="text-xs font-semibold text-sky">
+                    <span className="text-10 font-bold text-sky">
                       {dayTrack.closesAt}
                     </span>
                   </div>
@@ -1831,14 +1843,14 @@ export default function DashboardPage() {
                         placeholder="Search today's items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 pl-10 pr-11 text-fg font-medium text-base focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+                        className="w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
                       />
                       {searchQuery && (
                         <button
                           type="button"
                           onClick={() => setSearchQuery('')}
                           aria-label="Clear search"
-                          className="absolute right-0 top-0 size-tap flex items-center justify-center text-fg-muted hover:text-fg transition-colors active:scale-90"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg transition-colors active:scale-90"
                         >
                           <X size={16} />
                         </button>
@@ -1859,17 +1871,17 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
                               aria-pressed={isActive}
-                              className={`min-h-tap px-3.5 py-1 rounded-full border transition active:scale-95 flex flex-col items-center justify-center leading-tight ${isActive
+                              className={`px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
                                 ? 'bg-gold/15 text-gold border-gold/40'
-                                : 'bg-white/5 text-fg hover:bg-white/10 border-white/15'
+                                : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
                                 }`}
                             >
                               {parentLabel && (
-                                <span className={`text-xs font-medium ${isActive ? 'text-gold' : 'text-sky'}`}>
+                                <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
                                   {parentLabel}
                                 </span>
                               )}
-                              <span className="text-sm font-semibold">{cleanStationName(subLabel)}</span>
+                              <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
                             </button>
                           )
                         })}
@@ -1909,10 +1921,9 @@ export default function DashboardPage() {
                         >
                           <div className="flex-1 space-y-2">
                             <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
-                            <div className="h-3 w-1/2 max-w-[140px] rounded bg-white/5" />
+                            <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
                           </div>
-                          <div className="h-6 w-10 rounded bg-white/5 shrink-0" />
-                          <div className="size-tap rounded-xl bg-white/5 shrink-0" />
+                          <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
                         </div>
                       ))}
                     </div>
@@ -1944,60 +1955,76 @@ export default function DashboardPage() {
                                 {entries.map((entry, entryIndex) => {
                                   const food = entry.food_items
                                   if (!food) return null
+                                  const rowServings = servings[food.recipe_id] ?? 1
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-3 flex items-center gap-3 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
+                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
-                                      {/* The whole text block opens the detail sheet (serving size,
-                                          ingredients, allergens) -- a big target instead of just the name. */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDetailFood(food)
-                                          setDetailServings(1)
-                                          Haptics.selectionChanged().catch(() => {})
-                                        }}
-                                        className="flex-1 min-w-0 min-h-tap text-left active:opacity-70"
-                                      >
-                                        <span className="block text-base font-semibold text-fg leading-snug">
+                                      <div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDetailFood(food)
+                                            setDetailServings(rowServings)
+                                            Haptics.selectionChanged().catch(() => {})
+                                          }}
+                                          className="font-bold text-fg text-left underline decoration-dotted decoration-fg-muted/60 underline-offset-4 active:opacity-70"
+                                        >
                                           {food.name}
-                                        </span>
-                                        <span className="block text-xs text-fg-muted mt-0.5">
+                                        </button>
+                                        <p className="text-xs text-fg-muted mt-0.5">
                                           {food.portion || '1 serving'}
-                                        </span>
-                                        <span className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
-                                          <span className="text-macro-protein">P {Math.round(food.protein)}g</span>
-                                          <span className="text-macro-carbs">C {Math.round(food.carbs)}g</span>
-                                          <span className="text-macro-fat">F {Math.round(food.fat)}g</span>
-                                        </span>
-                                      </button>
-
-                                      {/* Calories get their own column so they scan top-to-bottom */}
-                                      <div className="shrink-0 text-right tabular-nums">
-                                        <span className="block text-lg font-bold leading-none text-macro-cal">
-                                          {Math.round(food.calories)}
-                                        </span>
-                                        <span className="block text-xs text-fg-muted mt-0.5">cal</span>
+                                          {rowServings !== 1 && ` × ${rowServings}`}
+                                        </p>
+                                        {/* Scales with the serving pills below, so it shows what Log will add */}
+                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold tabular-nums">
+                                          <span className="text-macro-cal">Cals: {Math.round(food.calories * rowServings)}</span>
+                                          <span className="text-macro-protein">P: {Math.round(food.protein * rowServings)}g</span>
+                                          <span className="text-macro-carbs">C: {Math.round(food.carbs * rowServings)}g</span>
+                                          <span className="text-macro-fat">F: {Math.round(food.fat * rowServings)}g</span>
+                                        </div>
                                       </div>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => handleLogFood(food.recipe_id, 1)}
-                                        disabled={!!justLogged[food.recipe_id]}
-                                        aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log 1 serving of ${food.name}`}
-                                        className={`size-tap shrink-0 flex items-center justify-center rounded-xl shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                          ? 'bg-macro-protein text-on-gold'
-                                          : 'bg-gold text-on-gold hover:brightness-105'
-                                          }`}
-                                      >
-                                        {justLogged[food.recipe_id] ? (
-                                          <Check size={20} strokeWidth={3} className="animate-check-pop" />
-                                        ) : (
-                                          <Plus size={22} strokeWidth={2.75} />
-                                        )}
-                                      </button>
+                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
+                                        <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
+                                          {SERVING_OPTIONS.map((value) => {
+                                            const isSelected = rowServings === value
+                                            return (
+                                              <button
+                                                key={value}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={isSelected}
+                                                onClick={() => setServings({ ...servings, [food.recipe_id]: value })}
+                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-90 ${isSelected
+                                                  ? 'bg-gold/15 text-gold'
+                                                  : 'text-fg-muted hover:text-fg'
+                                                  }`}
+                                              >
+                                                {value}x
+                                              </button>
+                                            )
+                                          })}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleLogFood(food.recipe_id, rowServings)}
+                                          disabled={!!justLogged[food.recipe_id]}
+                                          aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}`}
+                                          className={`flex min-h-tap min-w-tap items-center justify-center rounded-lg px-3.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
+                                            ? 'bg-macro-protein text-on-gold'
+                                            : 'bg-gold text-on-gold hover:brightness-105'
+                                            }`}
+                                        >
+                                          {justLogged[food.recipe_id] ? (
+                                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
+                                          ) : (
+                                            'Log'
+                                          )}
+                                        </button>
+                                      </div>
                                     </article>
                                   )
                                 })}
@@ -2150,7 +2177,7 @@ export default function DashboardPage() {
                           >
                             <span className="text-xs font-black text-[#c2c6d0]">{cell.dayNum}</span>
                             <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
                               {Math.round(actualVal)} / {targetedGoal} {unit}
                             </div>
                           </div>
@@ -2221,7 +2248,7 @@ export default function DashboardPage() {
                           onClick={() => handleDeleteLog(log.id)}
                           disabled={!!justDeleted[log.id]}
                           aria-label={`Remove ${log.food_items?.name ?? 'this entry'}`}
-                          className="size-tap shrink-0 flex items-center justify-center rounded-xl text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90"
+                          className="p-2 shrink-0 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -2238,33 +2265,50 @@ export default function DashboardPage() {
       </div>
       </main>
 
-      {/* Sticky bottom nav */}
-      <div className="app-bottom-nav fixed bottom-0 left-0 right-0 bg-[#0b1326]/70 backdrop-blur-2xl border-t border-white/15 shadow-2xl py-3 px-6 z-50">
-        <div className="max-w-md mx-auto flex justify-around">
+      {/* Floating tab bar -- an iOS-style pill that floats above the content,
+          lifted off the bottom edge by the home-indicator inset + 12px. The
+          gold capsule behind the active tab slides between the two halves. */}
+      <div
+        className="fixed left-0 right-0 z-50 px-4 flex justify-center pointer-events-none"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+      >
+        <nav
+          aria-label="Main"
+          className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1.5 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
+        >
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-1.5 left-1.5 w-[calc(50%-0.375rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{ transform: activeTab === 'progress' ? 'translateX(100%)' : 'translateX(0)' }}
+          />
           <button
+            type="button"
             onClick={() => {
               setActiveTab('log')
               Haptics.selectionChanged().catch(() => {})
             }}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all active:scale-90 ${activeTab === 'log' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            aria-current={activeTab === 'log' ? 'page' : undefined}
+            className={`relative z-10 min-h-tap flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-colors active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'log' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
             <UtensilsCrossed size={22} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold">Log Menu</span>
+            <span className="text-10 font-bold">Menu</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setActiveTab('progress')
               Haptics.selectionChanged().catch(() => {})
             }}
-            className={`flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl transition-all active:scale-90 ${activeTab === 'progress' ? 'text-[#ffe6ab] scale-105' : 'text-[#c2c6d0]/70 hover:text-[#dae2fd]'
+            aria-current={activeTab === 'progress' ? 'page' : undefined}
+            className={`relative z-10 min-h-tap flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-colors active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'progress' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
             <LineChart size={22} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold">Progress</span>
+            <span className="text-10 font-bold">Progress</span>
           </button>
-        </div>
+        </nav>
       </div>
 
       {/* Set Targets Modal */}
@@ -2423,7 +2467,7 @@ export default function DashboardPage() {
             <div className="mt-5 pt-4 border-t border-white/10">
               <p id="detail-servings-label" className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-2">Servings</p>
               <div role="radiogroup" aria-labelledby="detail-servings-label" className="flex bg-app/60 p-1 rounded-xl gap-1">
-                {[0.25, 0.5, 1, 1.5, 2].map((value) => {
+                {SERVING_OPTIONS.map((value) => {
                   const isSelected = detailServings === value
                   return (
                     <button
@@ -2433,9 +2477,10 @@ export default function DashboardPage() {
                       aria-checked={isSelected}
                       onClick={() => {
                         setDetailServings(value)
+                        setServings((prev) => ({ ...prev, [detailFood.recipe_id]: value }))
                         Haptics.selectionChanged().catch(() => {})
                       }}
-                      className={`flex-1 min-h-tap text-sm font-semibold rounded-lg transition-all active:scale-95 tabular-nums ${isSelected
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 tabular-nums ${isSelected
                         ? 'bg-gold/15 text-gold border border-gold/40'
                         : 'text-fg-muted hover:text-fg border border-transparent'
                         }`}
@@ -2462,4 +2507,4 @@ export default function DashboardPage() {
       )}
     </div>
   )
-}
+}

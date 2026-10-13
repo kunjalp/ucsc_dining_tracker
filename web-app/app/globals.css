@@ -15,9 +15,9 @@
 /* Sammy's Palate design tokens. Every text/background pair below clears
    WCAG AA (4.5:1) on `surface` -- use these instead of raw hex or opacity
    tricks like text-[#c2c6d0]/50, which drop muted text under 3.5:1.
-   Type scale is Tailwind's default (html stays at 100%): text-xs (12px) is
-   the floor for any visible text, text-base (16px) for body and every input
-   (anything smaller makes iOS zoom the page on focus). `static` so the
+   html is 93.75% (user-adjustable), so rem sizes shrink with it -- every
+   input uses text-input instead, which never drops below 16px (anything
+   smaller makes iOS zoom the page on focus). `static` so the
    vars always exist for inline styles (SVG strokes, var(--color-gold)). */
 @theme static {
   --color-app: #0b1326;          /* page background */
@@ -34,8 +34,20 @@
   --color-macro-carbs: #d17ccd;  /* was #bd5db8 (4.4:1) */
   --color-macro-fat: #fb7185;
 
+  /* Small text sizes, named for their px size at the Default text size
+     (html 93.75% = 15px). rem, so the Text size setting scales them too:
+     text-9, text-10, text-11. */
+  --text-9: 0.6rem;
+  --text-10: 0.6667rem;
+  --text-11: 0.7333rem;
+
   /* Minimum iOS touch target (44pt): h-tap, min-h-tap, size-tap, min-w-tap */
   --spacing-tap: 2.75rem;
+}
+
+/* Inputs: scale with the Text size setting, but never under 16px */
+@utility text-input {
+  font-size: max(16px, 1rem);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,6 +75,11 @@
 
 html {
   overscroll-behavior: none;
+  /* Scales every rem-based Tailwind text size (text-sm, text-xs, etc.) down
+     proportionally by ~6% — a slight overall shrink across the whole app
+     instead of hand-editing each text size individually. The Text size
+     setting in Edit Profile overrides this via an inline style on <html>. */
+  font-size: 93.75%;
 }
 
 body.hide-scrollbar {

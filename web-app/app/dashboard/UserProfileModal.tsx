@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, User, Camera, LogOut, Trash2, Check, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
 
 export interface UserProfile {
   nickname: string
@@ -11,6 +12,7 @@ export interface UserProfile {
   avatarUrl: string | null
   memberSince: string | null // ISO date string from auth.users.created_at
   dietaryPreferences: string[]
+  textSize: TextSize
 }
 
 interface UserProfileModalProps {
@@ -57,6 +59,8 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [avatarUrl, setAvatarUrl] = useState(currentProfile.avatarUrl)
   const [dietaryPreferences, setDietaryPreferences] = useState<string[]>(currentProfile.dietaryPreferences)
   const [dietaryDropdownOpen, setDietaryDropdownOpen] = useState(false)
+  // Previewed live as it's picked; Cancel/close puts the saved size back
+  const [textSize, setTextSize] = useState<TextSize>(currentProfile.textSize)
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -228,7 +232,18 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     )
   }
 
-  // ---- Save nickname / email / dietary preferences ----
+  // ---- Text size ----
+  const handlePickTextSize = (size: TextSize) => {
+    setTextSize(size)
+    applyTextSize(size)
+  }
+
+  const handleClose = () => {
+    applyTextSize(currentProfile.textSize)
+    onClose()
+  }
+
+  // ---- Save nickname / email / dietary preferences / text size ----
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -248,7 +263,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     setSaving(true)
 
     const { error: metaError } = await supabase.auth.updateUser({
-      data: { nickname: trimmedNickname, dietary_preferences: dietaryPreferences },
+      data: { nickname: trimmedNickname, dietary_preferences: dietaryPreferences, text_size: textSize },
     })
 
     if (metaError) {
@@ -267,12 +282,14 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     }
 
     setSaving(false)
+    setLocalTextSize(textSize)
     onSave({
       nickname: trimmedNickname,
       email: trimmedEmail,
       avatarUrl,
       memberSince: currentProfile.memberSince,
       dietaryPreferences,
+      textSize,
     })
   }
 
@@ -314,7 +331,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm overflow-y-auto py-6">
       <div className="w-full max-w-sm max-h-[92vh] overflow-y-auto rounded-2xl bg-surface border border-white/10 shadow-2xl p-4 relative my-auto text-fg">
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-1.5 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
           aria-label="Close"
         >
@@ -377,7 +394,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="e.g. bananaslug23"
-              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
+              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
             />
           </div>
 
@@ -391,7 +408,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@ucsc.edu"
-              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-base text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
+              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
             />
             {emailChanged && (
               <p className="text-xs text-sky mt-1">
@@ -472,6 +489,33 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               Menu shows only your diet type and hides items with these allergens.
             </p>
           </div>
+          <div>
+            <p id="text-size-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
+              Text size
+            </p>
+            <div role="radiogroup" aria-labelledby="text-size-label" className="grid grid-cols-4 gap-1 rounded-xl bg-surface-2 p-1">
+              {TEXT_SIZE_OPTIONS.map((option) => {
+                const selected = textSize === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => handlePickTextSize(option.value)}
+                    className={`min-h-tap px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border ${
+                      selected
+                        ? 'bg-gold/15 text-gold border-gold/40'
+                        : 'text-fg-muted hover:text-fg border-transparent'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {error && (
             <p role="alert" className="text-sm font-medium text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
               {error}
@@ -481,7 +525,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           <div className="flex gap-3 pt-1">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
             >
               Cancel
@@ -534,7 +578,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 autoCapitalize="characters"
                 autoCorrect="off"
-                className="w-full min-h-tap rounded-lg border border-danger/30 bg-surface-2 px-3 text-base text-fg focus:outline-none focus:ring-2 focus:ring-danger/40"
+                className="w-full min-h-tap rounded-lg border border-danger/30 bg-surface-2 px-3 text-input text-fg focus:outline-none focus:ring-2 focus:ring-danger/40"
                 placeholder="DELETE"
               />
               {deleteError && (
