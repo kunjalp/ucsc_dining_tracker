@@ -43,6 +43,9 @@
 
   /* Minimum iOS touch target (44pt): h-tap, min-h-tap, size-tap, min-w-tap */
   --spacing-tap: 2.75rem;
+  /* Visible height of Log buttons: 40px at the Default text size (min-h-btn).
+     They pair it with an invisible ::after so the tap area stays >= 44px. */
+  --spacing-btn: 2.6667rem;
 }
 
 /* Inputs: scale with the Text size setting, but never under 16px */

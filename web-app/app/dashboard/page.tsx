@@ -2022,7 +2022,7 @@ export default function DashboardPage() {
                                           onClick={() => handleLogFood(food.recipe_id, rowServings)}
                                           disabled={!!justLogged[food.recipe_id]}
                                           aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}`}
-                                          className={`flex min-h-tap min-w-tap items-center justify-center rounded-lg px-3.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
+                                          className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] flex min-h-btn min-w-tap items-center justify-center rounded-lg px-3.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
                                             ? 'bg-macro-protein text-on-gold'
                                             : 'bg-gold text-on-gold hover:brightness-105'
                                             }`}
@@ -2505,9 +2505,9 @@ export default function DashboardPage() {
                   const logged = await handleLogFood(detailFood.recipe_id, detailServings)
                   if (logged) setDetailFood(null)
                 }}
-                className="mt-3 w-full min-h-tap flex items-center justify-center gap-2 rounded-xl bg-gold text-on-gold text-base font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition"
+                className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] mt-3 w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-xl bg-gold text-on-gold text-sm font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition"
               >
-                <Plus size={20} strokeWidth={2.75} />
+                <Plus size={16} strokeWidth={2.75} />
                 Log {detailServings === 1 ? '1 serving' : `${detailServings} servings`}
               </button>
             </div>
