@@ -62,11 +62,8 @@ export default function BottomSheet({ onClose, labelledBy, children, className =
           animation's fill-mode would otherwise override the inline transform */}
       <div className="relative w-full max-w-md animate-sheet-up">
         <div
-          className={`flex flex-col rounded-t-2xl border border-b-0 border-white/10 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.6)] text-fg ${className}`}
-          style={{
-            transform: dragY ? `translateY(${dragY}px)` : undefined,
-            transition: dragging ? 'none' : 'transform 0.2s ease-out',
-          }}
+          className={`flex flex-col rounded-t-2xl border border-b-0 border-white/10 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.6)] text-fg motion-reduce:transition-none ${dragging ? 'transition-none' : 'transition-transform duration-200 ease-out'} ${className}`}
+          style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
         >
           <div
             onPointerDown={handlePointerDown}

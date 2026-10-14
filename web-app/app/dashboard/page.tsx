@@ -25,6 +25,7 @@ import {
   Check,
   Plus,
   X,
+  SlidersHorizontal,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -495,6 +496,7 @@ export default function DashboardPage() {
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
+  const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
   // "Show" on the dietary chip: lists everything for this session only --
   // the saved profile's preferences are left untouched.
   const [dietFilterOff, setDietFilterOff] = useState(false)
@@ -1959,9 +1961,9 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {/* One horizontally scrolling row (bleeds to the card's edges)
-                        instead of wrapping onto several lines, so the menu stays
-                        near the top of the screen. The dietary chip leads it. */}
+                    {/* One slim row (scrolls sideways if it overflows): dietary chip,
+                        then the "Stations" button that opens the station picker
+                        sheet, then the stations currently selected. */}
                     {(availableStations.length > 0 || dietHiddenCount > 0) && (
                       <div className="flex items-center gap-2 pt-1 -mx-5 px-5 overflow-x-auto scrollbar-none">
                         {dietHiddenCount > 0 && (
@@ -1983,29 +1985,37 @@ export default function DashboardPage() {
                             </button>
                           </div>
                         )}
-                        {availableStations.map((station) => {
-                          const isActive = activeStationFilters.includes(station)
-                          const [parentLabel, subLabel] = station.includes(' - ')
-                            ? station.split(' - ')
-                            : [null, station]
-
+                        {availableStations.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsStationSheetOpen(true)
+                              Haptics.selectionChanged().catch(() => {})
+                            }}
+                            aria-haspopup="dialog"
+                            aria-label={`Filter by station, ${activeStationFilters.length || 'all'} selected`}
+                            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
+                              ? 'bg-gold/15 text-gold border-gold/40'
+                              : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                              }`}
+                          >
+                            <SlidersHorizontal size={14} aria-hidden="true" />
+                            Stations · {activeStationFilters.length || 'All'}
+                          </button>
+                        )}
+                        {/* What's filtering right now -- tap one to remove it */}
+                        {activeStationFilters.map((station) => {
+                          const name = cleanStationName(station.includes(' - ') ? station.split(' - ')[1] : station)
                           return (
                             <button
                               key={station}
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
-                              aria-pressed={isActive}
-                              className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
-                                ? 'bg-gold/15 text-gold border-gold/40'
-                                : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                                }`}
+                              aria-label={`Remove ${name} filter`}
+                              className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold transition active:scale-95 motion-reduce:active:scale-100"
                             >
-                              {parentLabel && (
-                                <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
-                                  {parentLabel}
-                                </span>
-                              )}
-                              <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
+                              {name}
+                              <X size={12} strokeWidth={2.75} aria-hidden="true" />
                             </button>
                           )
                         })}
@@ -2507,6 +2517,65 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Station picker -- every station as a wrapping multi-select chip (same
+          toggle + look as the old inline pills). Changes apply as they're tapped;
+          Done just closes. */}
+      {isStationSheetOpen && (
+        <BottomSheet onClose={() => setIsStationSheetOpen(false)} labelledBy="station-sheet-title">
+          <h2 id="station-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-3">
+            Stations
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {availableStations.map((station) => {
+              const isActive = activeStationFilters.includes(station)
+              const [parentLabel, subLabel] = station.includes(' - ')
+                ? station.split(' - ')
+                : [null, station]
+
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  onClick={() => handleToggleStationFilter(station)}
+                  aria-pressed={isActive}
+                  className={`px-3 py-1.5 rounded-full border transition active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
+                    ? 'bg-gold/15 text-gold border-gold/40'
+                    : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                    }`}
+                >
+                  {parentLabel && (
+                    <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
+                      {parentLabel}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStationFilters([])
+                Haptics.selectionChanged().catch(() => {})
+              }}
+              disabled={activeStationFilters.length === 0}
+              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsStationSheetOpen(false)}
+              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 transition active:scale-95 motion-reduce:active:scale-100"
+            >
+              Done
+            </button>
+          </div>
+        </BottomSheet>
       )}
 
       {/* Food detail sheet -- tapping an item's row slides this up as a bottom
