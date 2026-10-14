@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { animateSpring, createVelocityTracker, project, rubberband, type Spring } from '@/lib/spring'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 
 interface BottomSheetProps {
   onClose: () => void
@@ -10,64 +12,159 @@ interface BottomSheetProps {
   className?: string
 }
 
-// How far the sheet has to be dragged down before letting go closes it
-const DISMISS_DRAG_PX = 90
-// ...or a quick downward flick (px per ms) after at least FLICK_MIN_PX
-const FLICK_VELOCITY = 0.5
-const FLICK_MIN_PX = 20
+// Letting go closes the sheet if where it's heading (position + momentum)
+// is past this fraction of its height -- capped, so tall sheets don't need a
+// huge drag...
+const DISMISS_FRACTION = 0.4
+const DISMISS_MAX_PX = 160
+// ...as long as it was actually pulled down a little, so a tiny accidental
+// flick doesn't close it
+const DISMISS_MIN_PX = 20
 // Movement before a touch on the content counts as a drag rather than a tap
 const DRAG_SLOP_PX = 6
+// Released faster than this (px/s), the snap-back gets a touch of bounce
+const MOMENTUM_PX_S = 300
+
+// The enclosing sheet's animated close (slide down, then onClose)
+const SheetDismissContext = createContext<() => void>(() => {})
+
+// A close button (X, Cancel, Done) inside a BottomSheet: slides the sheet
+// down the same way a swipe does instead of unmounting it on the spot.
+// Takes any <button> props except onClick.
+export function SheetCloseButton(props: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>) {
+  const dismiss = useContext(SheetDismissContext)
+  return <button type="button" {...props} onClick={dismiss} />
+}
 
 // iOS-style bottom sheet: docks to the bottom edge, slides up, and pads its
 // content past the home indicator (safe-area-inset-bottom) so the last
 // button is never under it. Swipe down to dismiss works from the 44px grab
 // handle strip, and from the content itself while it's scrolled to the top
 // (like native sheets) -- once the content is scrolled down, swipes scroll.
+//
+// Motion is springs written straight to the DOM (no React state), so a drag
+// never re-renders the content, the sheet can be grabbed mid-animation and
+// carries on from where it is, and a release hands the finger's speed to
+// the spring. Closing slides it back down the way it came, then unmounts.
 export default function BottomSheet({ onClose, labelledBy, children, className = 'bg-surface-2 max-h-[85dvh]' }: BottomSheetProps) {
-  const [dragY, setDragY] = useState(0)
-  const [dragging, setDragging] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const scrimRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  // Live drag bookkeeping in a ref so the native touch listeners (attached
-  // once) always see current values
-  const dragRef = useRef({ active: false, startY: 0, lastY: 0, lastT: 0, velocity: 0, dy: 0 })
+  // What's on screen right now: px below the resting position (negative =
+  // stretched up past it)
+  const offsetRef = useRef(0)
+  const heightRef = useRef(0)
+  const springRef = useRef<Spring | null>(null)
+  const closingRef = useRef(false)
+  const dragRef = useRef({ active: false, startY: 0, startOffset: 0 })
+  const trackerRef = useRef(createVelocityTracker())
   const onCloseRef = useRef(onClose)
+  const reduceMotion = useReducedMotion()
+  const reduceMotionRef = useRef(reduceMotion)
   useEffect(() => {
     onCloseRef.current = onClose
-  }, [onClose])
+    reduceMotionRef.current = reduceMotion
+  }, [onClose, reduceMotion])
+
+  const measure = () => {
+    heightRef.current = panelRef.current?.offsetHeight || window.innerHeight
+  }
+
+  // The backdrop fades with the sheet: fully dim at rest, clear once the
+  // sheet is all the way down
+  const setOffset = useCallback((y: number) => {
+    offsetRef.current = y
+    if (panelRef.current) panelRef.current.style.transform = y ? `translateY(${y}px)` : ''
+    if (scrimRef.current) {
+      scrimRef.current.style.opacity = y > 0 ? String(Math.max(0, 1 - y / heightRef.current)) : ''
+    }
+  }, [])
+
+  const stopSpring = () => {
+    springRef.current?.stop()
+    springRef.current = null
+  }
+  useEffect(() => stopSpring, [])
+
+  // Slide down past the bottom edge (the way it came in), then unmount.
+  // Reduce Motion: closes instantly, as before.
+  const dismiss = useCallback((velocity = 0) => {
+    if (closingRef.current) return
+    closingRef.current = true
+    stopSpring()
+    if (reduceMotionRef.current) {
+      onCloseRef.current()
+      return
+    }
+    measure()
+    springRef.current = animateSpring({
+      from: offsetRef.current,
+      to: heightRef.current,
+      velocity,
+      damping: 1,
+      response: 0.3,
+      onUpdate: setOffset,
+      onComplete: () => onCloseRef.current(),
+    })
+  }, [setOffset])
+
+  const dismissFromButton = useCallback(() => dismiss(), [dismiss])
+
+  const settle = useCallback((velocity: number) => {
+    stopSpring()
+    if (reduceMotionRef.current) {
+      setOffset(0)
+      return
+    }
+    springRef.current = animateSpring({
+      from: offsetRef.current,
+      to: 0,
+      velocity,
+      damping: Math.abs(velocity) > MOMENTUM_PX_S ? 0.8 : 1,
+      response: 0.3,
+      onUpdate: setOffset,
+    })
+  }, [setOffset])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current()
+      if (e.key === 'Escape') dismiss()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  }, [dismiss])
 
+  // Grabbing stops any running spring -- including the close -- and picks
+  // up from wherever the sheet is on screen, so it never jumps
   const beginDrag = useCallback((y: number) => {
-    dragRef.current = { active: true, startY: y, lastY: y, lastT: performance.now(), velocity: 0, dy: 0 }
-    setDragging(true)
+    stopSpring()
+    closingRef.current = false
+    measure()
+    dragRef.current = { active: true, startY: y, startOffset: offsetRef.current }
+    trackerRef.current.reset()
+    trackerRef.current.add(y)
   }, [])
 
   const moveDrag = useCallback((y: number) => {
     const d = dragRef.current
     if (!d.active) return
-    const now = performance.now()
-    if (now > d.lastT) d.velocity = (y - d.lastY) / (now - d.lastT)
-    d.lastY = y
-    d.lastT = now
-    d.dy = Math.max(0, y - d.startY)
-    setDragY(d.dy)
-  }, [])
+    trackerRef.current.add(y)
+    const raw = d.startOffset + y - d.startY
+    // Above the resting position: resist instead of stopping dead
+    setOffset(raw < 0 ? rubberband(raw, heightRef.current) : raw)
+  }, [setOffset])
 
   const endDrag = useCallback(() => {
     const d = dragRef.current
     if (!d.active) return
     d.active = false
-    setDragging(false)
-    const flicked = d.velocity > FLICK_VELOCITY && d.dy > FLICK_MIN_PX
-    if (d.dy > DISMISS_DRAG_PX || flicked) onCloseRef.current()
-    else setDragY(0)
-  }, [])
+    const velocity = trackerRef.current.velocity()
+    const offset = offsetRef.current
+    const heading = offset + project(velocity)
+    const threshold = Math.min(heightRef.current * DISMISS_FRACTION, DISMISS_MAX_PX)
+    if (offset > DISMISS_MIN_PX && heading > threshold) dismiss(velocity)
+    else settle(velocity)
+  }, [dismiss, settle])
 
   // Content area: a downward swipe that starts while scrolled to the top
   // drags the sheet. Native listeners because the touchmove has to be
@@ -138,17 +235,24 @@ export default function BottomSheet({ onClose, labelledBy, children, className =
       aria-modal="true"
       aria-labelledby={labelledBy}
     >
-      <div
-        className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm animate-sheet-backdrop"
-        onClick={onClose}
-      />
-      {/* Entrance animation and drag offset live on separate elements -- an
-          animation's fill-mode would otherwise override the inline transform */}
+      {/* Fade-in and drag-linked opacity live on separate elements -- an
+          animation's fill-mode would otherwise override the inline opacity */}
+      <div className="absolute inset-0 animate-sheet-backdrop">
+        <div
+          ref={scrimRef}
+          className="glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm"
+          onClick={() => dismiss()}
+        />
+      </div>
+      {/* Same split for the entrance animation and the drag offset */}
       <div className="relative w-full max-w-md animate-sheet-up">
         <div
-          className={`flex flex-col rounded-t-2xl border border-b-0 border-white/10 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.6)] text-fg motion-reduce:transition-none ${dragging ? 'transition-none' : 'transition-transform duration-200 ease-out'} ${className}`}
-          style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
+          ref={panelRef}
+          className={`relative flex flex-col rounded-t-2xl border border-b-0 border-white/10 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.6)] text-fg ${className}`}
         >
+          {/* Sheet-colored strip hanging below the bottom edge, so stretching
+              the sheet up (or a bouncy snap-back) never shows a gap under it */}
+          <div aria-hidden="true" className="absolute -inset-x-px top-full h-24 bg-inherit border-x border-white/10" />
           {/* Grab handle: same thin line, centered in a 44px-tall drag strip.
               touch-none so a vertical drag here moves the sheet, not the page.
               Pointer events cover touch and mouse. */}
@@ -173,7 +277,7 @@ export default function BottomSheet({ onClose, labelledBy, children, className =
             ref={contentRef}
             className="relative overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]"
           >
-            {children}
+            <SheetDismissContext.Provider value={dismissFromButton}>{children}</SheetDismissContext.Provider>
           </div>
         </div>
       </div>

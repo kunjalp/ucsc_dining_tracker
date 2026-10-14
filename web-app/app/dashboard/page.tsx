@@ -13,9 +13,9 @@ import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUG
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
-import BottomSheet from '../components/BottomSheet'
+import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
-import { Toast, ToastStack, useToasts } from '../components/Toast'
+import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
 import {
   History,
@@ -469,6 +469,23 @@ function MiniProgressRing({ value, goal, strokeColor }: { value: number; goal: n
   )
 }
 
+// Undo window for the delete the undo toast is showing, pausable while a
+// finger is on the toast: when it (re)started and how long it had left then.
+// Plain functions out here because the clock reads Date.now().
+type UndoClock = { id: string; startedAt: number; remaining: number; held: boolean }
+const startUndoClock = (id: string, ms: number): UndoClock => ({ id, startedAt: Date.now(), remaining: ms, held: false })
+const pauseUndoClock = (clock: UndoClock) => {
+  clock.held = true
+  clock.remaining -= Date.now() - clock.startedAt
+}
+// Returns how long the delete should now wait
+const resumeUndoClock = (clock: UndoClock, minMs: number) => {
+  clock.held = false
+  clock.startedAt = Date.now()
+  clock.remaining = Math.max(clock.remaining, minMs)
+  return clock.remaining
+}
+
 export default function DashboardPage() {
   const supabase = createClient()
   const reduceMotion = useReducedMotion()
@@ -507,7 +524,10 @@ export default function DashboardPage() {
   const UNDO_WINDOW_MS = 5000
   const [hiddenLogIds, setHiddenLogIds] = useState<string[]>([])
   const [undoLog, setUndoLog] = useState<MealLog | null>(null)
+  // Keeps the undo toast mounted while it animates out after undoLog clears
+  const undoToast = useToastPresence(undoLog)
   const pendingDeleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const undoClockRef = useRef<UndoClock | null>(null)
   // Swipe-to-delete on meal history rows: dragging a row left past a threshold
   // deletes it directly, with a red trash background growing behind it as it
   // travels. State/ref pairing mirrors the day-track drag pattern above (state
@@ -557,7 +577,7 @@ export default function DashboardPage() {
   const [goalCarbs, setGoalCarbs] = useState(250)
   const [goalFat, setGoalFat] = useState(70)
   // In-app toasts (ring closed, errors) -- replaces alert(); see ToastStack
-  const { toasts, showToast, dismissToast } = useToasts()
+  const { toasts, showToast, dismissToast, removeToast, holdToast } = useToasts()
 
   // Sammy perched on the bottom nav. One-shot moods play through a single
   // queue: a new request replaces what's playing unless something more
@@ -1572,6 +1592,25 @@ export default function DashboardPage() {
     playCorner([{ mood: 'oops', ms: 1000 }])
 
     pendingDeleteTimersRef.current.set(logId, setTimeout(() => commitDeleteLog(logId), UNDO_WINDOW_MS))
+    undoClockRef.current = startUndoClock(logId, UNDO_WINDOW_MS)
+  }
+
+  // Finger on the undo toast: the delete waits until it lets go, then gets
+  // whatever was left of the window (at least UNDO_RESUME_MS)
+  const UNDO_RESUME_MS = 1500
+  const holdUndo = (held: boolean) => {
+    const clock = undoClockRef.current
+    if (!clock || clock.held === held) return
+    const timers = pendingDeleteTimersRef.current
+    const timer = timers.get(clock.id)
+    if (timer === undefined) return // already committed or undone
+    clearTimeout(timer)
+    if (held) {
+      pauseUndoClock(clock)
+      return
+    }
+    const logId = clock.id
+    timers.set(logId, setTimeout(() => commitDeleteLog(logId), resumeUndoClock(clock, UNDO_RESUME_MS)))
   }
 
   const commitDeleteLog = async (logId: string) => {
@@ -1844,7 +1883,7 @@ export default function DashboardPage() {
     >
 
       {/* TopAppBar */}
-      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="glass-bar app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
@@ -1883,10 +1922,16 @@ export default function DashboardPage() {
           floating tab bar -- kept outside <main> (and its desktop zoom
           wrapper) so it sits relative to the viewport. The undo toast is
           first, so it stays nearest the tab bar. */}
-      <ToastStack toasts={toasts} onDismiss={dismissToast}>
-        {undoLog && (
-          <Toast action={{ label: 'Undo', onClick: handleUndoDelete }}>
-            <span className="block truncate">Removed {undoLog.food_items?.name ?? 'entry'}</span>
+      <ToastStack toasts={toasts} onDismiss={dismissToast} onExited={removeToast} onHold={holdToast}>
+        {undoToast.item && (
+          <Toast
+            key={undoToast.item.id}
+            action={{ label: 'Undo', onClick: handleUndoDelete }}
+            leaving={undoToast.leaving}
+            onExited={undoToast.onExited}
+            onHold={holdUndo}
+          >
+            <span className="block truncate">Removed {undoToast.item.food_items?.name ?? 'entry'}</span>
           </Toast>
         )}
       </ToastStack>
@@ -2785,7 +2830,7 @@ export default function DashboardPage() {
       >
         <nav
           aria-label="Main"
-          className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
+          className="glass-bar pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
           {/* Sammy perched on top of the pill's right end -- above the nav,
               never over its buttons. Tappable (44px target) for a progress
@@ -2882,7 +2927,7 @@ export default function DashboardPage() {
           aria-modal="true"
           aria-labelledby="welcome-title"
         >
-          <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
+          <div className="glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
           <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg">
             <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-fg mb-3">
               Welcome to Sammy's Palate
@@ -2908,14 +2953,12 @@ export default function DashboardPage() {
           "Log all" goes through handleLogFood for every item. */}
       {suggestionCombos && (
         <BottomSheet onClose={closeSuggestions} labelledBy="suggestions-title">
-          <button
-            type="button"
-            onClick={closeSuggestions}
+          <SheetCloseButton
             aria-label="Close"
             className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90 motion-reduce:active:scale-100"
           >
             <X size={20} />
-          </button>
+          </SheetCloseButton>
           <h2 id="suggestions-title" className="flex items-center gap-2 text-lg font-bold tracking-tight text-fg pr-10">
             <Sammy mood={suggestionsThinking ? 'think' : 'idle'} size={2} />
             Close my rings
@@ -3126,13 +3169,11 @@ export default function DashboardPage() {
             >
               Clear
             </button>
-            <button
-              type="button"
-              onClick={() => setIsStationSheetOpen(false)}
+            <SheetCloseButton
               className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 transition active:scale-95 motion-reduce:active:scale-100"
             >
               Done
-            </button>
+            </SheetCloseButton>
           </div>
         </BottomSheet>
       )}
@@ -3143,14 +3184,12 @@ export default function DashboardPage() {
           label for yet just omit those sections instead of showing nothing. */}
       {detailFood && (
         <BottomSheet onClose={() => setDetailFood(null)} labelledBy="food-detail-title">
-            <button
-              type="button"
-              onClick={() => setDetailFood(null)}
+            <SheetCloseButton
               aria-label="Close"
               className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
             >
               <X size={20} />
-            </button>
+            </SheetCloseButton>
 
             <h2 id="food-detail-title" className="text-xl font-bold tracking-tight text-fg pr-10">
               {detailFood.name}

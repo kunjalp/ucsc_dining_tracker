@@ -24,6 +24,8 @@ const PALETTE: Record<string, string> = {
 const BUBBLE_BG = '#fde7a3'
 const THOUGHT_COLOR = '#fde7a3'
 const Z_COLOR = '#a1c9ff'
+// Matches .sammy-bubble-out in globals.css
+const BUBBLE_FADE_MS = 150
 
 const GRID = [
   '..........HY..HY....',
@@ -171,6 +173,10 @@ export default function Sammy({
   // Tap: a hop (unless a one-shot is already playing) plus a speech bubble
   const [tapHop, setTapHop] = useState(0) // > 0 while hopping; also its replay key
   const [bubble, setBubble] = useState<string | null>(null)
+  const [bubbleLeaving, setBubbleLeaving] = useState(false)
+  // Finger down on Sammy: he dips a sprite pixel right away, before the
+  // tap (and its hop) lands on release
+  const [pressed, setPressed] = useState(false)
   const tapTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => tapTimersRef.current.forEach(clearTimeout), [])
   const handleTap = () => {
@@ -178,7 +184,19 @@ export default function Sammy({
     tapTimersRef.current.forEach(clearTimeout)
     tapTimersRef.current = []
     setBubble(onTapMessage())
-    tapTimersRef.current.push(setTimeout(() => setBubble(null), 2500))
+    setBubbleLeaving(false)
+    tapTimersRef.current.push(setTimeout(() => {
+      // Reduce Motion: the bubble just disappears, as before
+      if (reduceMotion) {
+        setBubble(null)
+        return
+      }
+      setBubbleLeaving(true)
+      tapTimersRef.current.push(setTimeout(() => {
+        setBubble(null)
+        setBubbleLeaving(false)
+      }, BUBBLE_FADE_MS))
+    }, 2500))
     if (!still && !ONE_SHOT.includes(mood)) {
       setTapHop((n) => n + 1)
       tapTimersRef.current.push(setTimeout(() => setTapHop(0), 600))
@@ -347,7 +365,7 @@ export default function Sammy({
       aria-live="polite"
       className={`absolute bottom-full mb-3 z-50 w-max max-w-[min(14rem,70vw)] px-2 py-1 text-xs font-bold leading-snug text-app text-left pointer-events-none ${
         bubbleAlign === 'right' ? 'right-0' : 'left-0'
-      }`}
+      } ${bubbleLeaving ? 'sammy-bubble-out' : 'sammy-bubble-in'}`}
       // Side-only box-shadows leave the corners empty: pixel-rounded corners
       style={{
         background: BUBBLE_BG,
@@ -376,12 +394,19 @@ export default function Sammy({
         <button
           type="button"
           onClick={handleTap}
+          onPointerDown={() => setPressed(!still)}
+          onPointerUp={() => setPressed(false)}
+          onPointerCancel={() => setPressed(false)}
+          onPointerLeave={() => setPressed(false)}
           aria-label={label ?? 'Sammy. Tap for a progress update'}
           // 44px minimum tap target even when the sprite is smaller
           className="flex items-end justify-center select-none"
           style={{ minWidth: 44, minHeight: 44, width: Math.max(44, width), height: Math.max(44, height) }}
         >
-          {sprite}
+          {/* Whole sprite pixel, so the art stays on the pixel grid */}
+          <span className="block" style={pressed ? { transform: `translateY(${px}px)` } : undefined}>
+            {sprite}
+          </span>
         </button>
       </span>
     )

@@ -122,12 +122,13 @@ body.hide-scrollbar::-webkit-scrollbar {
 .animate-check-pop {
   animation: check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
-/* Entrance for the "ring closed" toast — a quick pop + settle, same
-   spring curve as the Log button's checkmark pop above. */
+/* Entrance for every toast — rises out of the tab bar below it (the same
+   way it leaves) and settles without overshoot: nothing the student did
+   threw it, so it shouldn't bounce. */
 @keyframes ring-toast-in {
   0% {
     opacity: 0;
-    transform: translateY(-10px) scale(0.96);
+    transform: translateY(10px) scale(0.96);
   }
   100% {
     opacity: 1;
@@ -136,7 +137,7 @@ body.hide-scrollbar::-webkit-scrollbar {
 }
 
 .animate-ring-toast {
-  animation: ring-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: ring-toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 /* Staggered entrance for menu item rows when a list first renders (hall
    switch, day switch, station filter change) — "both" fill mode keeps
@@ -283,6 +284,18 @@ body.hide-scrollbar::-webkit-scrollbar {
 .sammy-wiggle { animation: sammy-wiggle 0.48s steps(1, end); }
 .sammy-sparkle { opacity: 0; animation: sammy-sparkle 0.6s steps(1, end) 2 both; }
 
+/* Sammy's speech bubble fades in and out instead of popping */
+@keyframes sammy-bubble-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sammy-bubble-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.sammy-bubble-in { animation: sammy-bubble-in 150ms ease-out both; }
+.sammy-bubble-out { animation: sammy-bubble-out 150ms ease-in both; }
+
 /* iOS Reduce Motion: no pulsing, popping, staggering or sliding. Each of
    these ends at its natural resting state (full opacity, no offset, base
    glow), so dropping the animation leaves the same final look. The day
@@ -306,8 +319,42 @@ body.hide-scrollbar::-webkit-scrollbar {
   .sammy-crumb,
   .sammy-z,
   .sammy-think-dot,
-  .sammy-shake {
+  .sammy-shake,
+  .sammy-bubble-in,
+  .sammy-bubble-out {
     animation: none;
+  }
+}
+
+/* Translucent chrome (header, floating tab bar) and the dimming scrims
+   behind sheets/modals. Unlayered, so these beat the Tailwind utilities on
+   the same elements. Only kick in under the accessibility settings --
+   the default look is unchanged. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-bar {
+    background-color: var(--color-app);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass-scrim {
+    background-color: rgb(6 14 32 / 0.85);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Increase Contrast: solid bars with a clearly visible edge */
+@media (prefers-contrast: more) {
+  .glass-bar {
+    background-color: var(--color-app);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: rgb(255 255 255 / 0.4);
+  }
+  .glass-scrim {
+    background-color: rgb(6 14 32 / 0.85);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 

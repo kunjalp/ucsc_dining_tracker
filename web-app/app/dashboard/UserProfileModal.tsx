@@ -6,7 +6,7 @@ import { X, User, Camera, LogOut, Trash2, Check, ChevronDown, ChevronRight } fro
 import { createClient } from '@/lib/supabase'
 import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
 import { setLocalMascotAnimations } from '@/lib/mascotPrefs'
-import BottomSheet from '../components/BottomSheet'
+import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 
 export interface UserProfile {
   nickname: string
@@ -348,13 +348,12 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       labelledBy="profile-title"
       className="bg-surface max-h-[calc(100dvh-env(safe-area-inset-top)-0.5rem)]"
     >
-      <button
-        onClick={handleClose}
+      <SheetCloseButton
         className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
         aria-label="Close"
       >
         <X size={20} />
-      </button>
+      </SheetCloseButton>
 
       {/* Avatar + name on one row; tapping the photo changes it */}
       <div className="flex items-center gap-3 mb-3 pr-10">
@@ -692,13 +691,11 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       )}
 
       <div className="flex gap-3 mt-3">
-        <button
-          type="button"
-          onClick={handleClose}
+        <SheetCloseButton
           className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
         >
           Cancel
-        </button>
+        </SheetCloseButton>
         <button
           type="submit"
           form="profile-form"
