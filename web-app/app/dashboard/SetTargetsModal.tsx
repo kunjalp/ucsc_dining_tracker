@@ -124,15 +124,15 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
       <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal panel */}
-      <div className="relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h2 id="set-targets-title" className="text-lg font-bold tracking-tight text-[#dae2fd]">
+          <h2 id="set-targets-title" className="text-lg font-bold tracking-tight text-fg">
             Set Your Targets
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#c2c6d0] hover:text-[#dae2fd] hover:bg-white/10 transition active:scale-90"
+            className="p-1.5 rounded-full text-fg-subtle hover:text-fg hover:bg-white/10 transition active:scale-90"
             aria-label="Close"
           >
             <X size={18} />
@@ -140,14 +140,14 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
         </div>
 
         {/* Toggle Mode */}
-        <div className="flex bg-[#0b1326] rounded-xl p-1.5 gap-1 mb-6">
+        <div className="flex bg-app rounded-xl p-1.5 gap-1 mb-6">
           <button
             type="button"
             onClick={() => setMode('recommended')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
               mode === 'recommended'
-                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
+                ? 'bg-gold/15 text-gold border-gold/40'
+                : 'text-fg-subtle hover:text-fg border-transparent'
             }`}
           >
             Recommended
@@ -157,8 +157,8 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
             onClick={() => setMode('manual')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
               mode === 'manual'
-                ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                : 'text-[#c2c6d0] hover:text-[#dae2fd] border-transparent'
+                ? 'bg-gold/15 text-gold border-gold/40'
+                : 'text-fg-subtle hover:text-fg border-transparent'
             }`}
           >
             Manual
@@ -169,54 +169,54 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Age</label>
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1">Age</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={age}
                   onChange={(e) => setAge(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
                 />
               </div>
               <div>
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Biological Sex</label>
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1">Biological Sex</label>
                 <select
                   value={sex}
                   onChange={(e) => setSex(e.target.value as BiologicalSex)}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                 </select>
               </div>
               <div>
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Height (in)</label>
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1">Height (in)</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={height}
                   onChange={(e) => setHeight(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
                 />
               </div>
               <div>
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">Weight (lbs)</label>
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1">Weight (lbs)</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={weight}
                   onChange={(e) => setWeight(sanitizeDigits(e.target.value))}
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1 mt-2">Goal</label>
+              <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1 mt-2">Goal</label>
               <select
                 value={goal}
                 onChange={(e) => setGoal(e.target.value as Goal)}
-                className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
               >
                 <option value="lose">Lose Weight</option>
                 <option value="maintain">Maintain Current Weight</option>
@@ -227,7 +227,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
             {/* Slider shows only if goal is not maintain */}
             {goal !== 'maintain' && (
               <div className="pt-2">
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-2">
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-2">
                   Rate: {rate} lb{rate > 1 ? 's' : ''} / week
                 </label>
                 <input
@@ -237,9 +237,9 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
                   step="0.5"
                   value={rate}
                   onChange={(e) => setRate(Number(e.target.value))}
-                  className="w-full accent-[#d6b93a]"
+                  className="w-full accent-gold"
                 />
-                <div className="flex justify-between text-10 text-[#c2c6d0]/70 mt-1">
+                <div className="flex justify-between text-10 text-fg-subtle/70 mt-1">
                   <span>0.5 lb</span><span>1.0 lb</span><span>1.5 lb</span><span>2.0 lb</span>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <div className="grid grid-cols-2 gap-4">
             {Object.entries(manualTargets).map(([key, val]) => (
               <div key={key}>
-                <label className="block text-10 font-bold text-[#c2c6d0] uppercase tracking-wider mb-1">
+                <label className="block text-10 font-bold text-fg-subtle uppercase tracking-wider mb-1">
                   {key === 'calories' ? 'Calories (kcal)' : `${key} (g)`}
                 </label>
                 <input
@@ -262,7 +262,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
                       [key]: Number(sanitizeDigits(e.target.value)) || 0,
                     })
                   }
-                  className="w-full bg-[#0b1326] border border-white/10 rounded-lg p-2.5 text-input font-bold text-[#dae2fd] focus:outline-none focus:ring-2 focus:ring-[#d6b93a]/40"
+                  className="w-full bg-app border border-white/10 rounded-lg p-2.5 text-input font-bold text-fg focus:outline-none focus:ring-2 focus:ring-gold/40"
                 />
               </div>
             ))}
@@ -273,14 +273,14 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 text-xs font-bold text-[#c2c6d0] bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition active:scale-95 border border-white/10"
+            className="flex-1 text-xs font-bold text-fg-subtle bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition active:scale-95 border border-white/10"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 bg-[#d6b93a] hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl transition active:scale-95"
+            className="flex-1 bg-gold hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl transition active:scale-95"
           >
             Save Targets
           </button>

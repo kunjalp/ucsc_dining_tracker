@@ -8,8 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
 
 /* Sammy's Palate design tokens. Every text/background pair below clears
@@ -25,6 +24,7 @@
   --color-surface-2: #1c2640;    /* inputs, segmented controls, sheets */
   --color-fg: #dae2fd;           /* primary text */
   --color-fg-muted: #9aa3b8;     /* secondary text -- 6.8:1 on surface */
+  --color-fg-subtle: #c2c6d0;    /* lighter secondary text (older screens) */
   --color-gold: #d6b93a;         /* primary actions, selected state */
   --color-on-gold: #0b1326;      /* text/icons on gold -- 9.6:1 */
   --color-sky: #a1c9ff;          /* links, info, station headers */
@@ -185,7 +185,16 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* iOS Reduce Motion: no pulsing, popping, staggering or sliding. Each of
+   these ends at its natural resting state (full opacity, no offset, base
+   glow), so dropping the animation leaves the same final look. The day
+   track's SMIL head swing and Zz's are handled in dashboard/page.tsx. */
 @media (prefers-reduced-motion: reduce) {
+  .animate-glow-pulse,
+  .animate-row-in,
+  .animate-check-pop,
+  .animate-ring-toast,
+  .animate-sheet-backdrop,
   .animate-sheet-up {
     animation: none;
   }
@@ -207,9 +216,8 @@ body.hide-scrollbar::-webkit-scrollbar {
 body {
   background: var(--background);
   color: var(--foreground);
-  /* Was hardcoded to Arial/Helvetica, silently overriding the Geist Sans
-     already loaded in layout.tsx via next/font — the whole app was
-     rendering in the browser's generic Arial fallback instead. */
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Plus Jakarta Sans, loaded in layout.tsx via next/font. Pages no longer
+     set their own inline font-family. */
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   overscroll-behavior: none;
 }

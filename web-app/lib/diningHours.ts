@@ -799,3 +799,37 @@ export function getHallStatusForDate(hallName: string, dateStr: string): HallOpe
   const [start, end] = windows[0]
   return { is_open: true, status_text: `Open ${formatTime(start)}–${formatTime(end)}` }
 }
+
+function getWindowsForDate(schedule: HallScheduleData, dateStr: string): TimeWindow[] {
+  if (dateStr in schedule.specialDates) return schedule.specialDates[dateStr]
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const reg = schedule.regularHours[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return reg ? [reg] : []
+}
+
+export interface NextOpening {
+  dayOffset: number // days from today (0 = later today, 1 = tomorrow, ...)
+  time: string // e.g. "7:00 AM" / "7 AM"
+}
+
+/**
+ * When a hall that's closed will next open, from published hours, scanning
+ * up to a week ahead. `fromDayOffset` is the day being viewed (0 = today,
+ * where only windows still ahead of "now" count). Returns null for halls
+ * without schedule data, or with nothing in the next week.
+ */
+export function getNextOpening(hallName: string, now: Date = new Date(), fromDayOffset: number = 0): NextOpening | null {
+  const schedule = SCHEDULES[hallName]
+  if (!schedule) return null
+  const { minutesSinceMidnight } = getPacificParts(now)
+
+  for (let offset = fromDayOffset; offset <= fromDayOffset + 7; offset++) {
+    const day = new Date(now)
+    day.setDate(day.getDate() + offset)
+    const dateStr = day.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    const windows = getWindowsForDate(schedule, dateStr)
+    const next = windows.find(([start]) => offset > 0 || timeToMinutes(start) > minutesSinceMidnight)
+    if (next) return { dayOffset: offset, time: formatTime(next[0]) }
+  }
+  return null
+}

@@ -47,14 +47,13 @@ export default function OnboardingPage() {
 
     return (
         <div
-            className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            className="flex min-h-screen flex-col items-center justify-center bg-app p-4 text-fg relative overflow-hidden"
         >
-            <div className="w-full max-w-xs rounded-2xl p-6 bg-[#141b2e] border border-white/10 text-center">
-                <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] mb-2">
+            <div className="w-full max-w-xs rounded-2xl p-6 bg-surface border border-white/10 text-center">
+                <h1 className="text-xl font-extrabold tracking-tight text-fg mb-2">
                     Welcome to Sammy's Palate!
                 </h1>
-                <p className="text-sm text-[#c2c6d0] mb-6">
+                <p className="text-sm text-fg-subtle mb-6">
                     Set your daily calorie and macro goals to display your dashboard progress rings. You can change these anytime.
                 </p>
 
@@ -63,7 +62,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={goToDashboard}
                         disabled={saving}
-                        className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-[#c2c6d0] hover:bg-white/10 transition disabled:opacity-60"
+                        className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-fg-subtle hover:bg-white/10 transition disabled:opacity-60"
                     >
                         Later
                     </button>
@@ -71,7 +70,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={() => setShowModal(true)}
                         disabled={saving}
-                        className="flex-1 rounded-xl bg-[#d6b93a] py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-60"
+                        className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-60"
                     >
                         Now
                     </button>

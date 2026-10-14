@@ -5,12 +5,14 @@ import { useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, type DayTrack } from '@/lib/diningHours'
+import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet from '../components/BottomSheet'
+import { Toast, ToastStack, useToasts } from '../components/Toast'
 
 import {
   History,
@@ -97,6 +99,10 @@ const SERVING_OPTIONS = [0.25, 0.5, 1, 1.5, 2]
 // cached from the PREVIOUS day's scrape, so it's never empty overnight
 // while waiting for today's run.
 const DAY_OFFSETS = [0, 1, 2]
+
+// Order of the meal groups in Progress > Everything Logged Today. Anything
+// else logged (Brunch, a cafe's "Menu"/"ALL") sorts after these.
+const LOG_MEAL_ORDER = ['Breakfast', 'Brunch', 'Lunch', 'Dinner', 'Late Night']
 
 // Whichever meal period a dining hall is actually serving (or, during a
 // Continuous Dining gap, most recently served) right now — e.g. "Lunch" at
@@ -192,13 +198,13 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 // pivot (0, 0) so the parent <g> can rotate it in place.
 function SlugHead() {
   return (
-    <>
-      <circle cx="0" cy="0" r="3.4" fill="#d6b93a" stroke="#3f7fb0" strokeWidth="1.2" />
-      <line x1="-2" y1="-2.5" x2="-4" y2="-5.8" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <line x1="1" y1="-3" x2="0.3" y2="-6.3" stroke="#d6b93a" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="-4.5" cy="-6.6" r="1.5" fill="#d6b93a" />
-      <circle cx="0" cy="-7.1" r="1.5" fill="#d6b93a" />
-    </>
+    <g className="text-gold">
+      <circle cx="0" cy="0" r="3.4" fill="currentColor" stroke="#3f7fb0" strokeWidth="1.2" />
+      <line x1="-2" y1="-2.5" x2="-4" y2="-5.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="1" y1="-3" x2="0.3" y2="-6.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="-4.5" cy="-6.6" r="1.5" fill="currentColor" />
+      <circle cx="0" cy="-7.1" r="1.5" fill="currentColor" />
+    </g>
   )
 }
 
@@ -263,11 +269,17 @@ function useCountUp(target: number, duration = 500) {
   const [display, setDisplay] = useState(target)
   const fromRef = useRef(target)
   const rafRef = useRef<number | null>(null)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     const from = fromRef.current
     const to = target
     if (from === to) return
+    // Reduce Motion: no easing -- the hook returns target directly (below)
+    if (reduceMotion) {
+      fromRef.current = to
+      return
+    }
 
     const start = performance.now()
     const tick = (now: number) => {
@@ -285,9 +297,9 @@ function useCountUp(target: number, duration = 500) {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
-  }, [target, duration])
+  }, [target, duration, reduceMotion])
 
-  return display
+  return reduceMotion ? target : display
 }
 
 // One column of the live macro totals strip. Pulled out of the inline
@@ -303,9 +315,11 @@ interface MacroBarItemProps {
   // What logging the row's picked serving would add -- shown as "+N" and a
   // faded bar extension while a serving pill was just tapped
   preview: number
+  // false until today's logs have loaded -- shows "–" instead of a fake 0
+  loaded: boolean
 }
 
-function MacroBarItem({ label, value, goal, color, unit, bordered, preview }: MacroBarItemProps) {
+function MacroBarItem({ label, value, goal, color, unit, bordered, preview, loaded }: MacroBarItemProps) {
   const animatedValue = useCountUp(value)
   const pctOf = (v: number) => `${Math.min((v / Math.max(goal, 1)) * 100, 100)}%`
 
@@ -313,7 +327,7 @@ function MacroBarItem({ label, value, goal, color, unit, bordered, preview }: Ma
     <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
       <p className="text-10 font-semibold text-fg-muted truncate">{label}</p>
       <p className="text-sm font-black mt-0.5 leading-tight tabular-nums" style={{ color }}>
-        {Math.round(animatedValue)}{unit}
+        {loaded ? `${Math.round(animatedValue)}${unit}` : '–'}
       </p>
       {preview > 0 ? (
         <p className="text-11 font-bold leading-tight tabular-nums truncate" style={{ color }}>
@@ -327,12 +341,12 @@ function MacroBarItem({ label, value, goal, color, unit, bordered, preview }: Ma
       <div className="relative h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
         {preview > 0 && (
           <div
-            className="absolute inset-y-0 left-0 rounded-full opacity-40 transition-all"
+            className="absolute inset-y-0 left-0 rounded-full opacity-40 transition-all motion-reduce:transition-none"
             style={{ width: pctOf(value + preview), backgroundColor: color }}
           />
         )}
         <div
-          className="relative h-full rounded-full transition-all"
+          className="relative h-full rounded-full transition-all motion-reduce:transition-none"
           style={{ width: pctOf(animatedValue), backgroundColor: color }}
         />
       </div>
@@ -348,9 +362,10 @@ interface ProgressRingProps {
   labelColor: string
   label: string
   unit: string
+  loaded: boolean // false until today's logs have loaded -- shows "–", not 0
 }
 
-function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: ProgressRingProps) {
+function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loaded }: ProgressRingProps) {
   const radius = 42
   const stroke = 9
   const normalizedRadius = radius - stroke * 2
@@ -375,31 +390,32 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit }: Pro
             cx={radius}
             cy={radius}
           />
+          {/* stroke via style, not the attribute -- SVG presentation
+              attributes don't resolve var(--color-*) tokens */}
           <circle
-            stroke={strokeColor}
             strokeWidth={stroke}
             strokeDasharray={circumference + ' ' + circumference}
-            style={{ strokeDashoffset }}
+            style={{ stroke: strokeColor, strokeDashoffset }}
             strokeLinecap="round"
             fill="transparent"
             r={normalizedRadius}
             cx={radius}
             cy={radius}
-            className="transition-all duration-500 ease-out"
+            className="transition-all duration-500 ease-out motion-reduce:transition-none"
           />
         </svg>
 
         <div className="absolute text-center">
-          <span className="text-base font-black tracking-tight text-[#dae2fd]">
-            {goal > 0 ? Math.round((animatedValue / goal) * 100) : 0}%
+          <span className="text-base font-black tracking-tight text-fg">
+            {!loaded ? '–' : `${goal > 0 ? Math.round((animatedValue / goal) * 100) : 0}%`}
           </span>
         </div>
       </div>
 
       <div className="text-center mt-2">
         <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
-        <p className="text-xs text-[#c2c6d0] font-semibold mt-0.5">
-          {Math.round(animatedValue)} / {goal} {unit}
+        <p className="text-xs text-fg-subtle font-semibold mt-0.5">
+          {loaded ? Math.round(animatedValue) : '–'} / {goal} {unit}
         </p>
       </div>
     </div>
@@ -426,16 +442,15 @@ function MiniProgressRing({ value, goal, strokeColor }: { value: number; goal: n
         cy={radius}
       />
       <circle
-        stroke={strokeColor}
         strokeWidth={stroke}
         strokeDasharray={circumference + ' ' + circumference}
-        style={{ strokeDashoffset }}
+        style={{ stroke: strokeColor, strokeDashoffset }}
         strokeLinecap="round"
         fill="transparent"
         r={normalizedRadius}
         cx={radius}
         cy={radius}
-        className="transition-all duration-300"
+        className="transition-all duration-300 motion-reduce:transition-none"
       />
     </svg>
   )
@@ -443,11 +458,11 @@ function MiniProgressRing({ value, goal, strokeColor }: { value: number; goal: n
 
 export default function DashboardPage() {
   const supabase = createClient()
+  const reduceMotion = useReducedMotion()
   const [activeTab, setActiveTab] = useState<'log' | 'progress'>('log')
   const [loading, setLoading] = useState(true)
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
-  const locationLabel = DINING_HALL_NAMES.includes(selectedHall) ? 'Dining Hall' : 'Location'
   const [selectedMeal, setSelectedMeal] = useState(() => getCurrentMealPeriodLabel(DINING_HALLS[0]) || 'Breakfast')
   const [selectedDayOffset, setSelectedDayOffset] = useState(0) // 0 = Today, 1 = Tomorrow, ... see DAY_OFFSETS
   const [availableMealTypes, setAvailableMealTypes] = useState<string[]>(['Breakfast', 'Lunch', 'Dinner'])
@@ -506,7 +521,8 @@ export default function DashboardPage() {
   const [goalProtein, setGoalProtein] = useState(120)
   const [goalCarbs, setGoalCarbs] = useState(250)
   const [goalFat, setGoalFat] = useState(70)
-  const [ringClosedToast, setRingClosedToast] = useState<string | null>(null)
+  // In-app toasts (ring closed, errors) -- replaces alert(); see ToastStack
+  const { toasts, showToast, dismissToast } = useToasts()
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
   // Food detail sheet -- tapping an item's name opens it with that item's
   // ingredients/allergens/dietary icons (closed = null).
@@ -554,6 +570,8 @@ export default function DashboardPage() {
   // Daily logs and totals tracking state
   const [loggedMeals, setLoggedMeals] = useState<MealLog[]>([])
   const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 })
+  // False until the first fetchTodayTotals finishes -- the strip and rings show "–" until then
+  const [totalsLoaded, setTotalsLoaded] = useState(false)
 
   // Ticks once a minute so the "X until Lunch/Dinner/Closing" countdown
   // below stays current without needing a page refresh.
@@ -714,8 +732,9 @@ export default function DashboardPage() {
   // guard pattern as the day-track crossing effect above, so opening the
   // app with an already-closed ring from earlier today stays silent.
   const prevRingsClosedRef = useRef<{ cal: boolean; protein: boolean; carbs: boolean; fat: boolean } | null>(null)
-  const ringToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    // The placeholder zeros before the first fetch aren't a real baseline
+    if (!totalsLoaded) return
     const closed = {
       cal: goalCalories > 0 && totals.calories >= goalCalories,
       protein: goalProtein > 0 && totals.protein >= goalProtein,
@@ -743,13 +762,12 @@ export default function DashboardPage() {
         newlyClosed.length === 1
           ? `${newlyClosed[0]} ring closed!`
           : `${newlyClosed.slice(0, -1).join(', ')} & ${newlyClosed[newlyClosed.length - 1]} rings closed!`
-      setRingClosedToast(message)
-      if (ringToastTimeoutRef.current) clearTimeout(ringToastTimeoutRef.current)
-      ringToastTimeoutRef.current = setTimeout(() => setRingClosedToast(null), 3200)
+      showToast(message, 'success')
     }
 
     prevRingsClosedRef.current = closed
-  }, [totals, goalCalories, goalProtein, goalCarbs, goalFat])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totals, totalsLoaded, goalCalories, goalProtein, goalCarbs, goalFat])
 
   // Hide the scrollbar everywhere — a visible one is a tell that this is a
   // web page rather than a native app.
@@ -1071,6 +1089,24 @@ export default function DashboardPage() {
   const isOpeningLaterToday = isClosedNow && mealCountdown?.mode === 'opens'
   const showMenuSection = !isClosedNow || isOpeningLaterToday
 
+  // Neutral closed card text: "Closed today · Opens tomorrow 7 AM", from the
+  // hall's real published hours. A gap between two windows today reads
+  // "Closed now · Opens 4:30 PM".
+  const nextOpening = useMemo(
+    () => (isClosedNow ? getNextOpening(selectedHall, now, selectedDayOffset) : null),
+    [isClosedNow, selectedHall, now, selectedDayOffset]
+  )
+  const closedLabel = selectedDayOffset === 0
+    ? (nextOpening?.dayOffset === 0 ? 'Closed now' : 'Closed today')
+    : `Closed ${getDayOffsetLabel(selectedDayOffset)}`
+  const nextOpeningLabel = nextOpening
+    ? nextOpening.dayOffset === 0
+      ? `Opens ${nextOpening.time}`
+      : nextOpening.dayOffset === 1
+        ? `Opens tomorrow ${nextOpening.time}`
+        : `Opens ${getDayOffsetLabel(nextOpening.dayOffset)} ${nextOpening.time}`
+    : null
+
   // 2. Extract unique stations dynamically from raw menu data
   const availableStations = useMemo(() => {
     const stations = menu.map((entry) => getEffectiveStation(entry))
@@ -1260,7 +1296,10 @@ export default function DashboardPage() {
     })
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setTotalsLoaded(true) // signed out: the zeros are real
+      return
+    }
 
     const { data, error } = await supabase
       .from('meal_logs')
@@ -1275,6 +1314,7 @@ export default function DashboardPage() {
       .eq('user_id', user.id)
       .eq('log_date', todayStr)
 
+    // On error the strip keeps showing "–" rather than claiming 0 eaten
     if (error) {
       console.error("Error fetching totals:", error.message)
       return
@@ -1295,6 +1335,7 @@ export default function DashboardPage() {
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
       setTotals(runningTotals)
+      setTotalsLoaded(true)
     }
   }
 
@@ -1328,7 +1369,7 @@ export default function DashboardPage() {
   const handleLogFood = async (foodId: string, count: number = 1): Promise<boolean> => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      alert('Please sign in first!')
+      showToast('Please sign in to log food.', 'error')
       return false
     }
 
@@ -1348,7 +1389,7 @@ export default function DashboardPage() {
       })
 
     if (error) {
-      alert(`Logging failed: ${error.message}`)
+      showToast(`Couldn't log that: ${error.message}`, 'error')
       return false
     } else {
       // Quick, light confirmation tap — this is a frequent, low-stakes action.
@@ -1455,7 +1496,7 @@ export default function DashboardPage() {
       .eq('id', logId)
 
     if (error) {
-      alert(`Could not delete log: ${error.message}`)
+      showToast(`Couldn't remove that entry: ${error.message}`, 'error')
     } else {
       await fetchTodayTotals()
       fetchHistoricalLogs() // keep the calendar in sync if it's open
@@ -1573,12 +1614,11 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-dvh bg-[#0b1326] text-[#dae2fd] relative overflow-x-clip"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      className="min-h-dvh bg-app text-fg relative overflow-x-clip"
     >
 
       {/* TopAppBar */}
-      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-[#0b1326]/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
@@ -1591,7 +1631,7 @@ export default function DashboardPage() {
             <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight leading-none mb-0.5">
               Sammy's Palate
             </span>
-            <span className="text-xs font-bold text-[#dae2fd]/70">
+            <span className="text-xs font-bold text-fg/70">
               UCSC Macro Tracker
             </span>
           </div>
@@ -1607,52 +1647,23 @@ export default function DashboardPage() {
             {userProfile.avatarUrl ? (
               <img src={userProfile.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <User size={18} className="text-[#c2c6d0]" />
+              <User size={18} className="text-fg-subtle" />
             )}
           </button>
         </div>
       </header>
 
-      {/* Ring-closed toast — kept outside <main> (and its desktop zoom
-          wrapper) on purpose so this fixed banner always sits relative to
-          the viewport, not to a zoomed ancestor. */}
-      {ringClosedToast && (
-        <div
-          className="fixed left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center"
-          style={{ top: 'calc(env(safe-area-inset-top) + 4.5rem)' }}
-        >
-          <div className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#121c33]/95 backdrop-blur-xl border border-[#d6b93a]/40 shadow-[0_8px_30px_-6px_rgba(214,185,58,0.35)] animate-ring-toast">
-            <span className="text-base font-bold text-[#EDEFF5] whitespace-nowrap">{ringClosedToast}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Undo toast for a removed meal log -- sits just above the floating tab
-          bar (12px gap + ~50px bar + 10px, over the home-indicator inset)
-          for UNDO_WINDOW_MS. */}
-      {undoLog && (
-        <div
-          className="fixed left-0 right-0 z-[60] px-4 flex justify-center"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
-        >
-          <div
-            role="status"
-            aria-live="polite"
-            className="w-full max-w-md flex items-center gap-3 pl-4 pr-1 py-1 rounded-2xl bg-surface-2 border border-white/15 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.6)] animate-ring-toast"
-          >
-            <span className="flex-1 min-w-0 truncate text-sm text-fg">
-              Removed {undoLog.food_items?.name ?? 'entry'}
-            </span>
-            <button
-              type="button"
-              onClick={handleUndoDelete}
-              className="min-h-tap px-4 rounded-xl text-sm font-semibold text-gold hover:bg-gold/10 active:scale-95 transition"
-            >
-              Undo
-            </button>
-          </div>
-        </div>
-      )}
+      {/* All toasts (ring closed, errors, undo) in one column above the
+          floating tab bar -- kept outside <main> (and its desktop zoom
+          wrapper) so it sits relative to the viewport. The undo toast is
+          first, so it stays nearest the tab bar. */}
+      <ToastStack toasts={toasts} onDismiss={dismissToast}>
+        {undoLog && (
+          <Toast action={{ label: 'Undo', onClick: handleUndoDelete }}>
+            <span className="block truncate">Removed {undoLog.food_items?.name ?? 'entry'}</span>
+          </Toast>
+        )}
+      </ToastStack>
 
       {/* Main Content */}
       <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+124px)] lg:max-w-[1100px] lg:px-5">
@@ -1668,10 +1679,10 @@ export default function DashboardPage() {
         {activeTab === 'log' && (
           <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
-              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: '#d8b61c', unit: '', key: 'calories' as const },
-              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: '#5bb448', unit: 'g', key: 'protein' as const },
-              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: '#d17ccd', unit: 'g', key: 'carbs' as const },
-              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: '#fb7185', unit: 'g', key: 'fat' as const },
+              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
+              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: 'var(--color-macro-protein)', unit: 'g', key: 'protein' as const },
+              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: 'var(--color-macro-carbs)', unit: 'g', key: 'carbs' as const },
+              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: 'var(--color-macro-fat)', unit: 'g', key: 'fat' as const },
             ].map((m, i) => (
               <MacroBarItem
                 key={m.label}
@@ -1681,6 +1692,7 @@ export default function DashboardPage() {
                 color={m.color}
                 unit={m.unit}
                 bordered={i > 0}
+                loaded={totalsLoaded}
                 preview={servingPreview ? (servingPreview.food[m.key] || 0) * servingPreview.servings : 0}
               />
             ))}
@@ -1690,7 +1702,7 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="space-y-6">
             {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 space-y-4 bg-[#141b2e] border border-white/10">
+            <div className="rounded-2xl p-5 space-y-4 bg-surface border border-white/10">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
@@ -1740,7 +1752,7 @@ export default function DashboardPage() {
                   before today's first period, "Closing at X" during the
                   day's last period — dining halls only, today only. */}
               {mounted && mealCountdown && (
-                <p className="text-left text-sm font-semibold text-[#fb7185]">
+                <p className="text-left text-sm font-semibold text-macro-fat">
                   {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
                   {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
                   {mealCountdown.mode === 'closes' && `Closing at ${mealCountdown.time}`}
@@ -1805,12 +1817,12 @@ export default function DashboardPage() {
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
                       style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.6))' }}
-                      className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+                      className="transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
                     />
                     <path
                       d={DAY_TRACK_PATH}
                       fill="none"
-                      stroke="#d6b93a"
+                      stroke="currentColor"
                       strokeOpacity="1"
                       strokeWidth="6"
                       strokeLinecap="round"
@@ -1818,7 +1830,7 @@ export default function DashboardPage() {
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
                       style={{ filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.85))' }}
-                      className="animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear"
+                      className="text-gold animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
@@ -1838,7 +1850,7 @@ export default function DashboardPage() {
                       const [mx, my] = wavePoint(t)
                       return (
                         <g
-                          style={{ transition: trackDragPct !== null ? 'none' : 'transform 900ms ease-out' }}
+                          style={{ transition: trackDragPct !== null || reduceMotion ? 'none' : 'transform 900ms ease-out' }}
                           transform={`translate(${mx} ${my})`}
                         >
                           {/* Soft gradient fade marking the edge of the completed
@@ -1876,16 +1888,21 @@ export default function DashboardPage() {
                               </g>
                             ) : (
                               <g>
-                                <animateTransform
-                                  attributeName="transform"
-                                  type="rotate"
-                                  values="-65;65;-65"
-                                  keyTimes="0;0.5;1"
-                                  calcMode="spline"
-                                  keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
-                                  dur="7.5s"
-                                  repeatCount="indefinite"
-                                />
+                                {/* SMIL can't be paused from CSS, so Reduce Motion
+                                    drops it -- the head then rests upright (0deg,
+                                    the middle of its swing). */}
+                                {!reduceMotion && (
+                                  <animateTransform
+                                    attributeName="transform"
+                                    type="rotate"
+                                    values="-65;65;-65"
+                                    keyTimes="0;0.5;1"
+                                    calcMode="spline"
+                                    keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                                    dur="7.5s"
+                                    repeatCount="indefinite"
+                                  />
+                                )}
                                 <SlugHead />
                               </g>
                             )}
@@ -1894,16 +1911,25 @@ export default function DashboardPage() {
                               top-right of the face while asleep — outside the
                               mirrored/scaled head group so they stay upright and
                               unflipped regardless of which way the head is facing. */}
+                          {/* Reduce Motion: the z's hold still at their visible opacity */}
                           {isSleeping && (
                             <g style={{ pointerEvents: 'none' }}>
-                              <text x="13" y="-16" fontSize="9" fontWeight="bold" fill="#a1c9ff">
-                                <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.7;1" dur="2.4s" repeatCount="indefinite" />
-                                <animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="2.4s" repeatCount="indefinite" />
+                              <text x="13" y="-16" fontSize="9" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.9 : undefined}>
+                                {!reduceMotion && (
+                                  <>
+                                    <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.7;1" dur="2.4s" repeatCount="indefinite" />
+                                    <animateTransform attributeName="transform" type="translate" values="0 6;0 -6" dur="2.4s" repeatCount="indefinite" />
+                                  </>
+                                )}
                                 z
                               </text>
-                              <text x="19" y="-23" fontSize="6" fontWeight="bold" fill="#a1c9ff">
-                                <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.15;0.7;1" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
-                                <animateTransform attributeName="transform" type="translate" values="0 4;0 -8" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
+                              <text x="19" y="-23" fontSize="6" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.7 : undefined}>
+                                {!reduceMotion && (
+                                  <>
+                                    <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.15;0.7;1" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
+                                    <animateTransform attributeName="transform" type="translate" values="0 4;0 -8" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
+                                  </>
+                                )}
                                 z
                               </text>
                             </g>
@@ -2055,10 +2081,9 @@ export default function DashboardPage() {
                   days. Suppressed when opening later today, since the "Opens at X" countdown
                   line above already says this with more useful detail. */}
               {isClosedNow && !isOpeningLaterToday && (
-                <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/30 text-red-300 font-semibold text-sm text-center">
-                  {selectedDayOffset === 0
-                    ? `${locationLabel} is Closed`
-                    : `${locationLabel} is Closed ${getDayOffsetLabel(selectedDayOffset)}`}
+                <div role="status" className="rounded-2xl p-4 bg-surface-2 border border-white/10 text-sm text-center">
+                  <span className="font-semibold text-fg">{closedLabel}</span>
+                  {nextOpeningLabel && <span className="text-fg-muted"> · {nextOpeningLabel}</span>}
                 </div>
               )}
 
@@ -2076,7 +2101,7 @@ export default function DashboardPage() {
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
-                          className="py-4 flex items-center justify-between gap-4 animate-pulse"
+                          className="py-4 flex items-center justify-between gap-4 animate-pulse motion-reduce:animate-none"
                           style={{ animationDelay: `${i * 120}ms` }}
                         >
                           <div className="flex-1 space-y-2">
@@ -2088,7 +2113,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : Object.keys(groupedMenu).length === 0 ? (
-                    <div className="py-12 text-center text-[#c2c6d0] font-medium">
+                    <div className="py-12 text-center text-fg-subtle font-medium">
                       {menu.length === 0
                         ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
                         : dietHiddenCount > 0 && !dietFilterOff
@@ -2100,7 +2125,7 @@ export default function DashboardPage() {
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
                         <div key={parent} className="space-y-3">
                           <div className="flex items-center">
-                            <span className="text-xs font-black tracking-wider text-[#00325b] uppercase bg-[#a1c9ff] border border-[#a1c9ff] px-3 py-1 rounded-lg shadow-sm">
+                            <span className="text-xs font-black tracking-wider text-[#00325b] uppercase bg-sky border border-sky px-3 py-1 rounded-lg shadow-sm">
                               {cleanStationName(parent)}
                             </span>
                             <div className="flex-1 h-px bg-white/10 ml-4" />
@@ -2109,7 +2134,7 @@ export default function DashboardPage() {
                           {subgroups.map(({ sub, entries }) => (
                             <div key={sub || 'none'} className="space-y-2">
                               {sub && (
-                                <p className="inline-block text-sm font-bold tracking-wider text-[#a1c9ff] bg-[#a1c9ff]/10 uppercase px-2 py-0.5 rounded-lg">
+                                <p className="inline-block text-sm font-bold tracking-wider text-sky bg-sky/10 uppercase px-2 py-0.5 rounded-lg">
                                   {sub}
                                 </p>
                               )}
@@ -2210,7 +2235,7 @@ export default function DashboardPage() {
         ) : (
           /* PROGRESS TAB */
           <div className="space-y-6">
-            <div className="rounded-2xl p-4 bg-[#141b2e] border border-white/10">
+            <div className="rounded-2xl p-4 bg-surface border border-white/10">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
@@ -2219,8 +2244,8 @@ export default function DashboardPage() {
                   <p
                     className={
                       showCalendar
-                        ? 'text-xs text-[#c2c6d0]/70 mt-0.5'
-                        : 'text-sm font-bold mt-0.5 text-[#c2c6d0]'
+                        ? 'text-xs text-fg-subtle/70 mt-0.5'
+                        : 'text-sm font-bold mt-0.5 text-fg-subtle'
                     }
                   >
                     {showCalendar
@@ -2235,8 +2260,8 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
                     className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 border ${showCalendar
-                      ? 'bg-[#d6b93a]/15 text-[#d6b93a] border-[#d6b93a]/40'
-                      : 'bg-white/5 text-[#c2c6d0] hover:bg-white/10 border-white/15'
+                      ? 'bg-gold/15 text-gold border-gold/40'
+                      : 'bg-white/5 text-fg-subtle hover:bg-white/10 border-white/15'
                       }`}
                   >
                     <Calendar size={14} />
@@ -2246,7 +2271,7 @@ export default function DashboardPage() {
                   {/* Set Targets button now opens the SetTargetsModal */}
                   <button
                     onClick={() => setIsTargetsModalOpen(true)}
-                    className="bg-gray-800 text-xs font-bold text-[#c2c6d0] hover:bg-gray-700 px-3 py-2 rounded-xl transition active:scale-95 border border-gray-700"
+                    className="bg-gray-800 text-xs font-bold text-fg-subtle hover:bg-gray-700 px-3 py-2 rounded-xl transition active:scale-95 border border-gray-700"
                   >
                     Set Targets
                   </button>
@@ -2255,19 +2280,19 @@ export default function DashboardPage() {
 
               {!showCalendar ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="#d8b61c" labelColor="#d8b61c" label="Calories" unit="kcal" />
-                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="#5bb448" labelColor="#5bb448" label="Protein" unit="g" />
-                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="#d17ccd" labelColor="#d17ccd" label="Carbs" unit="g" />
-                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="#fb7185" labelColor="#fb7185" label="Fat" unit="g" />
+                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" labelColor="var(--color-macro-cal)" label="Calories" unit="kcal" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" labelColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" labelColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" labelColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={totalsLoaded} />
                 </div>
               ) : (
                 <div className="space-y-6">
                   <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
                     {[
-                      { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
-                      { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
-                      { key: 'carbs', label: 'Carbs', color: '#d17ccd', text: '#612f5e' },
-                      { key: 'fat', label: 'Fat', color: '#fb7185', text: '#4c0519' }
+                      { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: '#00325b' },
+                      { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: '#102e10' },
+                      { key: 'carbs', label: 'Carbs', color: 'var(--color-macro-carbs)', text: '#612f5e' },
+                      { key: 'fat', label: 'Fat', color: 'var(--color-macro-fat)', text: '#4c0519' }
                     ].map((macro) => (
                       <button
                         key={macro.key}
@@ -2277,7 +2302,7 @@ export default function DashboardPage() {
                         style={
                           calendarMacro === macro.key
                             ? { backgroundColor: macro.color, color: macro.text }
-                            : { color: '#c2c6d0' }
+                            : { color: 'var(--color-fg-subtle)' }
                         }
                       >
                         {macro.label}
@@ -2290,13 +2315,13 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition active:scale-90"
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg transition active:scale-90"
                         aria-label="Previous month"
                       >
                         <ChevronLeft size={16} strokeWidth={2.5} />
                       </button>
 
-                      <p className="text-sm font-black text-[#dae2fd]">
+                      <p className="text-sm font-black text-fg">
                         {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                       </p>
 
@@ -2304,14 +2329,14 @@ export default function DashboardPage() {
                         type="button"
                         onClick={goToNextMonth}
                         disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-[#c2c6d0] hover:text-[#dae2fd] transition active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg transition active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label="Next month"
                       >
                         <ChevronRight size={16} strokeWidth={2.5} />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-[#c2c6d0]/70">
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-fg-subtle/70">
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
@@ -2325,17 +2350,17 @@ export default function DashboardPage() {
 
                         let actualVal = 0
                         let targetedGoal = 1
-                        let ringColor = '#a1c9ff'
+                        let ringColor = 'var(--color-sky)'
                         let unit = 'kcal'
 
                         if (calendarMacro === 'calories') {
-                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = '#d8b61c'; unit = 'kcal'
+                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = 'var(--color-macro-cal)'; unit = 'kcal'
                         } else if (calendarMacro === 'protein') {
-                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = '#5bb448'; unit = 'g'
+                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = 'var(--color-macro-protein)'; unit = 'g'
                         } else if (calendarMacro === 'carbs') {
-                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = '#d17ccd'; unit = 'g'
+                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = 'var(--color-macro-carbs)'; unit = 'g'
                         } else if (calendarMacro === 'fat') {
-                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = '#fb7185'; unit = 'g'
+                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = 'var(--color-macro-fat)'; unit = 'g'
                         }
 
                         return (
@@ -2343,9 +2368,9 @@ export default function DashboardPage() {
                             key={cell.dateString}
                             className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
                           >
-                            <span className="text-xs font-black text-[#c2c6d0]">{cell.dayNum}</span>
+                            <span className="text-xs font-black text-fg-subtle">{cell.dayNum}</span>
                             <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-[#dae2fd] text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
                               {Math.round(actualVal)} / {targetedGoal} {unit}
                             </div>
                           </div>
@@ -2361,71 +2386,105 @@ export default function DashboardPage() {
             <div className="rounded-2xl p-5 bg-surface border border-white/10">
               <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
-              {/* Rows mid-undo stay mounted only while their slide-out plays */}
+              {/* Grouped by meal (only meals with items). Rows mid-undo stay
+                  mounted only while their slide-out plays; group calories
+                  leave out pending deletes, same as displayTotals. */}
               {(() => {
                 const visibleLogs = loggedMeals.filter(
                   (log) => !hiddenLogIds.includes(log.id) || justDeleted[log.id]
                 )
-                return visibleLogs.length === 0 ? (
-                <div className="py-12 text-center text-fg-muted font-medium">
-                  You haven't logged any foods today yet. Go back to Log Menu to add meals!
-                </div>
-              ) : (
-                <div className="divide-y divide-white/10">
-                  {visibleLogs.map((log) => {
-                    const swipeOffset = justDeleted[log.id]
-                      ? -400
-                      : (isSwipeDragging === log.id ? swipeDragOffset : 0)
-                    const s = log.servings
-                    return (
-                    <div key={log.id} className="relative overflow-hidden rounded-xl">
-                      {/* Red surface revealed as the row is swiped left (decorative --
-                          the trash button on the row is the accessible way to delete) */}
-                      <div
-                        aria-hidden="true"
-                        className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
-                      >
-                        <Trash2 size={18} />
-                      </div>
-
-                      <div
-                        onPointerDown={(e) => handleSwipePointerDown(log.id, e)}
-                        style={{
-                          transform: `translateX(${swipeOffset}px)`,
-                          opacity: justDeleted[log.id] ? 0 : 1,
-                          transition: isSwipeDragging === log.id ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
-                        }}
-                        className="relative bg-surface py-3 flex items-center gap-3 touch-pan-y"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</h3>
-                          <p className="text-xs text-fg-muted mt-0.5">
-                            {log.dining_hall} • <span className="capitalize">{log.meal_type}</span> • {s} serving{s !== 1 ? 's' : ''}
-                          </p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
-                            <span className="text-macro-cal">{Math.round((log.food_items?.calories || 0) * s)} cal</span>
-                            <span className="text-macro-protein">P {Math.round((log.food_items?.protein || 0) * s)}g</span>
-                            <span className="text-macro-carbs">C {Math.round((log.food_items?.carbs || 0) * s)}g</span>
-                            <span className="text-macro-fat">F {Math.round((log.food_items?.fat || 0) * s)}g</span>
-                          </div>
-                        </div>
-                        {/* Visible delete -- swipe is a shortcut, not the only way */}
-                        <button
-                          type="button"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={() => handleDeleteLog(log.id)}
-                          disabled={!!justDeleted[log.id]}
-                          aria-label={`Remove ${log.food_items?.name ?? 'this entry'}`}
-                          className="p-2 shrink-0 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                if (visibleLogs.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-fg-muted font-medium">
+                      You haven't logged any foods today yet. Go back to Log Menu to add meals!
                     </div>
-                    )
-                  })}
-                </div>
-              )
+                  )
+                }
+
+                const groups = new Map<string, MealLog[]>()
+                visibleLogs.forEach((log) => {
+                  const key = log.meal_type || 'Other'
+                  groups.set(key, [...(groups.get(key) ?? []), log])
+                })
+                const orderIndex = (meal: string) => {
+                  const i = LOG_MEAL_ORDER.indexOf(meal)
+                  return i === -1 ? LOG_MEAL_ORDER.length : i
+                }
+                const orderedGroups = Array.from(groups.entries()).sort(
+                  ([a], [b]) => orderIndex(a) - orderIndex(b) || a.localeCompare(b)
+                )
+
+                return (
+                  <div className="space-y-4">
+                    {orderedGroups.map(([meal, logs]) => {
+                      const groupCalories = logs
+                        .filter((log) => !hiddenLogIds.includes(log.id))
+                        .reduce((sum, log) => sum + (Number(log.food_items?.calories) || 0) * (Number(log.servings) || 1), 0)
+                      return (
+                        <section key={meal} aria-label={`${meal}, ${Math.round(groupCalories)} calories`}>
+                          <h3 className="flex items-baseline justify-between gap-3 text-xs font-bold uppercase tracking-wider text-sky">
+                            <span className="capitalize">{meal}</span>
+                            <span className="text-macro-cal tabular-nums normal-case tracking-normal">{Math.round(groupCalories)} cal</span>
+                          </h3>
+                          <div className="divide-y divide-white/10">
+                            {logs.map((log) => {
+                              const swipeOffset = justDeleted[log.id]
+                                ? -400
+                                : (isSwipeDragging === log.id ? swipeDragOffset : 0)
+                              const s = log.servings
+                              return (
+                              <div key={log.id} className="relative overflow-hidden rounded-xl">
+                                {/* Red surface revealed as the row is swiped left (decorative --
+                                    the trash button on the row is the accessible way to delete) */}
+                                <div
+                                  aria-hidden="true"
+                                  className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
+                                >
+                                  <Trash2 size={18} />
+                                </div>
+
+                                <div
+                                  onPointerDown={(e) => handleSwipePointerDown(log.id, e)}
+                                  style={{
+                                    transform: `translateX(${swipeOffset}px)`,
+                                    opacity: justDeleted[log.id] ? 0 : 1,
+                                    transition: isSwipeDragging === log.id || reduceMotion ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
+                                  }}
+                                  className="relative bg-surface py-3 flex items-center gap-3 touch-pan-y"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</p>
+                                    <p className="text-xs text-fg-muted mt-0.5">
+                                      {log.dining_hall} • {s} serving{s !== 1 ? 's' : ''}
+                                    </p>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
+                                      <span className="text-macro-cal">{Math.round((log.food_items?.calories || 0) * s)} cal</span>
+                                      <span className="text-macro-protein">P {Math.round((log.food_items?.protein || 0) * s)}g</span>
+                                      <span className="text-macro-carbs">C {Math.round((log.food_items?.carbs || 0) * s)}g</span>
+                                      <span className="text-macro-fat">F {Math.round((log.food_items?.fat || 0) * s)}g</span>
+                                    </div>
+                                  </div>
+                                  {/* Visible delete -- swipe is a shortcut, not the only way */}
+                                  <button
+                                    type="button"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={() => handleDeleteLog(log.id)}
+                                    disabled={!!justDeleted[log.id]}
+                                    aria-label={`Remove ${log.food_items?.name ?? 'this entry'}`}
+                                    className="p-2 shrink-0 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90 motion-reduce:active:scale-100"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </div>
+                              )
+                            })}
+                          </div>
+                        </section>
+                      )
+                    })}
+                  </div>
+                )
               })()}
             </div>
           </div>
@@ -2525,11 +2584,11 @@ export default function DashboardPage() {
           aria-labelledby="welcome-title"
         >
           <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
-          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd]">
-            <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-[#dae2fd] mb-3">
+          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg">
+            <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-fg mb-3">
               Welcome to Sammy's Palate
             </h2>
-            <ul className="space-y-2.5 text-sm text-[#c2c6d0] mb-5">
+            <ul className="space-y-2.5 text-sm text-fg-subtle mb-5">
               <li>Browse today's menu, filter by station, and tap + to log what you eat.</li>
               <li>Watch your calories, protein, carbs, and fat fill in below as you log.</li>
               <li>Drag the slug (or tap a letter) to preview a different meal's menu.</li>
@@ -2537,7 +2596,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={dismissWelcome}
-              className="w-full py-2.5 rounded-lg bg-[#d6b93a] text-[#6b5300] text-sm font-bold active:scale-95 transition-transform"
+              className="w-full py-2.5 rounded-lg bg-gold text-[#6b5300] text-sm font-bold active:scale-95 transition-transform"
             >
               Got it
             </button>
