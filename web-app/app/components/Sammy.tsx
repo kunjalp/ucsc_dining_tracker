@@ -9,9 +9,10 @@ import { useMascotAnimations } from '@/lib/mascotPrefs'
 //
 // Keys: Y body, H highlight, S shade, B spot, E eye, P cheek, M mouth,
 // O open mouth, D sweat drop. '.' is empty (that's also how the corners
-// get rounded). The rest are accessory colors: W/G chef hat and band,
-// N/K/c nightcap, star and cream band, Q/q/V pumpkin, shade and stem,
-// R/r scarf, F/f flame and its core.
+// get rounded). The rest are accessory colors: W/G chef hat and its shade,
+// N/n/s/L nightcap, highlight, shade and band (c is its pom and stars),
+// Q/q/V pumpkin, rib and stem, R/r/w scarf, shade and stripe, F/f flame and
+// its core.
 const PALETTE: Record<string, string> = {
   Y: '#f7cf5c',
   H: '#fde7a3',
@@ -24,14 +25,18 @@ const PALETTE: Record<string, string> = {
   D: '#a1c9ff',
   W: '#fbf6ea',
   G: '#d9cfb8',
-  N: '#a1c9ff',
+  N: '#5b4bd1',
+  n: '#8e80f2',
+  s: '#3b2f96',
+  L: '#cdc4ff',
   K: '#d6b93a',
   c: '#fde7a3',
   Q: '#f0a04b',
-  q: '#c97a2c',
-  V: '#86d9a5',
+  q: '#c06a1f',
+  V: '#5fbf7f',
   R: '#fb7185',
-  r: '#d9566a',
+  r: '#c9465c',
+  w: '#fbf6ea',
   F: '#f0a04b',
   f: '#fde7a3',
 }
@@ -164,15 +169,52 @@ const LIDS: Cell[] = [[10, 5, 'Y'], [11, 5, 'Y'], [15, 5, 'Y'], [16, 5, 'Y']]
 
 // Accessories: at most one, picked from local time and date
 type Accessory = 'chef' | 'nightcap' | 'pumpkin' | 'scarf'
+// Hats sit on the back of his head (row 4, cols 4-9), left of the
+// eyestalks (col 10) with a pixel of sky between, and clear of the face.
+// They're hidden while celebrate/flex sparkles play.
 const ACCESSORIES: Record<Accessory, Cell[]> = {
-  // Chef hat at breakfast, tipped back behind the eyestalks
-  chef: shape(['.WWW.', 'WWWWW', 'WWWWW', '.GGG.'], 5, 0),
-  // Late night: floppy nightcap, star pom on the tip, a tiny cream moon
-  nightcap: shape(['.K....', 'KNK...', '.NN...', '..NcN.', '..cccc'], 2, -1),
-  // October: a little pumpkin riding on the back of his head
-  pumpkin: shape(['..V..', '.QQQ.', 'QqQqQ', '.QQQ.'], 4, 0),
-  // December-February: scarf with a hanging tail
-  scarf: shape(['RRRRRRR', '.Rr....', '.Rr....'], 11, 9),
+  // Chef hat at breakfast: two-lobed puff, shaded underside, a band
+  chef: shape([
+    '.WW.WW',
+    'WWWWWW',
+    'WWWWWG',
+    '.WWWG.',
+    '.GGGG.',
+    '.WWWWW',
+  ], 3, -1),
+  // Late night: a nightcap leaning back and drooping over, cream pom on
+  // the tip, two little stars, a light band across his head
+  nightcap: shape([
+    '..nnn.....',
+    'nnNNNN....',
+    'NNNNcNN...',
+    'ss..NNNN..',
+    'cc..NNNcN.',
+    'cc..sssss.',
+    '....LLLLLL',
+  ], 0, -2),
+  // October: a ribbed pumpkin riding on the back of his head
+  pumpkin: shape([
+    '...VV.',
+    '..V...',
+    '.QQQQ.',
+    'QqQQqQ',
+    'QqQQqQ',
+    '.qQQq.',
+  ], 3, -1),
+  // December-February: a scarf wrapped round his neck behind the eyes,
+  // its fringed tail flying back over his body (kept away from the mouth
+  // so it can't read as a grin)
+  scarf: shape([
+    '.wRRRRRRR',
+    'w.rrrrrRr',
+    '.......Rr',
+    '.......Rr',
+    '.......Rr',
+    '.......Rr',
+    '.......Rr',
+    '.......Rr',
+  ], 0, 3),
 }
 // Hats are for the time of day first (they come and go), then the season
 function pickAccessory(d: Date): Accessory | null {

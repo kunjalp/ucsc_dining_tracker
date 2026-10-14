@@ -12,6 +12,7 @@ import { classifyByName } from '@/lib/stationClassifier'
 import { useReducedMotion } from '@/lib/useReducedMotion'
 import { STREAK_CELEBRATED_STORAGE_KEY, STREAK_LOOKBACK_DAYS, computeStreak, logDateFor, shiftDate, streakMilestone } from '@/lib/streak'
 import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros, type MacroKey } from '@/lib/mealSuggestions'
+import { mealTarget, mealParts, comboSizeFor, DAY_COMBO_SIZE, MIN_MEAL_CALORIES } from '@/lib/mealShares'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
@@ -121,6 +122,9 @@ const RING_SPARKLE_COLORS = { cal: '#d8b61c', protein: '#5bb448', carbs: '#d17cc
 // "Close my rings" macro chips: saved selection key + chip labels
 const SUGGEST_FOCUS_STORAGE_KEY = 'ucsc_suggest_focus'
 const MACRO_CHIP_LABELS: Record<MacroKey, string> = { calories: 'Calories', protein: 'Protein', carbs: 'Carbs', fat: 'Fat' }
+// "This meal" (sized by MEAL_SHARES) or "Rest of day" (everything left)
+type SuggestScope = 'meal' | 'day'
+const SUGGEST_SCOPE_STORAGE_KEY = 'ucsc_suggest_scope'
 
 // Whichever meal period a dining hall is actually serving (or, during a
 // Continuous Dining gap, most recently served) right now — e.g. "Lunch" at
@@ -569,6 +573,14 @@ export default function DashboardPage() {
       // Unavailable or corrupt storage -- keep the defaults
     }
     return DEFAULT_FOCUS
+  })
+  const [suggestScope, setSuggestScope] = useState<SuggestScope>(() => {
+    if (typeof window === 'undefined') return 'meal'
+    try {
+      return localStorage.getItem(SUGGEST_SCOPE_STORAGE_KEY) === 'day' ? 'day' : 'meal'
+    } catch {
+      return 'meal'
+    }
   })
   const [suggestionCombos, setSuggestionCombos] = useState<ComboItem[][] | null>(null)
   const [loggingComboIndex, setLoggingComboIndex] = useState<number | null>(null)
@@ -1805,9 +1817,35 @@ export default function DashboardPage() {
     return lines[sammyTapCountRef.current++ % lines.length] ?? 'Keep going!'
   }
 
+  // "This meal": the selected meal's share of what's left (see
+  // lib/mealShares), net of anything already logged under this meal today.
+  // null for halls without meal periods (cafes) -- those always use the
+  // whole rest of the day.
+  const selectedMealParts = mealParts(selectedMeal)
+  const loggedThisMeal: Macros = loggedMeals
+    .filter((log) => !hiddenLogIds.includes(log.id) && mealParts(log.meal_type).some((m) => selectedMealParts.includes(m)))
+    .reduce((acc, log) => {
+      const item = log.food_items
+      const s = Number(log.servings) || 1
+      if (item) {
+        acc.calories += (Number(item.calories) || 0) * s
+        acc.protein += (Number(item.protein) || 0) * s
+        acc.carbs += (Number(item.carbs) || 0) * s
+        acc.fat += (Number(item.fat) || 0) * s
+      }
+      return acc
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
+  const thisMealTarget = mealTarget(remainingMacros, selectedMeal, availableMealTypes, loggedThisMeal)
+  const suggestByMeal = suggestScope === 'meal' && thisMealTarget !== null
+  const suggestTarget: Macros = suggestByMeal ? thisMealTarget.target : remainingMacros
+
   // (Re)builds the suggestion combos for the given rings to close. Toggling
-  // a macro chip calls this again, which replaces any edits in the sheet.
-  const computeSuggestions = (focus: MacroKey[]) => {
+  // a macro chip or the meal/day scope calls this again, which replaces any
+  // edits in the sheet.
+  const computeSuggestions = (focus: MacroKey[], scope: SuggestScope) => {
+    const byMeal = scope === 'meal' && thisMealTarget !== null
+    const target = byMeal ? thisMealTarget.target : remainingMacros
+    const size = byMeal ? comboSizeFor(selectedMeal) : DAY_COMBO_SIZE
     // Only what's on screen: filteredMenu already applies the dietary,
     // allergen, station and search filters (and drops 0-nutrition rows)
     const candidates = filteredMenu.map((entry) => ({
@@ -1820,7 +1858,8 @@ export default function DashboardPage() {
       carbs: Number(entry.food_items.carbs),
       fat: Number(entry.food_items.fat),
     }))
-    setSuggestionCombos(suggestCombos(candidates, remainingMacros, focus).map((combo) => combo.items))
+    const options = { minItems: size.min, maxItems: size.max, minCalories: byMeal ? MIN_MEAL_CALORIES : 0 }
+    setSuggestionCombos(suggestCombos(candidates, target, focus, 3, options).map((combo) => combo.items))
   }
 
   // Sammy "thinks" for a beat while suggestions are built (the search itself
@@ -1828,13 +1867,13 @@ export default function DashboardPage() {
   // the sheet cancels a pending run so it can't reopen it.
   const [suggestionsThinking, setSuggestionsThinking] = useState(false)
   const thinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const runSuggestions = (focus: MacroKey[], thinkMs: number) => {
+  const runSuggestions = (focus: MacroKey[], scope: SuggestScope, thinkMs: number) => {
     if (thinkTimerRef.current) clearTimeout(thinkTimerRef.current)
     setSuggestionsThinking(true)
     setSuggestionCombos((prev) => prev ?? [])
     thinkTimerRef.current = setTimeout(() => {
       thinkTimerRef.current = null
-      computeSuggestions(focus)
+      computeSuggestions(focus, scope)
       setSuggestionsThinking(false)
     }, thinkMs)
   }
@@ -1846,7 +1885,7 @@ export default function DashboardPage() {
   }
 
   const openSuggestions = () => {
-    runSuggestions(suggestFocus, 450)
+    runSuggestions(suggestFocus, suggestScope, 450)
     Haptics.selectionChanged().catch(() => {})
   }
 
@@ -1862,7 +1901,21 @@ export default function DashboardPage() {
     } catch {
       // Private mode etc. -- the choice still applies for this session
     }
-    runSuggestions(next, 300)
+    runSuggestions(next, suggestScope, 300)
+    Haptics.selectionChanged().catch(() => {})
+  }
+
+  // "This meal" / "Rest of day" control at the top of the sheet, saved per
+  // device like the macro chips
+  const changeSuggestScope = (scope: SuggestScope) => {
+    if (scope === suggestScope) return
+    setSuggestScope(scope)
+    try {
+      localStorage.setItem(SUGGEST_SCOPE_STORAGE_KEY, scope)
+    } catch {
+      // Private mode etc. -- the choice still applies for this session
+    }
+    runSuggestions(suggestFocus, scope, 300)
     Haptics.selectionChanged().catch(() => {})
   }
 
@@ -3036,6 +3089,34 @@ export default function DashboardPage() {
             From {selectedHall}, {getDayOffsetLabel(selectedDayOffset).toLowerCase() === 'today' ? '' : `${getDayOffsetLabel(selectedDayOffset)} `}{selectedMeal}
           </p>
 
+          {/* Size the suggestions for this meal or for everything left today
+              -- switching re-runs them. Cafes (no meal periods) always use
+              the rest of the day, so there's nothing to pick. */}
+          {thisMealTarget && (
+            <div role="group" aria-label="Suggest for" className="mt-3 inline-flex rounded-lg bg-app/60 p-0.5">
+              {([['meal', 'This meal'], ['day', 'Rest of day']] as const).map(([scope, text]) => (
+                <button
+                  key={scope}
+                  type="button"
+                  aria-pressed={suggestScope === scope}
+                  onClick={() => changeSuggestScope(scope)}
+                  className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] rounded-md px-3 py-1 text-xs font-semibold leading-5 press active:scale-95 motion-reduce:active:scale-100 ${
+                    suggestScope === scope ? 'bg-gold text-on-gold' : 'text-fg-muted hover:text-fg'
+                  }`}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-fg tabular-nums">
+            {suggestTarget.calories > 0
+              ? `Aiming for about ${Math.round(suggestTarget.calories)} cal ${suggestByMeal ? `for ${selectedMeal.toLowerCase()}` : 'for the rest of today'}`
+              : suggestByMeal
+                ? `Your ${selectedMeal.toLowerCase()} share of calories is already used up`
+                : 'No calories left for today'}
+          </p>
+
           {/* Which rings to close -- toggling re-runs the suggestions */}
           <div role="group" aria-label="Rings to close" className="mt-3 flex flex-wrap gap-1.5">
             {MACRO_KEYS.map((macro) => {
@@ -3062,10 +3143,10 @@ export default function DashboardPage() {
             })}
           </div>
           {(() => {
-            const closed = suggestFocus.filter((k) => !activeFocus([k], remainingMacros).length)
+            const closed = suggestFocus.filter((k) => !activeFocus([k], suggestTarget).length)
             return closed.length > 0 ? (
               <p className="mt-2 text-xs text-fg-muted">
-                {closed.map((k) => MACRO_CHIP_LABELS[k]).join(' and ')} {closed.length === 1 ? 'ring is' : 'rings are'} already closed, so {closed.length === 1 ? "it isn't" : "they aren't"} counted.
+                {closed.map((k) => MACRO_CHIP_LABELS[k]).join(' and ')} {closed.length === 1 ? 'ring is' : 'rings are'} already closed{suggestByMeal ? ` for ${selectedMeal.toLowerCase()}` : ''}, so {closed.length === 1 ? "it isn't" : "they aren't"} counted.
               </p>
             ) : null
           })()}
@@ -3074,9 +3155,11 @@ export default function DashboardPage() {
             <p role="status" className="py-10 text-center text-sm text-fg-muted">Sammy is thinking…</p>
           ) : suggestionCombos.length === 0 ? (
             <p className="py-10 text-center text-sm text-fg-muted">
-              {activeFocus(suggestFocus, remainingMacros).length === 0
-                ? 'Every ring you picked is already closed. Turn on another one above.'
-                : 'Nothing on this menu fits what’s left right now. Try another meal or loosen your station or search filters.'}
+              {suggestByMeal && (suggestTarget.calories <= 0 || activeFocus(suggestFocus, suggestTarget).length === 0) && activeFocus(suggestFocus, remainingMacros).length > 0
+                ? `You’ve already had about your share for ${selectedMeal.toLowerCase()}. Switch to Rest of day to see more.`
+                : activeFocus(suggestFocus, remainingMacros).length === 0
+                  ? 'Every ring you picked is already closed. Turn on another one above.'
+                  : 'Nothing on this menu fits what’s left right now. Try another meal or loosen your station or search filters.'}
             </p>
           ) : (
             <div className="mt-4 space-y-3">
@@ -3097,10 +3180,10 @@ export default function DashboardPage() {
                       <h3 id={`combo-${comboIndex}-title`} className="text-xs font-bold uppercase tracking-wider text-sky">
                         Option {comboIndex + 1}
                       </h3>
-                      <p className="text-11 text-fg-muted tabular-nums">
+                      <p className="text-11 text-fg-muted tabular-nums text-right">
                         {Math.round(after.calories) >= 0
-                          ? `Leaves ${Math.round(after.calories)} cal`
-                          : `${Math.abs(Math.round(after.calories))} cal over`}
+                          ? `Leaves ${Math.round(after.calories)} cal${suggestByMeal ? ' for later today' : ''}`
+                          : `${Math.abs(Math.round(after.calories))} cal over${suggestByMeal ? ' for today' : ''}`}
                         {remainingMacros.protein > 0 && ` · ${Math.max(0, Math.round(after.protein))}g protein left`}
                       </p>
                     </div>

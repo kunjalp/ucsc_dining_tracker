@@ -2,9 +2,10 @@
 //
 // Rule-based "Close my rings" meal suggestions -- no AI, no network. Given
 // what's left of today's targets and the items currently on the (already
-// filtered) menu, finds 2-4 item combos whose combined macros land closest
-// to what's left, weighting protein most and never going more than ~10%
-// over the remaining calories. Fully deterministic: same menu + same
+// filtered) menu, finds combos (2-4 items by default; callers sizing for one
+// meal pass their own range) whose combined macros land closest to the
+// target, weighting protein most and never going more than ~10% over the
+// target calories. Fully deterministic: same menu + same
 // remaining macros always gives the same suggestions in the same order.
 
 export interface Macros {
@@ -104,31 +105,46 @@ function makeKey(items: ComboItem[]): string {
   return items.map((i) => `${i.food.recipe_id}x${i.servings}`).join('|')
 }
 
+export interface SuggestOptions {
+  // Items per combo (1-4)
+  minItems?: number
+  maxItems?: number
+  // Combos under this many calories are skipped (only applied when the
+  // target itself is at least this big)
+  minCalories?: number
+}
+
 /**
  * Up to `count` suggested combos (may be fewer, or none, if nothing fits).
- * `focus` is which rings to close: only those macros (that still have
- * something left) are scored; the others never influence the pick.
+ * `remaining` is the target to aim for (a meal's share or the whole rest of
+ * the day). `focus` is which rings to close: only those macros (that still
+ * have something left) are scored; the others never influence the pick.
  */
 export function suggestCombos(
   candidates: SuggestionCandidate[],
   remaining: Macros,
   focus: MacroKey[] = DEFAULT_FOCUS,
-  count = 3
+  count = 3,
+  { minItems = 2, maxItems = 4, minCalories = 0 }: SuggestOptions = {}
 ): Combo[] {
   const active = activeFocus(focus, remaining)
   if (active.length === 0 || remaining.calories <= 0) return []
+  const minItemCount = Math.max(1, Math.min(4, minItems))
+  const maxItemCount = Math.max(minItemCount, Math.min(4, maxItems))
+  const calFloor = remaining.calories >= minCalories ? minCalories : 0
   const calCap = remaining.calories * (focus.includes('calories') ? CALORIE_OVERSHOOT : LOOSE_CALORIE_CEILING)
   const isActive = { calories: false, protein: false, carbs: false, fat: false }
   active.forEach((k) => { isActive[k] = true })
 
   // How well one serving moves the active non-calorie rings per calorie
   // spent (protein weighted most) -- decides which items make the pool.
-  // Calories-only: items closest to a third of what's left rank first.
+  // Calories-only: items closest to an even split of the target (by the
+  // typical combo size) rank first.
   const nonCalorie = active.filter((k) => k !== 'calories')
   const fitness = (c: SuggestionCandidate) =>
     nonCalorie.length > 0
       ? nonCalorie.reduce((sum, k) => sum + (WEIGHTS[k] * c[k]) / Math.max(remaining[k], FLOORS[k]), 0) / c.calories
-      : -Math.abs(c.calories - remaining.calories / 3)
+      : -Math.abs(c.calories - remaining.calories / ((minItemCount + maxItemCount) / 2))
 
   // De-dupe by recipe and drop unusable items; sort deterministically
   const seen = new Set<string>()
@@ -198,8 +214,11 @@ export function suggestCombos(
   const KEEP = 300
   let kept: Cand[] = []
   let threshold = Infinity
-  const offer = (score: number, idx: number[], sv: number[]) => {
-    if (score > threshold) return
+  // Sizes that can be picked directly; triples are still searched for a
+  // 4-item range, as the bases the 4th item is added to
+  const wants = (size: number) => size >= minItemCount && size <= maxItemCount
+  const offer = (score: number, idx: number[], sv: number[], c: number) => {
+    if (score > threshold || c < calFloor) return
     kept.push({ score, idx: [...idx], sv: [...sv] })
     if (kept.length >= KEEP * 2) {
       kept.sort(compare)
@@ -208,21 +227,36 @@ export function suggestCombos(
     }
   }
 
+  const idx1 = [0]
+  const sv1 = [0]
   const idx2 = [0, 0]
   const sv2 = [0, 0]
   const idx3 = [0, 0, 0]
   const sv3 = [0, 0, 0]
-  // Every pair and triple of pool items, every serving choice
+  const searchTriples = maxItemCount >= 3
+  // Every single, pair and triple of pool items (in the sizes wanted),
+  // every serving choice
   for (let a = 0; a < n; a++) {
-    for (let b = a + 1; b < n; b++) {
+    if (wants(1)) {
       for (const sa of SERVING_CHOICES) {
-        for (const sb of SERVING_CHOICES) {
-          const c = cal[a] * sa + cal[b] * sb
-          if (c > calCap) continue
-          idx2[0] = a; idx2[1] = b; sv2[0] = sa; sv2[1] = sb
-          offer(scoreNums(c, pro[a] * sa + pro[b] * sb, carb[a] * sa + carb[b] * sb, fat[a] * sa + fat[b] * sb, idx2, sv2), idx2, sv2)
+        const c = cal[a] * sa
+        if (c > calCap) continue
+        idx1[0] = a; sv1[0] = sa
+        offer(scoreNums(c, pro[a] * sa, carb[a] * sa, fat[a] * sa, idx1, sv1), idx1, sv1, c)
+      }
+    }
+    for (let b = a + 1; b < n; b++) {
+      if (wants(2)) {
+        for (const sa of SERVING_CHOICES) {
+          for (const sb of SERVING_CHOICES) {
+            const c = cal[a] * sa + cal[b] * sb
+            if (c > calCap) continue
+            idx2[0] = a; idx2[1] = b; sv2[0] = sa; sv2[1] = sb
+            offer(scoreNums(c, pro[a] * sa + pro[b] * sb, carb[a] * sa + carb[b] * sb, fat[a] * sa + fat[b] * sb, idx2, sv2), idx2, sv2, c)
+          }
         }
       }
+      if (!searchTriples) continue
       for (let c3 = b + 1; c3 < n; c3++) {
         for (const sa of SERVING_CHOICES) {
           for (const sb of SERVING_CHOICES) {
@@ -240,7 +274,7 @@ export function suggestCombos(
                   fat[a] * sa + fat[b] * sb + fat[c3] * sc,
                   idx3, sv3
                 ),
-                idx3, sv3
+                idx3, sv3, c
               )
             }
           }
@@ -251,8 +285,10 @@ export function suggestCombos(
   kept.sort(compare)
 
   // Try growing the best triples into 4-item combos when a 4th item helps
+  // (or, when only 4 items are wanted, whichever 4th item helps most)
   const extended: Cand[] = []
-  for (const base of kept.filter((k) => k.idx.length === 3).slice(0, 40)) {
+  const triples = wants(4) ? kept.filter((k) => k.idx.length === 3).slice(0, 40) : []
+  for (const base of triples) {
     let c0 = 0, p0 = 0, cb0 = 0, f0 = 0
     base.idx.forEach((i, j) => {
       c0 += cal[i] * base.sv[j]; p0 += pro[i] * base.sv[j]; cb0 += carb[i] * base.sv[j]; f0 += fat[i] * base.sv[j]
@@ -262,18 +298,18 @@ export function suggestCombos(
       if (base.idx.includes(d)) continue
       for (const sd of SERVING_CHOICES) {
         const c = c0 + cal[d] * sd
-        if (c > calCap) continue
+        if (c > calCap || c < calFloor) continue
         const idx = [...base.idx, d]
         const sv = [...base.sv, sd]
         const score = scoreNums(c, p0 + pro[d] * sd, cb0 + carb[d] * sd, f0 + fat[d] * sd, idx, sv)
         const cand = { score, idx, sv }
-        if (score < base.score && (!best || compare(cand, best) < 0)) best = cand
+        if ((score < base.score || !wants(3)) && (!best || compare(cand, best) < 0)) best = cand
       }
     }
     if (best) extended.push(best)
   }
 
-  const ranked = [...kept, ...extended].sort(compare)
+  const ranked = [...kept, ...extended].filter((k) => wants(k.idx.length)).sort(compare)
   const picked: Combo[] = []
   for (const cand of ranked) {
     if (picked.length >= count) break
