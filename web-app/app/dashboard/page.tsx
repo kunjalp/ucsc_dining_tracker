@@ -11,8 +11,10 @@ import { classifyByName } from '@/lib/stationClassifier'
 import { useReducedMotion } from '@/lib/useReducedMotion'
 import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros, type MacroKey } from '@/lib/mealSuggestions'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
+import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet from '../components/BottomSheet'
+import Sammy, { type SammyMood } from '../components/Sammy'
 import { Toast, ToastStack, useToasts } from '../components/Toast'
 
 import {
@@ -551,6 +553,19 @@ export default function DashboardPage() {
   const [goalFat, setGoalFat] = useState(70)
   // In-app toasts (ring closed, errors) -- replaces alert(); see ToastStack
   const { toasts, showToast, dismissToast } = useToasts()
+
+  // Sammy perched on the bottom nav: hops when a food is logged, celebrates
+  // when a ring closes, then settles back to idle. The key restarts the
+  // one-shot animation when the same mood fires twice in a row.
+  const [cornerMood, setCornerMood] = useState<SammyMood>('idle')
+  const [cornerMoodKey, setCornerMoodKey] = useState(0)
+  const cornerMoodTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const playCornerMood = (mood: 'happy' | 'celebrate') => {
+    setCornerMood(mood)
+    setCornerMoodKey((k) => k + 1)
+    if (cornerMoodTimerRef.current) clearTimeout(cornerMoodTimerRef.current)
+    cornerMoodTimerRef.current = setTimeout(() => setCornerMood('idle'), mood === 'celebrate' ? 1300 : 700)
+  }
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
   // Food detail sheet -- tapping an item's name opens it with that item's
   // ingredients/allergens/dietary icons (closed = null).
@@ -587,6 +602,7 @@ export default function DashboardPage() {
     memberSince: null,
     dietaryPreferences: [],
     textSize: DEFAULT_TEXT_SIZE,
+    mascotAnimations: true,
   })
 
   // Calendar View State
@@ -791,6 +807,7 @@ export default function DashboardPage() {
           ? `${newlyClosed[0]} ring closed!`
           : `${newlyClosed.slice(0, -1).join(', ')} & ${newlyClosed[newlyClosed.length - 1]} rings closed!`
       showToast(message, 'success')
+      playCornerMood('celebrate')
     }
 
     prevRingsClosedRef.current = closed
@@ -848,6 +865,10 @@ export default function DashboardPage() {
         const savedTextSize = user.user_metadata?.text_size
         const textSize = isTextSize(savedTextSize) ? savedTextSize : getLocalTextSize()
         setLocalTextSize(textSize)
+        // Same for Mascot animations: the account's choice wins, else this device's
+        const savedMascot = user.user_metadata?.mascot_animations
+        const mascotAnimations = typeof savedMascot === 'boolean' ? savedMascot : getLocalMascotAnimations()
+        setLocalMascotAnimations(mascotAnimations)
 
         setUserProfile({
           nickname: (user.user_metadata?.nickname as string) || '',
@@ -856,6 +877,7 @@ export default function DashboardPage() {
           memberSince: user.created_at || null,
           dietaryPreferences: (user.user_metadata?.dietary_preferences as string[]) || [],
           textSize,
+          mascotAnimations,
         })
       }
     }
@@ -1425,6 +1447,7 @@ export default function DashboardPage() {
       // Quick, light confirmation tap — this is a frequent, low-stakes action.
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
       clearServingPreview()
+      playCornerMood('happy')
       setJustLogged(prev => ({ ...prev, [foodId]: true }))
       setTimeout(() => {
         setJustLogged(prev => {
@@ -1821,7 +1844,8 @@ export default function DashboardPage() {
         {/* "Close my rings" -- what's left today, and a way to get combos
             from the current menu that fill it */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl pl-4 pr-2 py-2 mb-6 min-h-tap flex items-center justify-between gap-3 bg-surface border border-white/10">
+          <div className="rounded-2xl pl-3 pr-2 py-2 mb-6 min-h-tap flex items-center gap-3 bg-surface border border-white/10">
+            <Sammy mood="idle" size={2} />
             {!totalsLoaded ? (
               <p className="text-sm text-fg-muted">Checking what&apos;s left…</p>
             ) : !targetsSaved ? (
@@ -1830,7 +1854,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsTargetsModalOpen(true)}
-                  className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 transition"
+                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 transition"
                 >
                   Set targets
                 </button>
@@ -1858,7 +1882,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={openSuggestions}
                   aria-haspopup="dialog"
-                  className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition"
+                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition"
                 >
                   Suggest meals
                 </button>
@@ -2249,9 +2273,12 @@ export default function DashboardPage() {
                   days. Suppressed when opening later today, since the "Opens at X" countdown
                   line above already says this with more useful detail. */}
               {isClosedNow && !isOpeningLaterToday && (
-                <div role="status" className="rounded-2xl p-4 bg-surface-2 border border-white/10 text-sm text-center">
-                  <span className="font-semibold text-fg">{closedLabel}</span>
-                  {nextOpeningLabel && <span className="text-fg-muted"> · {nextOpeningLabel}</span>}
+                <div role="status" className="rounded-2xl p-4 bg-surface-2 border border-white/10 text-sm flex items-center justify-center gap-3">
+                  <Sammy mood="idle" size={2} />
+                  <p className="min-w-0">
+                    <span className="font-semibold text-fg">{closedLabel}</span>
+                    {nextOpeningLabel && <span className="text-fg-muted"> · {nextOpeningLabel}</span>}
+                  </p>
                 </div>
               )}
 
@@ -2265,7 +2292,10 @@ export default function DashboardPage() {
                   </h2>
 
                   {loading ? (
-                    <div className="space-y-1">
+                    <div className="space-y-1" role="status" aria-label="Loading menu">
+                      <div className="flex justify-center pt-2 pb-1">
+                        <Sammy mood="loading" size={2} />
+                      </div>
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
@@ -2281,7 +2311,8 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : Object.keys(groupedMenu).length === 0 ? (
-                    <div className="py-12 text-center text-fg-subtle font-medium">
+                    <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
+                      <Sammy mood="idle" size={3} />
                       {menu.length === 0
                         ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
                         : dietHiddenCount > 0 && !dietFilterOff
@@ -2563,7 +2594,8 @@ export default function DashboardPage() {
                 )
                 if (visibleLogs.length === 0) {
                   return (
-                    <div className="py-12 text-center text-fg-muted font-medium">
+                    <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-muted font-medium">
+                      <Sammy mood="idle" size={3} />
                       You haven't logged any foods today yet. Go back to Log Menu to add meals!
                     </div>
                   )
@@ -2671,6 +2703,12 @@ export default function DashboardPage() {
           aria-label="Main"
           className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
+          {/* Sammy perched on top of the pill's right end -- above the nav,
+              never over its buttons, and pointer-events-none so he never
+              blocks a tap on what's scrolling behind him */}
+          <span className="absolute bottom-full right-6 pointer-events-none">
+            <Sammy key={cornerMoodKey} mood={cornerMood} size={2} />
+          </span>
           <span
             aria-hidden="true"
             className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
@@ -2785,7 +2823,8 @@ export default function DashboardPage() {
           >
             <X size={20} />
           </button>
-          <h2 id="suggestions-title" className="text-lg font-bold tracking-tight text-fg pr-10">
+          <h2 id="suggestions-title" className="flex items-center gap-2 text-lg font-bold tracking-tight text-fg pr-10">
+            <Sammy mood="idle" size={2} />
             Close my rings
           </h2>
           <p className="text-xs text-fg-muted mt-0.5">

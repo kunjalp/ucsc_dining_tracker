@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X, User, Camera, LogOut, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
+import { setLocalMascotAnimations } from '@/lib/mascotPrefs'
 import BottomSheet from '../components/BottomSheet'
 
 export interface UserProfile {
@@ -14,6 +15,7 @@ export interface UserProfile {
   memberSince: string | null // ISO date string from auth.users.created_at
   dietaryPreferences: string[]
   textSize: TextSize
+  mascotAnimations: boolean // Sammy's animations; off = he holds still
 }
 
 interface UserProfileModalProps {
@@ -62,6 +64,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [dietaryDropdownOpen, setDietaryDropdownOpen] = useState(false)
   // Previewed live as it's picked; Cancel/close puts the saved size back
   const [textSize, setTextSize] = useState<TextSize>(currentProfile.textSize)
+  const [mascotAnimations, setMascotAnimations] = useState(currentProfile.mascotAnimations)
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -268,7 +271,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     setSaving(true)
 
     const { error: metaError } = await supabase.auth.updateUser({
-      data: { nickname: trimmedNickname, dietary_preferences: dietaryPreferences, text_size: textSize },
+      data: { nickname: trimmedNickname, dietary_preferences: dietaryPreferences, text_size: textSize, mascot_animations: mascotAnimations },
     })
 
     if (metaError) {
@@ -288,6 +291,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
     setSaving(false)
     setLocalTextSize(textSize)
+    setLocalMascotAnimations(mascotAnimations)
     onSave({
       nickname: trimmedNickname,
       email: trimmedEmail,
@@ -295,6 +299,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       memberSince: currentProfile.memberSince,
       dietaryPreferences,
       textSize,
+      mascotAnimations,
     })
   }
 
@@ -527,6 +532,25 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             })}
           </div>
         </div>
+
+        {/* Sammy's animations -- off (or iOS Reduce Motion) = he holds still */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={mascotAnimations}
+          onClick={() => setMascotAnimations((on) => !on)}
+          className="w-full min-h-[max(44px,2.75rem)] flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-2 px-3 text-sm font-semibold text-fg transition active:bg-white/10"
+        >
+          Mascot animations
+          <span
+            aria-hidden="true"
+            className={`relative h-6 w-10 shrink-0 rounded-full transition-colors motion-reduce:transition-none ${mascotAnimations ? 'bg-gold' : 'bg-white/15'}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-fg transition-transform motion-reduce:transition-none ${mascotAnimations ? 'translate-x-4' : ''}`}
+            />
+          </span>
+        </button>
       </form>
 
       {/* Account rows -- outside the form so Enter in the password or DELETE

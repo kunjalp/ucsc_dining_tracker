@@ -185,6 +185,57 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Sammy the mascot (app/components/Sammy.tsx). steps(1, end) holds each
+   keyframe until the next one, so every move is a whole sprite pixel
+   (--sammy-px) -- the pixel art never lands between pixels. */
+@keyframes sammy-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(-1 * var(--sammy-px))); }
+}
+@keyframes sammy-loading {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(calc(-1 * var(--sammy-px))); }
+  50% { transform: translateY(calc(-2 * var(--sammy-px))); }
+  75% { transform: translateY(calc(-1 * var(--sammy-px))); }
+}
+@keyframes sammy-hop {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(calc(-2 * var(--sammy-px))); }
+  40% { transform: translateY(calc(-3 * var(--sammy-px))); }
+  60% { transform: translateY(calc(-2 * var(--sammy-px))); }
+  80% { transform: translateY(calc(-1 * var(--sammy-px))); }
+}
+@keyframes sammy-celebrate {
+  0%, 100% { transform: translateY(0); }
+  8% { transform: translateY(calc(-3 * var(--sammy-px))); }
+  16% { transform: translateY(calc(-5 * var(--sammy-px))); }
+  24% { transform: translateY(calc(-6 * var(--sammy-px))); }
+  32% { transform: translateY(calc(-4 * var(--sammy-px))); }
+  40% { transform: translateY(0); }
+  52% { transform: translateY(calc(-3 * var(--sammy-px))); }
+  64% { transform: translateY(calc(-4 * var(--sammy-px))); }
+  76% { transform: translateY(calc(-2 * var(--sammy-px))); }
+  88% { transform: translateY(0); }
+}
+@keyframes sammy-wiggle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(1px); }
+  50% { transform: translateX(0); }
+  75% { transform: translateX(1px); }
+}
+@keyframes sammy-sparkle {
+  0%, 100% { opacity: 0; }
+  15%, 55% { opacity: 1; }
+}
+
+.sammy-bob { animation: sammy-bob 2.4s steps(1, end) infinite; }
+.sammy-loading { animation: sammy-loading 0.6s steps(1, end) infinite; }
+.sammy-hop { animation: sammy-hop 0.6s steps(1, end) both; }
+.sammy-celebrate { animation: sammy-celebrate 1.2s steps(1, end) both; }
+/* SVG user units: 1px here = one sprite pixel */
+.sammy-wiggle { animation: sammy-wiggle 0.48s steps(1, end); }
+.sammy-sparkle { opacity: 0; animation: sammy-sparkle 0.6s steps(1, end) 2 both; }
+
 /* iOS Reduce Motion: no pulsing, popping, staggering or sliding. Each of
    these ends at its natural resting state (full opacity, no offset, base
    glow), so dropping the animation leaves the same final look. The day
@@ -195,7 +246,13 @@ body.hide-scrollbar::-webkit-scrollbar {
   .animate-check-pop,
   .animate-ring-toast,
   .animate-sheet-backdrop,
-  .animate-sheet-up {
+  .animate-sheet-up,
+  .sammy-bob,
+  .sammy-loading,
+  .sammy-hop,
+  .sammy-celebrate,
+  .sammy-wiggle,
+  .sammy-sparkle {
     animation: none;
   }
 }

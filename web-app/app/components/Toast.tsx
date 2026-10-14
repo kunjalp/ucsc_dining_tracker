@@ -79,9 +79,10 @@ export function Toast({ tone = 'info', children, action, onDismiss }: ToastProps
   )
 }
 
-// The one place toasts render: stacked just above the floating tab bar
-// (12px gap + ~50px bar + 10px, over the home-indicator inset), so the undo
-// toast and message toasts share a column and can never overlap.
+// The one place toasts render: stacked above the floating tab bar and the
+// Sammy perched on it (12px gap + ~50px bar + ~40px for Sammy and his
+// celebrate bounce, over the home-indicator inset), so the undo toast and
+// message toasts share a column and never cover him or each other.
 export function ToastStack({ toasts, onDismiss, children }: {
   toasts: ToastMessage[]
   onDismiss: (id: number) => void
@@ -90,7 +91,7 @@ export function ToastStack({ toasts, onDismiss, children }: {
   return (
     <div
       className="fixed left-0 right-0 z-[60] px-4 flex flex-col-reverse items-center gap-2 pointer-events-none"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
+      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 104px)' }}
     >
       {children}
       {toasts.map((t) => (

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { getURL } from '@/lib/utils'
 import { Settings, User } from 'lucide-react';
 import PasswordInput from './PasswordInput'
+import Sammy from './components/Sammy'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 
@@ -88,6 +89,9 @@ export default function AuthPage() {
     <div
       className="flex min-h-dvh flex-col items-center justify-center bg-app px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)] text-fg relative overflow-hidden"
     >
+
+      {/* Sammy the mascot, waiting by the sign-in card */}
+      <Sammy mood="idle" size={4} className="mb-3" />
 
       {/* Container Box */}
       <div className="w-full max-w-[340px] rounded-2xl p-4 bg-surface border border-white/10">
