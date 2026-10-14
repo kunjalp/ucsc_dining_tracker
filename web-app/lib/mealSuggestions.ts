@@ -41,8 +41,11 @@ export const SUGGESTION_MIN_SERVINGS = 0.5
 export const SUGGESTION_MAX_SERVINGS = 2
 const SERVING_CHOICES = [0.5, 1, 1.5, 2]
 
-// Allowed calorie overshoot past what's left (10%)
+// Calorie ceiling as a multiple of what's left: tight (10% over) when the
+// student is closing the Calories ring, loose (25%) when it's off, so a
+// protein-only search still can't suggest an absurdly large meal
 const CALORIE_OVERSHOOT = 1.1
+const LOOSE_CALORIE_CEILING = 1.25
 // Items considered: the best few per station, capped overall, so the search
 // stays fast (~130k scored combos worst case) while keeping stations varied
 const PER_STATION_POOL = 4
@@ -52,7 +55,14 @@ const WEIGHTS: Macros = { calories: 2, protein: 3, carbs: 1, fat: 1 }
 // Floors so a nearly-closed macro doesn't blow up the relative error
 const FLOORS: Macros = { calories: 100, protein: 10, carbs: 15, fat: 5 }
 
-const MACRO_KEYS: (keyof Macros)[] = ['calories', 'protein', 'carbs', 'fat']
+export type MacroKey = keyof Macros
+export const MACRO_KEYS: MacroKey[] = ['calories', 'protein', 'carbs', 'fat']
+export const DEFAULT_FOCUS: MacroKey[] = ['calories', 'protein']
+
+/** The selected macros that still have something left to close. */
+export function activeFocus(focus: MacroKey[], remaining: Macros): MacroKey[] {
+  return focus.filter((k) => remaining[k] > 0)
+}
 
 export function comboTotals(items: ComboItem[]): Macros {
   return items.reduce(
@@ -94,9 +104,31 @@ function makeKey(items: ComboItem[]): string {
   return items.map((i) => `${i.food.recipe_id}x${i.servings}`).join('|')
 }
 
-/** Up to `count` suggested combos (may be fewer, or none, if nothing fits). */
-export function suggestCombos(candidates: SuggestionCandidate[], remaining: Macros, count = 3): Combo[] {
-  if (remaining.calories <= 0) return []
+/**
+ * Up to `count` suggested combos (may be fewer, or none, if nothing fits).
+ * `focus` is which rings to close: only those macros (that still have
+ * something left) are scored; the others never influence the pick.
+ */
+export function suggestCombos(
+  candidates: SuggestionCandidate[],
+  remaining: Macros,
+  focus: MacroKey[] = DEFAULT_FOCUS,
+  count = 3
+): Combo[] {
+  const active = activeFocus(focus, remaining)
+  if (active.length === 0 || remaining.calories <= 0) return []
+  const calCap = remaining.calories * (focus.includes('calories') ? CALORIE_OVERSHOOT : LOOSE_CALORIE_CEILING)
+  const isActive = { calories: false, protein: false, carbs: false, fat: false }
+  active.forEach((k) => { isActive[k] = true })
+
+  // How well one serving moves the active non-calorie rings per calorie
+  // spent (protein weighted most) -- decides which items make the pool.
+  // Calories-only: items closest to a third of what's left rank first.
+  const nonCalorie = active.filter((k) => k !== 'calories')
+  const fitness = (c: SuggestionCandidate) =>
+    nonCalorie.length > 0
+      ? nonCalorie.reduce((sum, k) => sum + (WEIGHTS[k] * c[k]) / Math.max(remaining[k], FLOORS[k]), 0) / c.calories
+      : -Math.abs(c.calories - remaining.calories / 3)
 
   // De-dupe by recipe and drop unusable items; sort deterministically
   const seen = new Set<string>()
@@ -104,15 +136,11 @@ export function suggestCombos(candidates: SuggestionCandidate[], remaining: Macr
     .filter((c) => {
       if (seen.has(c.recipe_id) || !hasUsableNutrition(c) || isCondiment(c)) return false
       seen.add(c.recipe_id)
-      return c.calories * SUGGESTION_MIN_SERVINGS <= remaining.calories * CALORIE_OVERSHOOT
+      return c.calories * SUGGESTION_MIN_SERVINGS <= calCap
     })
-    .sort((a, b) => {
-      const densA = a.protein / a.calories
-      const densB = b.protein / b.calories
-      return densB - densA || a.name.localeCompare(b.name) || a.recipe_id.localeCompare(b.recipe_id)
-    })
+    .sort((a, b) => fitness(b) - fitness(a) || a.name.localeCompare(b.name) || a.recipe_id.localeCompare(b.recipe_id))
 
-  // Best few per station (by protein density), then capped overall
+  // Best few per station (by fitness), then capped overall
   const perStation = new Map<string, number>()
   const pool = usable.filter((c) => {
     const n = perStation.get(c.station) ?? 0
@@ -133,15 +161,15 @@ export function suggestCombos(candidates: SuggestionCandidate[], remaining: Macr
     if (!stationIds.has(c.station)) stationIds.set(c.station, stationIds.size)
     return stationIds.get(c.station)!
   })
-  const calCap = remaining.calories * CALORIE_OVERSHOOT
 
-  const macroError = (k: keyof Macros, total: number) => {
-    const target = Math.max(remaining[k], 0)
-    const diff = (total - target) / Math.max(target, FLOORS[k])
+  // Only active (selected, still-open) macros add error
+  const macroError = (k: MacroKey, total: number) => {
+    if (!isActive[k]) return 0
+    const diff = (total - remaining[k]) / Math.max(remaining[k], FLOORS[k])
     // The 10% calorie allowance is a hard ceiling, not a target: going over
     // costs 4x as much as falling short by the same amount
     const overshoot = k === 'calories' && diff > 0 ? 4 : 1
-    return (remaining[k] > 0 ? WEIGHTS[k] : 0.5) * overshoot * diff * diff
+    return WEIGHTS[k] * overshoot * diff * diff
   }
   const scoreNums = (c: number, p: number, cb: number, f: number, idx: number[], sv: number[]) => {
     let repeats = 0

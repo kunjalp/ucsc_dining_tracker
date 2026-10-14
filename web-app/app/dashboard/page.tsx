@@ -9,7 +9,7 @@ import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountd
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { useReducedMotion } from '@/lib/useReducedMotion'
-import { suggestCombos, comboTotals, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros } from '@/lib/mealSuggestions'
+import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros, type MacroKey } from '@/lib/mealSuggestions'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet from '../components/BottomSheet'
@@ -105,6 +105,10 @@ const DAY_OFFSETS = [0, 1, 2]
 // Order of the meal groups in Progress > Everything Logged Today. Anything
 // else logged (Brunch, a cafe's "Menu"/"ALL") sorts after these.
 const LOG_MEAL_ORDER = ['Breakfast', 'Brunch', 'Lunch', 'Dinner', 'Late Night']
+
+// "Close my rings" macro chips: saved selection key + chip labels
+const SUGGEST_FOCUS_STORAGE_KEY = 'ucsc_suggest_focus'
+const MACRO_CHIP_LABELS: Record<MacroKey, string> = { calories: 'Calories', protein: 'Protein', carbs: 'Carbs', fat: 'Fat' }
 
 // Whichever meal period a dining hall is actually serving (or, during a
 // Continuous Dining gap, most recently served) right now — e.g. "Lunch" at
@@ -518,6 +522,22 @@ export default function DashboardPage() {
   // then the 2000/120/250/70 placeholders aren't theirs to aim at), the
   // open suggestions sheet's editable combos, and which combo is logging.
   const [targetsSaved, setTargetsSaved] = useState(false)
+  // Which rings the suggestions try to close (sheet's macro chips)
+  // Read straight from storage on the client: the chips only render once the
+  // sheet is opened, so this can't cause a hydration mismatch.
+  const [suggestFocus, setSuggestFocus] = useState<MacroKey[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_FOCUS
+    try {
+      const saved = JSON.parse(localStorage.getItem(SUGGEST_FOCUS_STORAGE_KEY) ?? 'null')
+      if (Array.isArray(saved)) {
+        const valid = MACRO_KEYS.filter((k) => saved.includes(k))
+        if (valid.length > 0) return valid
+      }
+    } catch {
+      // Unavailable or corrupt storage -- keep the defaults
+    }
+    return DEFAULT_FOCUS
+  })
   const [suggestionCombos, setSuggestionCombos] = useState<ComboItem[][] | null>(null)
   const [loggingComboIndex, setLoggingComboIndex] = useState<number | null>(null)
   // "Show" on the dietary chip: lists everything for this session only --
@@ -1575,7 +1595,9 @@ export default function DashboardPage() {
   // Under ~50 cal left there's nothing worth suggesting without going over
   const caloriesClosed = remainingMacros.calories < 50
 
-  const openSuggestions = () => {
+  // (Re)builds the suggestion combos for the given rings to close. Toggling
+  // a macro chip calls this again, which replaces any edits in the sheet.
+  const computeSuggestions = (focus: MacroKey[]) => {
     // Only what's on screen: filteredMenu already applies the dietary,
     // allergen, station and search filters (and drops 0-nutrition rows)
     const candidates = filteredMenu.map((entry) => ({
@@ -1588,7 +1610,27 @@ export default function DashboardPage() {
       carbs: Number(entry.food_items.carbs),
       fat: Number(entry.food_items.fat),
     }))
-    setSuggestionCombos(suggestCombos(candidates, remainingMacros).map((combo) => combo.items))
+    setSuggestionCombos(suggestCombos(candidates, remainingMacros, focus).map((combo) => combo.items))
+  }
+
+  const openSuggestions = () => {
+    computeSuggestions(suggestFocus)
+    Haptics.selectionChanged().catch(() => {})
+  }
+
+  // Macro chips at the top of the sheet. The last chip that's on can't be
+  // turned off. Saved per device; storage failures just skip saving.
+  const toggleSuggestFocus = (macro: MacroKey) => {
+    const isOn = suggestFocus.includes(macro)
+    if (isOn && suggestFocus.length === 1) return
+    const next = MACRO_KEYS.filter((k) => (k === macro ? !isOn : suggestFocus.includes(k)))
+    setSuggestFocus(next)
+    try {
+      localStorage.setItem(SUGGEST_FOCUS_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Private mode etc. -- the choice still applies for this session
+    }
+    computeSuggestions(next)
     Haptics.selectionChanged().catch(() => {})
   }
 
@@ -2750,9 +2792,45 @@ export default function DashboardPage() {
             From {selectedHall}, {getDayOffsetLabel(selectedDayOffset).toLowerCase() === 'today' ? '' : `${getDayOffsetLabel(selectedDayOffset)} `}{selectedMeal}
           </p>
 
+          {/* Which rings to close -- toggling re-runs the suggestions */}
+          <div role="group" aria-label="Rings to close" className="mt-3 flex flex-wrap gap-1.5">
+            {MACRO_KEYS.map((macro) => {
+              const isOn = suggestFocus.includes(macro)
+              const isLastOn = isOn && suggestFocus.length === 1
+              return (
+                <button
+                  key={macro}
+                  type="button"
+                  aria-pressed={isOn}
+                  aria-disabled={isLastOn || undefined}
+                  aria-label={`${MACRO_CHIP_LABELS[macro]}${isLastOn ? ', at least one ring must stay selected' : ''}`}
+                  onClick={() => toggleSuggestFocus(macro)}
+                  className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 motion-reduce:active:scale-100 ${
+                    isOn
+                      ? 'bg-gold text-on-gold'
+                      : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
+                  } ${isLastOn ? 'cursor-not-allowed' : ''}`}
+                >
+                  {isOn && <Check size={12} aria-hidden="true" />}
+                  {MACRO_CHIP_LABELS[macro]}
+                </button>
+              )
+            })}
+          </div>
+          {(() => {
+            const closed = suggestFocus.filter((k) => !activeFocus([k], remainingMacros).length)
+            return closed.length > 0 ? (
+              <p className="mt-2 text-xs text-fg-muted">
+                {closed.map((k) => MACRO_CHIP_LABELS[k]).join(' and ')} {closed.length === 1 ? 'ring is' : 'rings are'} already closed, so {closed.length === 1 ? "it isn't" : "they aren't"} counted.
+              </p>
+            ) : null
+          })()}
+
           {suggestionCombos.length === 0 ? (
             <p className="py-10 text-center text-sm text-fg-muted">
-              Nothing on this menu fits what&apos;s left right now. Try another meal or loosen your station or search filters.
+              {activeFocus(suggestFocus, remainingMacros).length === 0
+                ? 'Every ring you picked is already closed. Turn on another one above.'
+                : 'Nothing on this menu fits what’s left right now. Try another meal or loosen your station or search filters.'}
             </p>
           ) : (
             <div className="mt-4 space-y-3">
