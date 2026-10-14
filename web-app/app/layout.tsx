@@ -1,26 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import DeepLinkHandler from './components/DeepLinkHandler'
 import { TEXT_SIZE_BOOT_SCRIPT } from '@/lib/textSize'
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// The app's one typeface. Pages used to name 'Plus Jakarta Sans' in an
+// inline style without ever loading it, so iOS silently fell back to the
+// system font. Self-hosted by next/font; only the weights the UI uses
+// (font-medium/semibold/bold -- extrabold/black resolve to 700).
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Distinct technical/mono voice for data — stat labels, countdowns, the day
-// track — separate from Geist Sans's body copy. Gives the numbers-heavy
-// parts of the UI their own character instead of defaulting everything to
-// one typeface.
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -44,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakarta.variable} h-full antialiased`}
       // The boot script below may set an inline font-size before hydration
       suppressHydrationWarning
     >

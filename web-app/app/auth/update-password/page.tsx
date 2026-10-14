@@ -40,22 +40,21 @@ export default function UpdatePasswordPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 text-[#dae2fd] relative overflow-hidden"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      className="flex min-h-screen flex-col items-center justify-center bg-app p-4 text-fg relative overflow-hidden"
     >
       <div className="fixed top-0 left-0 w-full h-[512px] bg-gradient-to-b from-[#003c6c]/20 to-transparent pointer-events-none -z-10 blur-3xl" />
 
-      <div className="w-full max-w-[340px] rounded-2xl p-6 bg-[#141b2e] border border-white/10">
-        <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] mb-2 text-center">
+      <div className="w-full max-w-[340px] rounded-2xl p-6 bg-surface border border-white/10">
+        <h1 className="text-xl font-extrabold tracking-tight text-fg mb-2 text-center">
           Set a new password
         </h1>
-        <p className="text-sm text-[#c2c6d0] mb-6 text-center">
+        <p className="text-sm text-fg-subtle mb-6 text-center">
           Choose a new password for your account.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
               New Password
             </label>
             <PasswordInput
@@ -66,7 +65,7 @@ export default function UpdatePasswordPage() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
               Confirm Password
             </label>
             <PasswordInput
@@ -85,7 +84,7 @@ export default function UpdatePasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2.5 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            className="mt-1 w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
             {loading ? 'Updating...' : 'Update Password'}
           </button>

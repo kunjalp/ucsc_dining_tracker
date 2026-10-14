@@ -86,12 +86,11 @@ export default function AuthPage() {
   return (
 
     <div
-      className="flex min-h-dvh flex-col items-center justify-center bg-[#0b1326] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)] text-[#dae2fd] relative overflow-hidden"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      className="flex min-h-dvh flex-col items-center justify-center bg-app px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)] text-fg relative overflow-hidden"
     >
 
       {/* Container Box */}
-      <div className="w-full max-w-[340px] rounded-2xl p-4 bg-[#141b2e] border border-white/10">
+      <div className="w-full max-w-[340px] rounded-2xl p-4 bg-surface border border-white/10">
 
         {/* Brand Header */}
         <div className="mb-4 flex items-center justify-center gap-3">
@@ -104,16 +103,16 @@ export default function AuthPage() {
           <div className="h-11 w-px bg-white/15" />
 
           <div className="text-left">
-            <h1 className="text-xl font-extrabold tracking-tight text-[#dae2fd] whitespace-nowrap">
+            <h1 className="text-xl font-extrabold tracking-tight text-fg whitespace-nowrap">
               Sammy's Palate
             </h1>
-            <p className="mt-0.5 text-[11px] font-semibold text-[#dae2fd]/50 tracking-wider uppercase">
+            <p className="mt-0.5 text-[11px] font-semibold text-fg/50 tracking-wider uppercase">
               UCSC Macro Tracker
             </p>
           </div>
         </div>
 
-        <p className="mb-4 text-center text-sm text-[#c2c6d0]">
+        <p className="mb-4 text-center text-sm text-fg-subtle">
           {isSignUp ? 'Create your account to get started.' : 'Welcome back! Please sign in.'}
         </p>
 
@@ -121,7 +120,7 @@ export default function AuthPage() {
         {showForgotPassword ? (
           <form onSubmit={handleForgotPassword} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
                 Email Address
               </label>
               <input
@@ -130,7 +129,7 @@ export default function AuthPage() {
                 placeholder="slug@email.com"
                 autoComplete="email"
                 autoCapitalize="none"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-fg transition focus:border-gold/60 focus:outline-none focus:ring-4 focus:ring-gold/10 placeholder-fg-subtle/40"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -139,7 +138,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
@@ -147,7 +146,7 @@ export default function AuthPage() {
             <button
               type="button"
               onClick={() => { setShowForgotPassword(false); setMessage('') }}
-              className="w-full text-center text-xs font-medium text-[#c2c6d0] hover:text-[#ffe6ab] transition"
+              className="w-full text-center text-xs font-medium text-fg-subtle hover:text-[#ffe6ab] transition"
             >
               Back to sign in
             </button>
@@ -155,7 +154,7 @@ export default function AuthPage() {
         ) : (
           <form onSubmit={handleAuth} className="space-y-3">
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
                 Email Address
               </label>
               <input
@@ -164,14 +163,14 @@ export default function AuthPage() {
                 placeholder="slug@email.com"
                 autoComplete="email"
                 autoCapitalize="none"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-fg transition focus:border-gold/60 focus:outline-none focus:ring-4 focus:ring-gold/10 placeholder-fg-subtle/40"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#c2c6d0]">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
                 Password
               </label>
               <PasswordInput
@@ -194,7 +193,7 @@ export default function AuthPage() {
                 <span
                   aria-hidden="true"
                   className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
-                    ? 'bg-[#d6b93a] border-[#d6b93a]'
+                    ? 'bg-gold border-gold'
                     : 'bg-[#171f33] border-white/20'
                     }`}
                 >
@@ -204,14 +203,14 @@ export default function AuthPage() {
                     </svg>
                   )}
                 </span>
-                <span className="text-xs font-medium text-[#c2c6d0]">Stay signed in</span>
+                <span className="text-xs font-medium text-fg-subtle">Stay signed in</span>
               </button>
 
               {!isSignUp && (
                 <button
                   type="button"
                   onClick={() => { setShowForgotPassword(true); setMessage('') }}
-                  className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] text-xs font-medium text-[#a1c9ff] hover:text-[#dae2fd] transition"
+                  className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] text-xs font-medium text-sky hover:text-fg transition"
                 >
                   Forgot password?
                 </button>
@@ -221,7 +220,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-xl bg-[#d6b93a] py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </button>
@@ -233,8 +232,8 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(false)}
             className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${!isSignUp
-              ? 'bg-[#2a3a5c] text-[#a1c9ff] shadow-sm'
-              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              ? 'bg-[#2a3a5c] text-sky shadow-sm'
+              : 'text-fg-subtle hover:text-fg'
               }`}
           >
             Sign In
@@ -243,8 +242,8 @@ export default function AuthPage() {
             type="button"
             onClick={() => setIsSignUp(true)}
             className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${isSignUp
-              ? 'bg-[#2a3a5c] text-[#a1c9ff] shadow-sm'
-              : 'text-[#c2c6d0] hover:text-[#dae2fd]'
+              ? 'bg-[#2a3a5c] text-sky shadow-sm'
+              : 'text-fg-subtle hover:text-fg'
               }`}
           >
             Sign Up
@@ -253,7 +252,7 @@ export default function AuthPage() {
 
         {/* Dynamic Alert Message */}
         {message && (
-          <div className="mt-3 rounded-lg bg-[#a1c9ff]/10 p-2.5 text-center text-xs font-medium text-[#a1c9ff] border border-[#a1c9ff]/20">
+          <div className="mt-3 rounded-lg bg-sky/10 p-2.5 text-center text-xs font-medium text-sky border border-sky/20">
             {message}
           </div>
         )}
@@ -261,10 +260,10 @@ export default function AuthPage() {
       </div>
 
       {/* Footer Branding */}
-      <p className="mt-8 text-xs text-[#c2c6d0]/50">
+      <p className="mt-8 text-xs text-fg-subtle/50">
         UC Santa Cruz • Dining Tracker
       </p>
-      <p className="mt-2 text-xs text-[#c2c6d0]/50 max-w-xs text-center leading-relaxed">
+      <p className="mt-2 text-xs text-fg-subtle/50 max-w-xs text-center leading-relaxed">
         Built for UCSC dining. See the daily menu, log what you eat, track detailed macros.
       </p>
     </div>
