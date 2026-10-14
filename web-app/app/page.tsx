@@ -86,7 +86,7 @@ export default function AuthPage() {
   return (
 
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-[#0b1326] p-4 pt-12 text-[#dae2fd] relative overflow-hidden"
+      className="flex min-h-dvh flex-col items-center justify-center bg-[#0b1326] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)] text-[#dae2fd] relative overflow-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
 
@@ -128,7 +128,9 @@ export default function AuthPage() {
                 type="email"
                 required
                 placeholder="slug@email.com"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                autoComplete="email"
+                autoCapitalize="none"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -160,7 +162,9 @@ export default function AuthPage() {
                 type="email"
                 required
                 placeholder="slug@email.com"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-sm text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
+                autoComplete="email"
+                autoCapitalize="none"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[#171f33] px-3.5 py-2 text-input leading-5 text-[#dae2fd] transition focus:border-[#d6b93a]/60 focus:outline-none focus:ring-4 focus:ring-[#d6b93a]/10 placeholder-[#c2c6d0]/40"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -178,30 +182,36 @@ export default function AuthPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRememberMeState(!rememberMe)}
+              {/* Box + label are one control; the invisible ::after stretches the
+                  tap area to 44px tall without changing the row's layout */}
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={rememberMe}
+                onClick={() => setRememberMeState(!rememberMe)}
+                className="relative flex items-center gap-2 after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
+              >
+                <span
+                  aria-hidden="true"
                   className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${rememberMe
                     ? 'bg-[#d6b93a] border-[#d6b93a]'
                     : 'bg-[#171f33] border-white/20'
                     }`}
-                  aria-label="Stay signed in"
                 >
                   {rememberMe && (
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b5300" strokeWidth="3">
                       <path d="M20 6L9 17l-5-5" />
                     </svg>
                   )}
-                </button>
+                </span>
                 <span className="text-xs font-medium text-[#c2c6d0]">Stay signed in</span>
-              </div>
+              </button>
 
               {!isSignUp && (
                 <button
                   type="button"
                   onClick={() => { setShowForgotPassword(true); setMessage('') }}
-                  className="text-xs font-medium text-[#a1c9ff] hover:text-[#dae2fd] transition"
+                  className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] text-xs font-medium text-[#a1c9ff] hover:text-[#dae2fd] transition"
                 >
                   Forgot password?
                 </button>

@@ -33,6 +33,7 @@
   --color-macro-protein: #5bb448;
   --color-macro-carbs: #d17ccd;  /* was #bd5db8 (4.4:1) */
   --color-macro-fat: #fb7185;
+  --color-veg: #86d9a5;          /* Vegetarian tag -- lighter than Vegan's macro-protein green */
 
   /* Small text sizes, named for their px size at the Default text size
      (html 93.75% = 15px). rem, so the Text size setting scales them too:
@@ -51,6 +52,15 @@
 /* Inputs: scale with the Text size setting, but never under 16px */
 @utility text-input {
   font-size: max(16px, 1rem);
+}
+
+/* Horizontally scrolling rows (station pills) without a visible scrollbar */
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -161,21 +171,24 @@ body.hide-scrollbar::-webkit-scrollbar {
   animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
-/* Food detail sheet: slides up from off-screen-bottom and settles
-   centered on the viewport, rather than docking to the bottom edge. */
-@keyframes slide-up-to-center {
+/* Bottom sheets (food detail, profile): slide up from below the bottom edge */
+@keyframes sheet-up {
   from {
-    transform: translateY(65vh) scale(0.97);
-    opacity: 0;
+    transform: translateY(100%);
   }
   to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.animate-slide-up-center {
-  animation: slide-up-to-center 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+.animate-sheet-up {
+  animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up {
+    animation: none;
+  }
 }
 
 @keyframes sheet-backdrop-in {

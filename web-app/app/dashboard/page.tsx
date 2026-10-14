@@ -10,6 +10,7 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
+import BottomSheet from '../components/BottomSheet'
 
 import {
   History,
@@ -298,10 +299,14 @@ interface MacroBarItemProps {
   color: string
   unit: string
   bordered: boolean
+  // What logging the row's picked serving would add -- shown as "+N" and a
+  // faded bar extension while a serving pill was just tapped
+  preview: number
 }
 
-function MacroBarItem({ label, value, goal, color, unit, bordered }: MacroBarItemProps) {
+function MacroBarItem({ label, value, goal, color, unit, bordered, preview }: MacroBarItemProps) {
   const animatedValue = useCountUp(value)
+  const pctOf = (v: number) => `${Math.min((v / Math.max(goal, 1)) * 100, 100)}%`
 
   return (
     <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
@@ -309,13 +314,25 @@ function MacroBarItem({ label, value, goal, color, unit, bordered }: MacroBarIte
       <p className="text-sm font-black mt-0.5 leading-tight tabular-nums" style={{ color }}>
         {Math.round(animatedValue)}{unit}
       </p>
-      <p className="text-11 font-semibold text-fg-muted leading-tight tabular-nums">
-        / {Math.round(goal)}{unit}
-      </p>
-      <div className="h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
+      {preview > 0 ? (
+        <p className="text-11 font-bold leading-tight tabular-nums truncate" style={{ color }}>
+          +{Math.round(preview)}{unit}
+        </p>
+      ) : (
+        <p className="text-11 font-semibold text-fg-muted leading-tight tabular-nums">
+          / {Math.round(goal)}{unit}
+        </p>
+      )}
+      <div className="relative h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
+        {preview > 0 && (
+          <div
+            className="absolute inset-y-0 left-0 rounded-full opacity-40 transition-all"
+            style={{ width: pctOf(value + preview), backgroundColor: color }}
+          />
+        )}
         <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${Math.min((animatedValue / Math.max(goal, 1)) * 100, 100)}%`, backgroundColor: color }}
+          className="relative h-full rounded-full transition-all"
+          style={{ width: pctOf(animatedValue), backgroundColor: color }}
         />
       </div>
     </div>
@@ -438,6 +455,20 @@ export default function DashboardPage() {
   const [servings, setServings] = useState<{ [key: string]: number }>({})
   // Serving multiplier in the food detail sheet (opens at the row's current pick)
   const [detailServings, setDetailServings] = useState(1)
+  // The row whose serving pill was just tapped -- previewed in the totals
+  // strip at the top as "+N" until it's logged or SERVING_PREVIEW_MS passes.
+  const SERVING_PREVIEW_MS = 5000
+  const [servingPreview, setServingPreview] = useState<{ food: FoodItem; servings: number } | null>(null)
+  const servingPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showServingPreview = (food: FoodItem, count: number) => {
+    setServingPreview({ food, servings: count })
+    if (servingPreviewTimerRef.current) clearTimeout(servingPreviewTimerRef.current)
+    servingPreviewTimerRef.current = setTimeout(() => setServingPreview(null), SERVING_PREVIEW_MS)
+  }
+  const clearServingPreview = () => {
+    if (servingPreviewTimerRef.current) clearTimeout(servingPreviewTimerRef.current)
+    setServingPreview(null)
+  }
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
   // Briefly shows a checkmark on a Delete button right after it's deleted, before the row disappears
@@ -464,6 +495,9 @@ export default function DashboardPage() {
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
+  // "Show" on the dietary chip: lists everything for this session only --
+  // the saved profile's preferences are left untouched.
+  const [dietFilterOff, setDietFilterOff] = useState(false)
 
   // Daily targets state settings (now tracking all 4 macro targets)
   const [goalCalories, setGoalCalories] = useState(2000)
@@ -726,6 +760,16 @@ export default function DashboardPage() {
     setSearchQuery('')
     setActiveStationFilters([])
   }, [selectedHall, selectedMeal])
+
+  // A preview for a row that's no longer on screen would be misleading
+  useEffect(() => {
+    clearServingPreview()
+  }, [selectedHall, selectedMeal, selectedDayOffset])
+
+  // Saving new dietary preferences turns the filter back on
+  useEffect(() => {
+    setDietFilterOff(false)
+  }, [userProfile.dietaryPreferences])
 
   // Sync saved custom targets on view initialize
   useEffect(() => {
@@ -1069,9 +1113,36 @@ export default function DashboardPage() {
       }
     }
   }
-  // 3. Filter raw items first by search input & clicked station pills
-  const filteredMenu = useMemo(() => {
-    return menu.filter((entry) => {
+  // An allergen chip / dietary tag that matches one of the allergens the
+  // student avoids. "Gluten Friendly"-style tags are positives, never a match.
+  const isAvoidedAllergen = (text: string): boolean => {
+    if (/friendly|free/i.test(text)) return false
+    return userProfile.dietaryPreferences.some((pref) => ALLERGEN_PATTERNS[pref]?.test(text))
+  }
+
+  // Dietary tags get distinct colors by kind instead of one shared green
+  const dietaryTagClass = (tag: string): string => {
+    if (isAvoidedAllergen(tag)) return 'bg-danger/15 text-danger border-danger/50'
+    if (/vegan/i.test(tag)) return 'bg-macro-protein/15 text-macro-protein border-macro-protein/30'
+    if (/vegetarian/i.test(tag)) return 'bg-veg/10 text-veg border-veg/30'
+    if (/gluten/i.test(tag)) return 'bg-sky/10 text-sky border-sky/30'
+    if (/halal|kosher/i.test(tag)) return 'bg-gold/10 text-gold border-gold/30'
+    if (/pork|beef|meat|chicken|fish|shellfish/i.test(tag)) return 'bg-macro-fat/10 text-macro-fat border-macro-fat/30'
+    if (/alcohol/i.test(tag)) return 'bg-macro-carbs/10 text-macro-carbs border-macro-carbs/30'
+    return 'bg-white/5 text-fg border-white/15'
+  }
+
+  // Chip label for the saved preferences: "Vegan · Milk-free · Soy-free"
+  const dietChipLabel = userProfile.dietaryPreferences
+    .map((pref) => (ALLERGEN_PATTERNS[pref] ? `${pref}-free` : pref))
+    .join(' · ')
+
+  // 3. Filter raw items first by search input & clicked station pills.
+  // dietHiddenCount is how many items the dietary filter removes (or would
+  // remove, while it's switched off for the session) on top of the others.
+  const { filteredMenu, dietHiddenCount } = useMemo(() => {
+    let hidden = 0
+    const list = menu.filter((entry) => {
       const food = entry.food_items
       if (!food) return false
 
@@ -1089,13 +1160,19 @@ export default function DashboardPage() {
       const matchesStation =
         activeStationFilters.length === 0 ||
         activeStationFilters.includes(getEffectiveStation(entry))
+      if (!matchesSearch || !matchesStation) return false
+
       const matchesDiet = userProfile.dietaryPreferences.every((pref) =>
         foodMatchesDietaryPreference(food, pref)
       )
-
-      return matchesSearch && matchesStation && matchesDiet
+      if (!matchesDiet) {
+        hidden++
+        return dietFilterOff
+      }
+      return true
     })
-  }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences])
+    return { filteredMenu: list, dietHiddenCount: hidden }
+  }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences, dietFilterOff])
 
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
@@ -1256,6 +1333,7 @@ export default function DashboardPage() {
     } else {
       // Quick, light confirmation tap — this is a frequent, low-stakes action.
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      clearServingPreview()
       setJustLogged(prev => ({ ...prev, [foodId]: true }))
       setTimeout(() => {
         setJustLogged(prev => {
@@ -1475,7 +1553,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#0b1326] text-[#dae2fd] relative overflow-x-hidden"
+      className="min-h-dvh bg-[#0b1326] text-[#dae2fd] relative overflow-x-clip"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
 
@@ -1519,7 +1597,10 @@ export default function DashboardPage() {
           wrapper) on purpose so this fixed banner always sits relative to
           the viewport, not to a zoomed ancestor. */}
       {ringClosedToast && (
-        <div className="fixed top-[130px] left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center">
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[60] pointer-events-none w-full px-5 flex justify-center"
+          style={{ top: 'calc(env(safe-area-inset-top) + 4.5rem)' }}
+        >
           <div className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#121c33]/95 backdrop-blur-xl border border-[#d6b93a]/40 shadow-[0_8px_30px_-6px_rgba(214,185,58,0.35)] animate-ring-toast">
             <span className="text-base font-bold text-[#EDEFF5] whitespace-nowrap">{ringClosedToast}</span>
           </div>
@@ -1561,15 +1642,27 @@ export default function DashboardPage() {
             A slim single-row strip (value against target + a thin progress bar per
             macro) instead of four separate boxed tiles stacked 2x2 — same information,
             a fraction of the height. */}
+        {/* Sticky just under the fixed header (3.75rem tall + 1px border, plus
+            its safe-area inset) so the "+N" serving preview stays visible while
+            scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-surface border border-white/10">
+          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
-              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: '#d8b61c', unit: '' },
-              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: '#5bb448', unit: 'g' },
-              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: '#d17ccd', unit: 'g' },
-              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: '#fb7185', unit: 'g' },
+              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: '#d8b61c', unit: '', key: 'calories' as const },
+              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: '#5bb448', unit: 'g', key: 'protein' as const },
+              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: '#d17ccd', unit: 'g', key: 'carbs' as const },
+              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: '#fb7185', unit: 'g', key: 'fat' as const },
             ].map((m, i) => (
-              <MacroBarItem key={m.label} label={m.label} value={m.value} goal={m.goal} color={m.color} unit={m.unit} bordered={i > 0} />
+              <MacroBarItem
+                key={m.label}
+                label={m.label}
+                value={m.value}
+                goal={m.goal}
+                color={m.color}
+                unit={m.unit}
+                bordered={i > 0}
+                preview={servingPreview ? (servingPreview.food[m.key] || 0) * servingPreview.servings : 0}
+              />
             ))}
           </div>
         )}
@@ -1843,7 +1936,7 @@ export default function DashboardPage() {
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
-                  <div className="pt-4 border-t border-white/10 space-y-3">
+                  <div className="flex-1 min-w-0 pt-4 border-t border-white/10 space-y-3">
                     <div className="relative w-full">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
                       <input
@@ -1866,8 +1959,30 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {availableStations.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
+                    {/* One horizontally scrolling row (bleeds to the card's edges)
+                        instead of wrapping onto several lines, so the menu stays
+                        near the top of the screen. The dietary chip leads it. */}
+                    {(availableStations.length > 0 || dietHiddenCount > 0) && (
+                      <div className="flex items-center gap-2 pt-1 -mx-5 px-5 overflow-x-auto scrollbar-none">
+                        {dietHiddenCount > 0 && (
+                          <div className="shrink-0 flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 whitespace-nowrap">
+                            <span className="text-xs font-semibold text-sky max-w-[11rem] truncate">{dietChipLabel}</span>
+                            <span className="text-xs text-fg-muted tabular-nums">
+                              , {dietHiddenCount} {dietFilterOff ? 'shown' : 'hidden'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDietFilterOff((off) => !off)
+                                Haptics.selectionChanged().catch(() => {})
+                              }}
+                              aria-label={dietFilterOff ? 'Hide items that do not match your dietary preferences' : `Show ${dietHiddenCount} hidden items`}
+                              className="relative after:absolute after:-inset-2 after:content-[''] rounded-full px-2 py-0.5 text-xs font-bold text-gold hover:bg-gold/10 active:scale-95 transition"
+                            >
+                              {dietFilterOff ? 'Hide' : 'Show'}
+                            </button>
+                          </div>
+                        )}
                         {availableStations.map((station) => {
                           const isActive = activeStationFilters.includes(station)
                           const [parentLabel, subLabel] = station.includes(' - ')
@@ -1880,7 +1995,7 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
                               aria-pressed={isActive}
-                              className={`px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
+                              className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full border transition active:scale-95 flex flex-col items-center leading-tight ${isActive
                                 ? 'bg-gold/15 text-gold border-gold/40'
                                 : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
                                 }`}
@@ -1940,7 +2055,9 @@ export default function DashboardPage() {
                     <div className="py-12 text-center text-[#c2c6d0] font-medium">
                       {menu.length === 0
                         ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
-                        : "No menu items match your search or station filters."}
+                        : dietHiddenCount > 0 && !dietFilterOff
+                          ? 'No menu items match your search, station or dietary filters.'
+                          : 'No menu items match your search or station filters.'}
                     </div>
                   ) : (
                     <div className="space-y-8">
@@ -1971,30 +2088,33 @@ export default function DashboardPage() {
                                       className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
-                                      <div>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setDetailFood(food)
-                                            setDetailServings(rowServings)
-                                            Haptics.selectionChanged().catch(() => {})
-                                          }}
-                                          className="font-bold text-fg text-left underline decoration-dotted decoration-fg-muted/60 underline-offset-4 active:opacity-70"
-                                        >
-                                          {food.name}
-                                        </button>
-                                        <p className="text-xs text-fg-muted mt-0.5">
+                                      {/* Name, portion and macros are one tap target that opens the food sheet */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setDetailFood(food)
+                                          setDetailServings(rowServings)
+                                          Haptics.selectionChanged().catch(() => {})
+                                        }}
+                                        aria-label={`${food.name}, details`}
+                                        className="group min-w-0 sm:flex-1 text-left rounded-lg active:opacity-70"
+                                      >
+                                        <span className="flex items-start gap-1 font-semibold text-fg">
+                                          <span className="min-w-0">{food.name}</span>
+                                          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted group-hover:text-fg transition-colors" aria-hidden="true" />
+                                        </span>
+                                        <span className="block text-xs text-fg-muted mt-0.5">
                                           {food.portion || '1 serving'}
                                           {rowServings !== 1 && ` × ${rowServings}`}
-                                        </p>
+                                        </span>
                                         {/* Scales with the serving pills below, so it shows what Log will add */}
-                                        <div className="flex gap-3 mt-1.5 text-xs font-semibold tabular-nums">
-                                          <span className="text-macro-cal">Cals: {Math.round(food.calories * rowServings)}</span>
-                                          <span className="text-macro-protein">P: {Math.round(food.protein * rowServings)}g</span>
-                                          <span className="text-macro-carbs">C: {Math.round(food.carbs * rowServings)}g</span>
-                                          <span className="text-macro-fat">F: {Math.round(food.fat * rowServings)}g</span>
-                                        </div>
-                                      </div>
+                                        <span className="flex flex-wrap gap-1.5 mt-1.5 text-11 font-semibold tabular-nums">
+                                          <span className="rounded-md px-1.5 bg-macro-cal/15 text-macro-cal">{Math.round(food.calories * rowServings)} cal</span>
+                                          <span className="rounded-md px-1.5 bg-macro-protein/15 text-macro-protein">P {Math.round(food.protein * rowServings)}g</span>
+                                          <span className="rounded-md px-1.5 bg-macro-carbs/15 text-macro-carbs">C {Math.round(food.carbs * rowServings)}g</span>
+                                          <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(food.fat * rowServings)}g</span>
+                                        </span>
+                                      </button>
 
                                       <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
                                         <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
@@ -2006,7 +2126,10 @@ export default function DashboardPage() {
                                                 type="button"
                                                 role="radio"
                                                 aria-checked={isSelected}
-                                                onClick={() => setServings({ ...servings, [food.recipe_id]: value })}
+                                                onClick={() => {
+                                                  setServings({ ...servings, [food.recipe_id]: value })
+                                                  showServingPreview(food, value)
+                                                }}
                                                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-90 ${isSelected
                                                   ? 'bg-gold/15 text-gold'
                                                   : 'text-fg-muted hover:text-fg'
@@ -2386,28 +2509,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Food detail sheet -- tapping an item's name slides this up from the
-          bottom edge to a centered card, rather than docking as a classic
-          bottom sheet. Ingredients/allergens/dietary icons come from UCSC's
+      {/* Food detail sheet -- tapping an item's row slides this up as a bottom
+          sheet. Ingredients/allergens/dietary icons come from UCSC's
           nutrition label page; older recipes the scraper hasn't captured a
           label for yet just omit those sections instead of showing nothing. */}
       {detailFood && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="food-detail-title"
-        >
-          <div
-            className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm animate-sheet-backdrop"
-            onClick={() => setDetailFood(null)}
-          />
-          <div className="relative w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-2xl p-5 bg-surface-2 border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg animate-slide-up-center">
+        <BottomSheet onClose={() => setDetailFood(null)} labelledBy="food-detail-title">
             <button
               type="button"
               onClick={() => setDetailFood(null)}
               aria-label="Close"
-              className="absolute top-1.5 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
+              className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
             >
               <X size={20} />
             </button>
@@ -2442,7 +2554,7 @@ export default function DashboardPage() {
                 {detailFood.dietary_tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-xs font-semibold px-2.5 py-1 rounded-md bg-macro-protein/15 text-macro-protein"
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${dietaryTagClass(tag)}`}
                   >
                     {tag}
                   </span>
@@ -2464,7 +2576,24 @@ export default function DashboardPage() {
             {detailFood.allergens && (
               <div className="mt-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-fg-muted mb-1.5">Allergens</h3>
-                <p className="text-sm font-medium leading-relaxed text-danger">{detailFood.allergens}</p>
+                {/* One chip per allergen; ones the student avoids are flagged in danger red */}
+                <div className="flex flex-wrap gap-2">
+                  {detailFood.allergens.split(',').map((a) => a.trim()).filter(Boolean).map((allergen, i) => {
+                    const avoided = isAvoidedAllergen(allergen)
+                    return (
+                      <span
+                        key={`${allergen}-${i}`}
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${avoided
+                          ? 'bg-danger/20 text-danger border-danger/60'
+                          : 'bg-white/5 text-fg border-white/15'
+                          }`}
+                      >
+                        {allergen}
+                        {avoided && <span className="sr-only"> (you avoid this)</span>}
+                      </span>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -2511,8 +2640,7 @@ export default function DashboardPage() {
                 Log {detailServings === 1 ? '1 serving' : `${detailServings} servings`}
               </button>
             </div>
-          </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   )

@@ -2,9 +2,10 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, User, Camera, LogOut, Trash2, Check, ChevronDown } from 'lucide-react'
+import { X, User, Camera, LogOut, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
+import BottomSheet from '../components/BottomSheet'
 
 export interface UserProfile {
   nickname: string
@@ -76,6 +77,10 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+
+  // Collapsible "Change password ›" and "Account ›" rows
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
 
   const emailChanged = email.trim().toLowerCase() !== currentProfile.email.trim().toLowerCase()
 
@@ -327,288 +332,358 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     }
   }
 
+  const inputClass =
+    'w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted'
+  const rowClass =
+    'w-full min-h-tap flex items-center justify-between gap-2 px-3 text-sm font-semibold text-fg hover:bg-white/5 transition active:bg-white/10'
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm overflow-y-auto py-6">
-      <div className="w-full max-w-sm max-h-[92vh] overflow-y-auto rounded-2xl bg-surface border border-white/10 shadow-2xl p-4 relative my-auto text-fg">
+    <BottomSheet
+      onClose={handleClose}
+      labelledBy="profile-title"
+      className="bg-surface max-h-[calc(100dvh-env(safe-area-inset-top)-0.5rem)]"
+    >
+      <button
+        onClick={handleClose}
+        className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
+        aria-label="Close"
+      >
+        <X size={20} />
+      </button>
+
+      {/* Avatar + name on one row; tapping the photo changes it */}
+      <div className="flex items-center gap-3 mb-3 pr-10">
         <button
-          onClick={handleClose}
-          className="absolute top-1.5 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
-          aria-label="Close"
+          type="button"
+          onClick={handleAvatarClick}
+          disabled={uploadingAvatar}
+          className="relative size-12 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
+          aria-label="Change profile picture"
         >
-          <X size={20} />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <User size={22} className="text-fg-muted" />
+          )}
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+            <Camera size={16} className="text-white" />
+          </div>
         </button>
-
-        <h2 className="text-lg font-bold tracking-tight text-fg mb-3 pr-10">Edit Profile</h2>
-
-        {/* Avatar -- inline row (photo + change link + member since) instead of a
-            centered stack, so 44px targets still fit on one screen. */}
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            type="button"
-            onClick={handleAvatarClick}
-            disabled={uploadingAvatar}
-            className="relative size-14 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
-            aria-label="Change profile picture"
-          >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <User size={22} className="text-fg-muted" />
-            )}
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-              <Camera size={16} className="text-white" />
-            </div>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="hidden"
-          />
-          <div className="min-w-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarChange}
+          className="hidden"
+        />
+        <div className="min-w-0">
+          <h2 id="profile-title" className="text-base font-bold tracking-tight text-fg truncate">
+            {currentProfile.nickname || currentProfile.email || 'Your profile'}
+          </h2>
+          <p className="text-xs text-fg-muted truncate">
             <button
               type="button"
               onClick={handleAvatarClick}
               disabled={uploadingAvatar}
-              className="min-h-tap text-sm font-semibold text-sky hover:text-fg transition active:scale-95 disabled:opacity-60"
+              className="relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-[''] font-semibold text-sky hover:text-fg transition disabled:opacity-60"
             >
               {uploadingAvatar ? 'Uploading...' : 'Change photo'}
             </button>
-            {memberSinceLabel && (
-              <p className="text-xs text-fg-muted -mt-1.5">
-                Member since {memberSinceLabel}
-              </p>
-            )}
-          </div>
+            {memberSinceLabel && ` · Since ${memberSinceLabel}`}
+          </p>
+        </div>
+      </div>
+
+      <form id="profile-form" onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label htmlFor="nickname" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
+            Nickname
+          </label>
+          <input
+            id="nickname"
+            type="text"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="e.g. bananaslug23"
+            className={inputClass}
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label htmlFor="nickname" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
-              Nickname
-            </label>
-            <input
-              id="nickname"
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="e.g. bananaslug23"
-              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@ucsc.edu"
-              className="w-full min-h-tap rounded-xl border border-white/10 bg-surface-2 px-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
-            />
-            {emailChanged && (
-              <p className="text-xs text-sky mt-1">
-                We'll email a confirmation link to the new address before it takes effect.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <p id="dietary-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
-              Dietary Preferences
-            </p>
-            <button
-              type="button"
-              onClick={() => setDietaryDropdownOpen((o) => !o)}
-              aria-expanded={dietaryDropdownOpen}
-              aria-labelledby="dietary-label"
-              className="w-full min-h-tap flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-surface-2 px-3 text-base font-medium text-fg active:scale-[0.98] transition"
-            >
-              <span className={dietaryPreferences.length ? 'text-fg truncate text-left' : 'text-fg-muted text-left'}>
-                {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
-              </span>
-              <ChevronDown size={18} className={`shrink-0 text-fg-muted transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {dietaryDropdownOpen && (
-              <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2/60 p-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Diet type</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DIET_TYPE_OPTIONS.map((pref) => {
-                      const selected = dietaryPreferences.includes(pref)
-                      return (
-                      <button
-                        key={pref}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
-                          selected
-                            ? 'bg-gold text-on-gold'
-                            : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
-                        }`}
-                      >
-                        {selected && <Check size={12} />}
-                        {pref}
-                      </button>
-                      )
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Avoid (allergens)</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALLERGEN_OPTIONS.map((pref) => {
-                      const selected = dietaryPreferences.includes(pref)
-                      return (
-                      <button
-                        key={pref}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => toggleDietaryPreference(pref)}
-                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
-                          selected
-                            ? 'bg-gold text-on-gold'
-                            : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
-                        }`}
-                      >
-                        {selected && <Check size={12} />}
-                        {pref}
-                      </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-            <p className="text-xs text-fg-muted mt-1">
-              Menu shows only your diet type and hides items with these allergens.
-            </p>
-          </div>
-          <div>
-            <p id="text-size-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
-              Text size
-            </p>
-            <div role="radiogroup" aria-labelledby="text-size-label" className="grid grid-cols-4 gap-1 rounded-xl bg-surface-2 p-1">
-              {TEXT_SIZE_OPTIONS.map((option) => {
-                const selected = textSize === option.value
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => handlePickTextSize(option.value)}
-                    className={`relative py-1.5 px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${
-                      selected
-                        ? 'bg-gold/15 text-gold border-gold/40'
-                        : 'text-fg-muted hover:text-fg border-transparent'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {error && (
-            <p role="alert" className="text-sm font-medium text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
-              {error}
+        <div>
+          <label htmlFor="email" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@ucsc.edu"
+            autoCapitalize="none"
+            className={inputClass}
+          />
+          {emailChanged && (
+            <p className="text-xs text-sky mt-1">
+              We&apos;ll email a confirmation link to the new address before it takes effect.
             </p>
           )}
+        </div>
 
-          <div className="flex gap-3 pt-1">
+        <div>
+          <p id="dietary-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
+            Dietary Preferences
+          </p>
+          <button
+            type="button"
+            onClick={() => setDietaryDropdownOpen((o) => !o)}
+            aria-expanded={dietaryDropdownOpen}
+            aria-labelledby="dietary-label"
+            className="w-full min-h-tap flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-surface-2 px-3 text-base font-medium text-fg active:scale-[0.98] transition"
+          >
+            <span className={dietaryPreferences.length ? 'text-fg truncate text-left' : 'text-fg-muted text-left'}>
+              {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
+            </span>
+            <ChevronDown size={18} className={`shrink-0 text-fg-muted transition-transform ${dietaryDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {dietaryDropdownOpen && (
+            <div className="mt-2 flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2/60 p-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Diet type</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {DIET_TYPE_OPTIONS.map((pref) => {
+                    const selected = dietaryPreferences.includes(pref)
+                    return (
+                    <button
+                      key={pref}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleDietaryPreference(pref)}
+                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
+                        selected
+                          ? 'bg-gold text-on-gold'
+                          : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
+                      }`}
+                    >
+                      {selected && <Check size={12} />}
+                      {pref}
+                    </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted mb-1.5">Avoid (allergens)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALLERGEN_OPTIONS.map((pref) => {
+                    const selected = dietaryPreferences.includes(pref)
+                    return (
+                    <button
+                      key={pref}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleDietaryPreference(pref)}
+                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
+                        selected
+                          ? 'bg-gold text-on-gold'
+                          : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
+                      }`}
+                    >
+                      {selected && <Check size={12} />}
+                      {pref}
+                    </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-fg-muted mt-1">
+            Menu shows only your diet type and hides items with these allergens.
+          </p>
+        </div>
+        <div>
+          <p id="text-size-label" className="block text-xs font-semibold text-fg-muted uppercase tracking-wider mb-1">
+            Text size
+          </p>
+          <div role="radiogroup" aria-labelledby="text-size-label" className="grid grid-cols-4 gap-1 rounded-xl bg-surface-2 p-1">
+            {TEXT_SIZE_OPTIONS.map((option) => {
+              const selected = textSize === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => handlePickTextSize(option.value)}
+                  className={`relative py-1.5 px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${
+                    selected
+                      ? 'bg-gold/15 text-gold border-gold/40'
+                      : 'text-fg-muted hover:text-fg border-transparent'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </form>
+
+      {/* Account rows -- outside the form so Enter in the password or DELETE
+          fields never submits the profile. Save (below) targets the form by id. */}
+      <div className="mt-3 rounded-xl border border-white/10 bg-surface-2/60 divide-y divide-white/10 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setPasswordOpen((o) => !o)}
+          aria-expanded={passwordOpen}
+          className={rowClass}
+        >
+          Change password
+          <ChevronRight size={16} className={`shrink-0 text-fg-muted transition-transform ${passwordOpen ? 'rotate-90' : ''}`} />
+        </button>
+        {passwordOpen && (
+          <div className="p-3 space-y-2">
+            <input
+              type="password"
+              aria-label="New password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleChangePassword()
+              }}
+              placeholder="New password"
+              className={inputClass}
+            />
+            <input
+              type="password"
+              aria-label="Confirm new password"
+              autoComplete="new-password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleChangePassword()
+              }}
+              placeholder="Confirm new password"
+              className={inputClass}
+            />
+            {passwordMessage && (
+              <p role="status" className={`text-xs font-medium ${passwordMessage.includes('successfully') ? 'text-macro-protein' : 'text-danger'}`}>
+                {passwordMessage}
+              </p>
+            )}
             <button
               type="button"
-              onClick={handleClose}
-              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
+              onClick={handleChangePassword}
+              disabled={changingPassword || !newPassword}
+              className="w-full min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 disabled:opacity-50"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : 'Save changes'}
+              {changingPassword ? 'Updating...' : 'Update password'}
             </button>
           </div>
-        </form>
+        )}
 
-        {/* Account actions -- Sign out and Delete share one row (moved below Save,
-            out of the middle of the form) to keep the modal on one screen. */}
-        <div className="mt-3 pt-3 border-t border-white/10">
-          {!deleteConfirmOpen ? (
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="flex-1 min-h-tap flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 disabled:opacity-60"
-              >
-                <LogOut size={16} />
-                {signingOut ? 'Signing out...' : 'Sign out'}
-              </button>
+        <button
+          type="button"
+          onClick={() => setAccountOpen((o) => !o)}
+          aria-expanded={accountOpen}
+          className={rowClass}
+        >
+          Account
+          <ChevronRight size={16} className={`shrink-0 text-fg-muted transition-transform ${accountOpen ? 'rotate-90' : ''}`} />
+        </button>
+        {accountOpen && (
+          <div className="p-3">
+            {!deleteConfirmOpen ? (
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(true)}
-                className="flex-1 min-h-tap flex items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/5 text-sm font-semibold text-danger hover:bg-danger/10 transition active:scale-95"
+                className="w-full min-h-tap flex items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/5 text-sm font-semibold text-danger hover:bg-danger/10 transition active:scale-95"
               >
                 <Trash2 size={16} />
                 Delete account
               </button>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 space-y-2">
-              <p className="text-sm font-semibold text-danger">
-                This permanently deletes your account and all logged meals. This cannot be undone.
-              </p>
-              <label htmlFor="delete-confirm" className="block text-xs text-fg-muted">
-                Type <span className="font-bold text-fg">DELETE</span> to confirm.
-              </label>
-              <input
-                id="delete-confirm"
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                autoCapitalize="characters"
-                autoCorrect="off"
-                className="w-full min-h-tap rounded-lg border border-danger/30 bg-surface-2 px-3 text-input text-fg focus:outline-none focus:ring-2 focus:ring-danger/40"
-                placeholder="DELETE"
-              />
-              {deleteError && (
-                <p role="alert" className="text-sm font-medium text-danger">{deleteError}</p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteConfirmOpen(false)
-                    setDeleteConfirmText('')
-                    setDeleteError(null)
-                  }}
-                  className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={deleteConfirmText !== 'DELETE' || deleting}
-                  className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {deleting ? 'Deleting...' : 'Delete permanently'}
-                </button>
+            ) : (
+              <div className="rounded-xl border border-danger/30 bg-danger/5 p-3 space-y-2">
+                <p className="text-sm font-semibold text-danger">
+                  This permanently deletes your account and all logged meals. This cannot be undone.
+                </p>
+                <label htmlFor="delete-confirm" className="block text-xs text-fg-muted">
+                  Type <span className="font-bold text-fg">DELETE</span> to confirm.
+                </label>
+                <input
+                  id="delete-confirm"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  className="w-full min-h-tap rounded-lg border border-danger/30 bg-surface-2 px-3 text-input text-fg focus:outline-none focus:ring-2 focus:ring-danger/40"
+                  placeholder="DELETE"
+                />
+                {deleteError && (
+                  <p role="alert" className="text-sm font-medium text-danger">{deleteError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteConfirmOpen(false)
+                      setDeleteConfirmText('')
+                      setDeleteError(null)
+                    }}
+                    className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmText !== 'DELETE' || deleting}
+                    className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete permanently'}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className={`${rowClass} disabled:opacity-60`}
+        >
+          {signingOut ? 'Signing out...' : 'Sign out'}
+          <LogOut size={16} className="shrink-0 text-fg-muted" />
+        </button>
       </div>
-    </div>
+
+      {error && (
+        <p role="alert" className="mt-3 text-sm font-medium text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      <div className="flex gap-3 mt-3">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          form="profile-form"
+          disabled={saving}
+          className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+      </div>
+    </BottomSheet>
   )
 }

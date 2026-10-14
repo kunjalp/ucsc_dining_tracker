@@ -124,7 +124,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
       <div className="absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal panel */}
-      <div className="relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd] max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-[#dae2fd] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 id="set-targets-title" className="text-lg font-bold tracking-tight text-[#dae2fd]">
             Set Your Targets
