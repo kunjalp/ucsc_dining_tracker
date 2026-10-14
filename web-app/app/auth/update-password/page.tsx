@@ -84,7 +84,7 @@ export default function UpdatePasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            className="mt-1 w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-[#6b5300] press hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
             {loading ? 'Updating...' : 'Update Password'}
           </button>

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
+import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
@@ -715,6 +716,23 @@ export default function DashboardPage() {
   const [trackDragPct, setTrackDragPct] = useState<number | null>(null)
   const trackDragPctRef = useRef<number | null>(null)
   const dayTrackSvgRef = useRef<SVGSVGElement | null>(null)
+
+  // The gold fill's glow pulses twice whenever the fill moves (the minute
+  // tick, a hall or day switch), then rests at its normal glow. Same gold,
+  // only the blur widens. Reduce Motion: no pulse.
+  const dayTrackGlowRef = useRef<SVGPathElement | null>(null)
+  useEffect(() => {
+    const el = dayTrackGlowRef.current
+    if (!el || reduceMotion) return
+    const rest = 'drop-shadow(0 0 3px rgba(214,185,58,0.85))'
+    const peak = 'drop-shadow(0 0 8px rgba(214,185,58,0.85))'
+    const pulse = el.animate([{ filter: rest }, { filter: peak }, { filter: rest }], {
+      duration: 1500,
+      iterations: 2,
+      easing: 'ease-in-out',
+    })
+    return () => pulse.cancel()
+  }, [dayTrack?.markerPct, reduceMotion])
   // The zone (segment index) the drag is currently over, so we can fire a
   // haptic exactly when it crosses into a new one — a "detent" tap as it
   // locks into each zone in turn, not just once at the very end.
@@ -1883,7 +1901,10 @@ export default function DashboardPage() {
     >
 
       {/* TopAppBar */}
-      <header className="glass-bar app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl border-b border-white/10 shadow-sm">
+      <header className="glass-bar app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl">
+        {/* Soft edge instead of a 1px divider: the header's tint and blur
+            fade out over 12px where content scrolls under (globals.css) */}
+        <div aria-hidden="true" className="app-header-fade" />
         <div className="flex items-center gap-4">
           <img
             src="/sammy-logo-transparent.png"
@@ -1906,7 +1927,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 overflow-hidden"
+            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 press active:scale-95 overflow-hidden"
             aria-label="Edit user profile"
           >
             {userProfile.avatarUrl ? (
@@ -1983,7 +2004,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsTargetsModalOpen(true)}
-                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 transition"
+                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 press"
                 >
                   Set targets
                 </button>
@@ -2011,7 +2032,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={openSuggestions}
                   aria-haspopup="dialog"
-                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition"
+                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 press"
                 >
                   Suggest meals
                 </button>
@@ -2053,7 +2074,7 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
+                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
                       ? 'bg-gold/15 text-gold border border-gold/40'
                       : 'text-fg-muted hover:text-fg border border-transparent'
                       }`}
@@ -2151,7 +2172,8 @@ export default function DashboardPage() {
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
                       style={{ filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.85))' }}
-                      className="text-gold animate-glow-pulse transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
+                      ref={dayTrackGlowRef}
+                      className="text-gold transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
@@ -2319,7 +2341,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={() => setSearchQuery('')}
                           aria-label="Clear search"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg transition-colors active:scale-90"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg press active:scale-90"
                         >
                           <X size={16} />
                         </button>
@@ -2352,7 +2374,7 @@ export default function DashboardPage() {
                                 Haptics.selectionChanged().catch(() => {})
                               }}
                               aria-label={dietFilterOff ? 'Hide items that do not match your dietary preferences' : `Show ${dietHiddenCount} hidden items`}
-                              className="relative after:absolute after:-inset-2 after:content-[''] rounded-full px-2 py-0.5 text-xs font-bold text-gold hover:bg-gold/10 active:scale-95 transition"
+                              className="relative after:absolute after:-inset-2 after:content-[''] rounded-full px-2 py-0.5 text-xs font-bold text-gold hover:bg-gold/10 active:scale-95 press"
                             >
                               {dietFilterOff ? 'Hide' : 'Show'}
                             </button>
@@ -2367,7 +2389,7 @@ export default function DashboardPage() {
                             }}
                             aria-haspopup="dialog"
                             aria-label={`Filter by station, ${activeStationFilters.length || 'all'} selected`}
-                            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
+                            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
                               ? 'bg-gold/15 text-gold border-gold/40'
                               : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
                               }`}
@@ -2385,7 +2407,7 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
                               aria-label={`Remove ${name} filter`}
-                              className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold transition active:scale-95 motion-reduce:active:scale-100"
+                              className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold press active:scale-95 motion-reduce:active:scale-100"
                             >
                               {name}
                               <X size={12} strokeWidth={2.75} aria-hidden="true" />
@@ -2519,7 +2541,7 @@ export default function DashboardPage() {
                                                   setServings({ ...servings, [food.recipe_id]: value })
                                                   showServingPreview(food, value)
                                                 }}
-                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-90 ${isSelected
+                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg press active:scale-90 ${isSelected
                                                   ? 'bg-gold/15 text-gold'
                                                   : 'text-fg-muted hover:text-fg'
                                                   }`}
@@ -2587,7 +2609,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 border ${showCalendar
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl press active:scale-95 border ${showCalendar
                       ? 'bg-gold/15 text-gold border-gold/40'
                       : 'bg-white/5 text-fg-subtle hover:bg-white/10 border-white/15'
                       }`}
@@ -2599,7 +2621,7 @@ export default function DashboardPage() {
                   {/* Set Targets button now opens the SetTargetsModal */}
                   <button
                     onClick={() => setIsTargetsModalOpen(true)}
-                    className="bg-gray-800 text-xs font-bold text-fg-subtle hover:bg-gray-700 px-3 py-2 rounded-xl transition active:scale-95 border border-gray-700"
+                    className="bg-gray-800 text-xs font-bold text-fg-subtle hover:bg-gray-700 px-3 py-2 rounded-xl press active:scale-95 border border-gray-700"
                   >
                     Set Targets
                   </button>
@@ -2626,7 +2648,7 @@ export default function DashboardPage() {
                         key={macro.key}
                         type="button"
                         onClick={() => setCalendarMacro(macro.key as any)}
-                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg transition-all active:scale-95 whitespace-nowrap"
+                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg press active:scale-95 whitespace-nowrap"
                         style={
                           calendarMacro === macro.key
                             ? { backgroundColor: macro.color, color: macro.text }
@@ -2643,7 +2665,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg transition active:scale-90"
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90"
                         aria-label="Previous month"
                       >
                         <ChevronLeft size={16} strokeWidth={2.5} />
@@ -2657,7 +2679,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={goToNextMonth}
                         disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg transition active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label="Next month"
                       >
                         <ChevronRight size={16} strokeWidth={2.5} />
@@ -2800,7 +2822,7 @@ export default function DashboardPage() {
                                     onClick={() => handleDeleteLog(log.id)}
                                     disabled={!!justDeleted[log.id]}
                                     aria-label={`Remove ${log.food_items?.name ?? 'this entry'}`}
-                                    className="p-2 shrink-0 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 transition active:scale-90 motion-reduce:active:scale-100"
+                                    className="p-2 shrink-0 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 press active:scale-90 motion-reduce:active:scale-100"
                                   >
                                     <Trash2 size={18} />
                                   </button>
@@ -2859,7 +2881,7 @@ export default function DashboardPage() {
               Haptics.selectionChanged().catch(() => {})
             }}
             aria-current={activeTab === 'log' ? 'page' : undefined}
-            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full transition-colors after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'log' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full press after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'log' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
             <UtensilsCrossed size={20} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
@@ -2873,7 +2895,7 @@ export default function DashboardPage() {
               Haptics.selectionChanged().catch(() => {})
             }}
             aria-current={activeTab === 'progress' ? 'page' : undefined}
-            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full transition-colors after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'progress' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full press after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'progress' ? 'text-gold' : 'text-fg-muted hover:text-fg'
               }`}
           >
             <LineChart size={20} strokeWidth={activeTab === 'progress' ? 2.5 : 2} />
@@ -2920,33 +2942,7 @@ export default function DashboardPage() {
       )}
 
       {/* One-time welcome card for first-time users */}
-      {showWelcome && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="welcome-title"
-        >
-          <div className="glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={dismissWelcome} />
-          <div className="relative w-full max-w-sm rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg">
-            <h2 id="welcome-title" className="text-lg font-bold tracking-tight text-fg mb-3">
-              Welcome to Sammy's Palate
-            </h2>
-            <ul className="space-y-2.5 text-sm text-fg-subtle mb-5">
-              <li>Browse today's menu, filter by station, and tap + to log what you eat.</li>
-              <li>Watch your calories, protein, carbs, and fat fill in below as you log.</li>
-              <li>Drag the slug (or tap a letter) to preview a different meal's menu.</li>
-            </ul>
-            <button
-              type="button"
-              onClick={dismissWelcome}
-              className="w-full py-2.5 rounded-lg bg-gold text-[#6b5300] text-sm font-bold active:scale-95 transition-transform"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
+      {showWelcome && <WelcomeCard onClose={dismissWelcome} />}
 
       {/* "Close my rings" suggestions -- 2-3 editable combos from the current
           (filtered) menu. Servings/removals update each combo's totals live;
@@ -2955,7 +2951,7 @@ export default function DashboardPage() {
         <BottomSheet onClose={closeSuggestions} labelledBy="suggestions-title">
           <SheetCloseButton
             aria-label="Close"
-            className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90 motion-reduce:active:scale-100"
+            className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90 motion-reduce:active:scale-100"
           >
             <X size={20} />
           </SheetCloseButton>
@@ -2980,7 +2976,7 @@ export default function DashboardPage() {
                   aria-disabled={isLastOn || undefined}
                   aria-label={`${MACRO_CHIP_LABELS[macro]}${isLastOn ? ', at least one ring must stay selected' : ''}`}
                   onClick={() => toggleSuggestFocus(macro)}
-                  className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 motion-reduce:active:scale-100 ${
+                  className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 press active:scale-95 motion-reduce:active:scale-100 ${
                     isOn
                       ? 'bg-gold text-on-gold'
                       : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
@@ -3053,7 +3049,7 @@ export default function DashboardPage() {
                               onClick={() => updateComboItem(comboIndex, itemIndex, item.servings - SUGGESTION_SERVING_STEP)}
                               disabled={isLogging || item.servings <= SUGGESTION_MIN_SERVINGS}
                               aria-label={`Fewer servings of ${item.food.name}`}
-                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 transition"
+                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 press"
                             >
                               <Minus size={14} />
                             </button>
@@ -3065,7 +3061,7 @@ export default function DashboardPage() {
                               onClick={() => updateComboItem(comboIndex, itemIndex, item.servings + SUGGESTION_SERVING_STEP)}
                               disabled={isLogging || item.servings >= SUGGESTION_MAX_SERVINGS}
                               aria-label={`More servings of ${item.food.name}`}
-                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 transition"
+                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 press"
                             >
                               <Plus size={14} />
                             </button>
@@ -3075,7 +3071,7 @@ export default function DashboardPage() {
                             onClick={() => updateComboItem(comboIndex, itemIndex, null)}
                             disabled={isLogging}
                             aria-label={`Remove ${item.food.name} from option ${comboIndex + 1}`}
-                            className="shrink-0 relative after:absolute after:-inset-2 after:content-[''] size-7 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition"
+                            className="shrink-0 relative after:absolute after:-inset-2 after:content-[''] size-7 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 disabled:opacity-30 press"
                           >
                             <X size={14} />
                           </button>
@@ -3098,7 +3094,7 @@ export default function DashboardPage() {
                           onClick={() => handleLogCombo(comboIndex)}
                           disabled={loggingComboIndex !== null}
                           aria-label={`Log all ${items.length} items in option ${comboIndex + 1}`}
-                          className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] min-h-btn px-3.5 flex items-center gap-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition disabled:opacity-60"
+                          className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] min-h-btn px-3.5 flex items-center gap-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 press disabled:opacity-60"
                         >
                           {isLogging ? 'Logging…' : (
                             <>
@@ -3142,7 +3138,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => handleToggleStationFilter(station)}
                   aria-pressed={isActive}
-                  className={`px-3 py-1.5 rounded-full border transition active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
+                  className={`px-3 py-1.5 rounded-full border press active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
                     ? 'bg-gold/15 text-gold border-gold/40'
                     : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
                     }`}
@@ -3165,12 +3161,12 @@ export default function DashboardPage() {
                 Haptics.selectionChanged().catch(() => {})
               }}
               disabled={activeStationFilters.length === 0}
-              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
             >
               Clear
             </button>
             <SheetCloseButton
-              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 transition active:scale-95 motion-reduce:active:scale-100"
+              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
             >
               Done
             </SheetCloseButton>
@@ -3186,7 +3182,7 @@ export default function DashboardPage() {
         <BottomSheet onClose={() => setDetailFood(null)} labelledBy="food-detail-title">
             <SheetCloseButton
               aria-label="Close"
-              className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
+              className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
             >
               <X size={20} />
             </SheetCloseButton>
@@ -3285,7 +3281,7 @@ export default function DashboardPage() {
                         setServings((prev) => ({ ...prev, [detailFood.recipe_id]: value }))
                         Haptics.selectionChanged().catch(() => {})
                       }}
-                      className={`relative flex-1 py-1.5 text-xs font-bold rounded-lg after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 transition-all active:scale-95 tabular-nums ${isSelected
+                      className={`relative flex-1 py-1.5 text-xs font-bold rounded-lg after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 press active:scale-95 tabular-nums ${isSelected
                         ? 'bg-gold/15 text-gold border border-gold/40'
                         : 'text-fg-muted hover:text-fg border border-transparent'
                         }`}
@@ -3301,7 +3297,7 @@ export default function DashboardPage() {
                   const logged = await handleLogFood(detailFood.recipe_id, detailServings)
                   if (logged) setDetailFood(null)
                 }}
-                className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] mt-3 w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-xl bg-gold text-on-gold text-sm font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition"
+                className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] mt-3 w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-xl bg-gold text-on-gold text-sm font-semibold shadow-md hover:brightness-105 active:scale-[0.98] press"
               >
                 <Plus size={16} strokeWidth={2.75} />
                 Log {detailServings === 1 ? '1 serving' : `${detailServings} servings`}

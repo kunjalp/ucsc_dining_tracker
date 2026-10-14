@@ -64,7 +64,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={goToDashboard}
                         disabled={saving}
-                        className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-fg-subtle hover:bg-white/10 transition disabled:opacity-60"
+                        className="flex-1 rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-bold text-fg-subtle hover:bg-white/10 press disabled:opacity-60"
                     >
                         Later
                     </button>
@@ -72,7 +72,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={() => setShowModal(true)}
                         disabled={saving}
-                        className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 transition disabled:opacity-60"
+                        className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-bold text-[#6b5300] hover:brightness-105 active:scale-95 press disabled:opacity-60"
                     >
                         Now
                     </button>

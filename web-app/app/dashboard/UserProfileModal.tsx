@@ -349,7 +349,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
       className="bg-surface max-h-[calc(100dvh-env(safe-area-inset-top)-0.5rem)]"
     >
       <SheetCloseButton
-        className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90"
+        className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
         aria-label="Close"
       >
         <X size={20} />
@@ -361,7 +361,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           type="button"
           onClick={handleAvatarClick}
           disabled={uploadingAvatar}
-          className="relative size-12 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 transition-transform disabled:opacity-60"
+          className="relative size-12 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden group active:scale-95 press disabled:opacity-60"
           aria-label="Change profile picture"
         >
           {avatarUrl ? (
@@ -389,7 +389,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               type="button"
               onClick={handleAvatarClick}
               disabled={uploadingAvatar}
-              className="relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-[''] font-semibold text-sky hover:text-fg transition disabled:opacity-60"
+              className="relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-[''] font-semibold text-sky hover:text-fg press disabled:opacity-60"
             >
               {uploadingAvatar ? 'Uploading...' : 'Change photo'}
             </button>
@@ -442,7 +442,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             onClick={() => setDietaryDropdownOpen((o) => !o)}
             aria-expanded={dietaryDropdownOpen}
             aria-labelledby="dietary-label"
-            className="w-full min-h-tap flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-surface-2 px-3 text-base font-medium text-fg active:scale-[0.98] transition"
+            className="w-full min-h-tap flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-surface-2 px-3 text-base font-medium text-fg active:scale-[0.98] press"
           >
             <span className={dietaryPreferences.length ? 'text-fg truncate text-left' : 'text-fg-muted text-left'}>
               {dietaryPreferences.length ? dietaryPreferences.join(', ') : 'None selected'}
@@ -462,7 +462,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                       type="button"
                       aria-pressed={selected}
                       onClick={() => toggleDietaryPreference(pref)}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
+                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 press active:scale-95 ${
                         selected
                           ? 'bg-gold text-on-gold'
                           : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
@@ -486,7 +486,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                       type="button"
                       aria-pressed={selected}
                       onClick={() => toggleDietaryPreference(pref)}
-                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 transition active:scale-95 ${
+                      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold leading-5 press active:scale-95 ${
                         selected
                           ? 'bg-gold text-on-gold'
                           : 'bg-white/5 text-fg border border-white/15 hover:bg-white/10'
@@ -519,7 +519,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                   role="radio"
                   aria-checked={selected}
                   onClick={() => handlePickTextSize(option.value)}
-                  className={`relative py-1.5 px-1 rounded-lg text-xs font-semibold leading-tight transition active:scale-95 border after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${
+                  className={`relative py-1.5 px-1 rounded-lg text-xs font-semibold leading-tight press active:scale-95 border after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${
                     selected
                       ? 'bg-gold/15 text-gold border-gold/40'
                       : 'text-fg-muted hover:text-fg border-transparent'
@@ -538,7 +538,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           role="switch"
           aria-checked={mascotAnimations}
           onClick={() => setMascotAnimations((on) => !on)}
-          className="w-full min-h-[max(44px,2.75rem)] flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-2 px-3 text-sm font-semibold text-fg transition active:bg-white/10"
+          className="w-full min-h-[max(44px,2.75rem)] flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-2 px-3 text-sm font-semibold text-fg press active:bg-white/10"
         >
           Mascot animations
           <span
@@ -599,7 +599,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               type="button"
               onClick={handleChangePassword}
               disabled={changingPassword || !newPassword}
-              className="w-full min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95 disabled:opacity-50"
+              className="w-full min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 disabled:opacity-50"
             >
               {changingPassword ? 'Updating...' : 'Update password'}
             </button>
@@ -621,7 +621,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(true)}
-                className="w-full min-h-tap flex items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/5 text-sm font-semibold text-danger hover:bg-danger/10 transition active:scale-95"
+                className="w-full min-h-tap flex items-center justify-center gap-2 rounded-xl border border-danger/30 bg-danger/5 text-sm font-semibold text-danger hover:bg-danger/10 press active:scale-95"
               >
                 <Trash2 size={16} />
                 Delete account
@@ -655,7 +655,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                       setDeleteConfirmText('')
                       setDeleteError(null)
                     }}
-                    className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
+                    className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95"
                   >
                     Cancel
                   </button>
@@ -663,7 +663,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
                     type="button"
                     onClick={handleDeleteAccount}
                     disabled={deleteConfirmText !== 'DELETE' || deleting}
-                    className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 press active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {deleting ? 'Deleting...' : 'Delete permanently'}
                   </button>
@@ -692,7 +692,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
 
       <div className="flex gap-3 mt-3">
         <SheetCloseButton
-          className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 transition active:scale-95"
+          className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95"
         >
           Cancel
         </SheetCloseButton>
@@ -700,7 +700,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
           type="submit"
           form="profile-form"
           disabled={saving}
-          className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 active:scale-95 press disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving...' : 'Save changes'}
         </button>

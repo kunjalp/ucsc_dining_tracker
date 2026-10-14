@@ -290,7 +290,7 @@ export function Toast({ tone = 'info', children, action, onDismiss, leaving = fa
             <button
               type="button"
               onClick={action.onClick}
-              className="min-h-tap px-4 rounded-xl text-sm font-semibold text-gold hover:bg-gold/10 active:scale-95 motion-reduce:active:scale-100 transition"
+              className="min-h-tap px-4 rounded-xl text-sm font-semibold text-gold hover:bg-gold/10 active:scale-95 motion-reduce:active:scale-100 press"
             >
               {action.label}
             </button>

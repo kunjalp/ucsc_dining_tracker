@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { calculateRecommendedTargets, lbsToKg, inchesToCm, BiologicalSex, Goal } from '@/lib/utils';
+import { useAnimatedClose } from '@/lib/useAnimatedClose';
 
 export interface DailyTargets {
   calories: number;
@@ -64,6 +65,9 @@ function sanitizeDigits(raw: string): string {
 }
 
 export default function SetTargetsModal({ currentTargets, onClose, onSave }: SetTargetsModalProps) {
+  // Every close path (Escape, backdrop, X, Cancel, after Save) plays the
+  // exit first -- fade + scale back to 0.96 -- then calls onClose
+  const { closing, requestClose, onAnimationEnd } = useAnimatedClose(onClose);
   const [mode, setMode] = useState<'recommended' | 'manual'>('recommended');
 
   // Recommended Form State — seeded from the last profile the user entered,
@@ -110,7 +114,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
     } else {
       onSave(manualTargets, 'manual');
     }
-    onClose();
+    requestClose();
   };
 
   return (
@@ -121,18 +125,24 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
       aria-labelledby="set-targets-title"
     >
       {/* Backdrop */}
-      <div className="glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className={`glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm ${closing ? 'animate-backdrop-out' : 'animate-sheet-backdrop'}`}
+        onClick={requestClose}
+      />
 
       {/* Modal panel */}
-      <div className="relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto">
+      <div
+        onAnimationEnd={onAnimationEnd}
+        className={`relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto ${closing ? 'animate-modal-out' : 'animate-modal-in'}`}
+      >
         <div className="flex items-center justify-between mb-5">
           <h2 id="set-targets-title" className="text-lg font-bold tracking-tight text-fg">
             Set Your Targets
           </h2>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-fg-subtle hover:text-fg hover:bg-white/10 transition active:scale-90"
+            onClick={requestClose}
+            className="p-1.5 rounded-full text-fg-subtle hover:text-fg hover:bg-white/10 press active:scale-90"
             aria-label="Close"
           >
             <X size={18} />
@@ -144,7 +154,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={() => setMode('recommended')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg press active:scale-95 border ${
               mode === 'recommended'
                 ? 'bg-gold/15 text-gold border-gold/40'
                 : 'text-fg-subtle hover:text-fg border-transparent'
@@ -155,7 +165,7 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
           <button
             type="button"
             onClick={() => setMode('manual')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all active:scale-95 border ${
+            className={`flex-1 py-2 text-xs font-bold rounded-lg press active:scale-95 border ${
               mode === 'manual'
                 ? 'bg-gold/15 text-gold border-gold/40'
                 : 'text-fg-subtle hover:text-fg border-transparent'
@@ -272,15 +282,15 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
         <div className="flex gap-3 mt-6">
           <button
             type="button"
-            onClick={onClose}
-            className="flex-1 text-xs font-bold text-fg-subtle bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition active:scale-95 border border-white/10"
+            onClick={requestClose}
+            className="flex-1 text-xs font-bold text-fg-subtle bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl press active:scale-95 border border-white/10"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 bg-gold hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl transition active:scale-95"
+            className="flex-1 bg-gold hover:brightness-105 text-[#6b5300] font-bold text-xs py-2.5 px-4 rounded-xl press active:scale-95"
           >
             Save Targets
           </button>

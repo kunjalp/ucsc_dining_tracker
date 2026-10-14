@@ -142,7 +142,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] press hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
@@ -150,7 +150,7 @@ export default function AuthPage() {
             <button
               type="button"
               onClick={() => { setShowForgotPassword(false); setMessage('') }}
-              className="w-full text-center text-xs font-medium text-fg-subtle hover:text-[#ffe6ab] transition"
+              className="w-full text-center text-xs font-medium text-fg-subtle hover:text-[#ffe6ab] press"
             >
               Back to sign in
             </button>
@@ -214,7 +214,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => { setShowForgotPassword(true); setMessage('') }}
-                  className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] text-xs font-medium text-sky hover:text-fg transition"
+                  className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] text-xs font-medium text-sky hover:text-fg press"
                 >
                   Forgot password?
                 </button>
@@ -224,7 +224,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+              className="mt-1 w-full rounded-xl bg-gold py-2 text-sm font-semibold text-[#6b5300] press hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </button>
@@ -235,7 +235,7 @@ export default function AuthPage() {
           <button
             type="button"
             onClick={() => setIsSignUp(false)}
-            className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${!isSignUp
+            className={`flex-1 py-1.5 text-sm font-bold rounded-lg press ${!isSignUp
               ? 'bg-[#2a3a5c] text-sky shadow-sm'
               : 'text-fg-subtle hover:text-fg'
               }`}
@@ -245,7 +245,7 @@ export default function AuthPage() {
           <button
             type="button"
             onClick={() => setIsSignUp(true)}
-            className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${isSignUp
+            className={`flex-1 py-1.5 text-sm font-bold rounded-lg press ${isSignUp
               ? 'bg-[#2a3a5c] text-sky shadow-sm'
               : 'text-fg-subtle hover:text-fg'
               }`}

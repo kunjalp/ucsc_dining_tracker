@@ -41,6 +41,11 @@
   --text-9: 0.6rem;
   --text-10: 0.6667rem;
   --text-11: 0.7333rem;
+  /* Small text reads better slightly opened up. An explicit tracking-*
+     class on the element still wins. */
+  --text-9--letter-spacing: 0.01em;
+  --text-10--letter-spacing: 0.01em;
+  --text-11--letter-spacing: 0.01em;
 
   /* Minimum iOS touch target (44pt): h-tap, min-h-tap, size-tap, min-w-tap */
   --spacing-tap: 2.75rem;
@@ -52,6 +57,27 @@
 /* Inputs: scale with the Text size setting, but never under 16px */
 @utility text-input {
   font-size: max(16px, 1rem);
+}
+
+/* Button press feedback: in fast (100ms) on press, eases back slower
+   (250ms) on release. A transition runs at the speed of the state it's
+   heading into, so :active sets the press-in and the base rule the
+   release. Same properties as Tailwind's `transition`. Reduce Motion:
+   instant. */
+@utility press {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-duration: 250ms;
+  &:active {
+    transition-timing-function: ease-out;
+    transition-duration: 100ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+    &:active {
+      transition-duration: 0ms;
+    }
+  }
 }
 
 /* Horizontally scrolling rows (station pills) without a visible scrollbar */
@@ -72,6 +98,22 @@
 
 .app-header {
   padding-top: env(safe-area-inset-top);
+}
+
+/* Scroll edge under the header: its 60% app tint and blur fade to nothing
+   over 12px, instead of a hard 1px divider */
+.app-header-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 12px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-app) 60%, transparent), transparent);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
 .app-bottom-nav {
@@ -156,20 +198,6 @@ body.hide-scrollbar::-webkit-scrollbar {
 
 .animate-row-in {
   animation: row-fade-in 0.35s ease-out both;
-}
-
-/* Pulsing glow for the day track's filled (gold) portion. */
-@keyframes glow-pulse {
-  0%, 100% {
-    box-shadow: 0 0 4px 1px rgba(214, 185, 58, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 11px 3px rgba(214, 185, 58, 0.8);
-  }
-}
-
-.animate-glow-pulse {
-  animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
 /* Bottom sheets (food detail, profile): slide up from below the bottom edge */
@@ -301,12 +329,14 @@ body.hide-scrollbar::-webkit-scrollbar {
    glow), so dropping the animation leaves the same final look. The day
    track's SMIL head swing and Zz's are handled in dashboard/page.tsx. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-glow-pulse,
   .animate-row-in,
   .animate-check-pop,
   .animate-ring-toast,
   .animate-sheet-backdrop,
   .animate-sheet-up,
+  .animate-modal-in,
+  .animate-modal-out,
+  .animate-backdrop-out,
   .sammy-bob,
   .sammy-loading,
   .sammy-hop,
@@ -331,6 +361,12 @@ body.hide-scrollbar::-webkit-scrollbar {
    the same elements. Only kick in under the accessibility settings --
    the default look is unchanged. */
 @media (prefers-reduced-transparency: reduce) {
+  /* Solid header: the edge fades from solid app color, no blur */
+  .app-header-fade {
+    background: linear-gradient(to bottom, var(--color-app), transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
   .glass-bar {
     background-color: var(--color-app);
     -webkit-backdrop-filter: none;
@@ -345,6 +381,13 @@ body.hide-scrollbar::-webkit-scrollbar {
 
 /* Increase Contrast: solid bars with a clearly visible edge */
 @media (prefers-contrast: more) {
+  /* A solid, clearly visible line under the header instead of the fade */
+  .app-header {
+    border-bottom: 1px solid rgb(255 255 255 / 0.4);
+  }
+  .app-header-fade {
+    display: none;
+  }
   .glass-bar {
     background-color: var(--color-app);
     -webkit-backdrop-filter: none;
@@ -369,6 +412,51 @@ body.hide-scrollbar::-webkit-scrollbar {
 
 .animate-sheet-backdrop {
   animation: sheet-backdrop-in 0.25s ease-out both;
+}
+
+@keyframes backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-backdrop-out {
+  animation: backdrop-out 0.25s ease-in both;
+}
+
+/* Centered modals (SetTargetsModal, welcome card): fade in while scaling up
+   from 0.96; the exit is the same path reversed, on the mirrored curve */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.animate-modal-in {
+  animation: modal-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-modal-out {
+  animation: modal-out 0.25s cubic-bezier(0.64, 0, 0.78, 0) both;
 }
 
 body {
