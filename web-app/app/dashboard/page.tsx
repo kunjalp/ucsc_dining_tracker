@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
@@ -1176,6 +1176,24 @@ export default function DashboardPage() {
     return { filteredMenu: list, dietHiddenCount: hidden }
   }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences, dietFilterOff])
 
+  // The filter row (diet chip, Stations button, selected stations) only
+  // becomes a sideways scroller when its chips are actually wider than the
+  // screen -- otherwise it has no overflow at all and can't be dragged in any
+  // direction. Re-measured when its chips change or resize (Text size setting,
+  // rotation).
+  const filterRowRef = useRef<HTMLDivElement | null>(null)
+  const [filterRowOverflows, setFilterRowOverflows] = useState(false)
+  useLayoutEffect(() => {
+    const el = filterRowRef.current
+    if (!el) return
+    const measure = () => setFilterRowOverflows(el.scrollWidth > el.clientWidth + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    Array.from(el.children).forEach((child) => observer.observe(child))
+    return () => observer.disconnect()
+  }, [activeStationFilters, dietHiddenCount, dietFilterOff, dietChipLabel, availableStations.length, showMenuSection])
+
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
     const groups: { [station: string]: MenuEntry[] } = {}
@@ -1961,11 +1979,19 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {/* One slim row (scrolls sideways if it overflows): dietary chip,
-                        then the "Stations" button that opens the station picker
-                        sheet, then the stations currently selected. */}
+                    {/* One slim row: dietary chip, then the "Stations" button that
+                        opens the station picker sheet, then the stations currently
+                        selected. Only scrolls (sideways only) when it overflows --
+                        overflow-y-hidden matters because overflow-x-auto alone turns
+                        overflow-y to auto, and the Show button's enlarged tap area
+                        (after:-inset-2) pokes out vertically, giving the row a few
+                        px of up/down/diagonal drag. No touch-action restriction, so
+                        vertical swipes starting here still scroll the page. */}
                     {(availableStations.length > 0 || dietHiddenCount > 0) && (
-                      <div className="flex items-center gap-2 pt-1 -mx-5 px-5 overflow-x-auto scrollbar-none">
+                      <div
+                        ref={filterRowRef}
+                        className={`flex items-center gap-2 pt-1 -mx-5 px-5 ${filterRowOverflows ? 'overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none' : ''}`}
+                      >
                         {dietHiddenCount > 0 && (
                           <div className="shrink-0 flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 whitespace-nowrap">
                             <span className="text-xs font-semibold text-sky max-w-[11rem] truncate">{dietChipLabel}</span>
@@ -2236,7 +2262,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto">
+                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
                     {[
                       { key: 'calories', label: 'Calories', color: '#d8b61c', text: '#00325b' },
                       { key: 'protein', label: 'Protein', color: '#5bb448', text: '#102e10' },
