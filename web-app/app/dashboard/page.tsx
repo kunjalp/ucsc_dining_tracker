@@ -10,6 +10,7 @@ import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountd
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { useReducedMotion } from '@/lib/useReducedMotion'
+import { STREAK_CELEBRATED_STORAGE_KEY, STREAK_LOOKBACK_DAYS, computeStreak, logDateFor, shiftDate, streakMilestone } from '@/lib/streak'
 import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros, type MacroKey } from '@/lib/mealSuggestions'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
@@ -110,7 +111,10 @@ const DAY_OFFSETS = [0, 1, 2]
 const LOG_MEAL_ORDER = ['Breakfast', 'Brunch', 'Lunch', 'Dinner', 'Late Night']
 
 // Corner Sammy's one-shot moods: a higher number can't be interrupted by a lower one
-const CORNER_PRIORITY: Partial<Record<SammyMood, number>> = { celebrate: 3, oops: 2, munch: 1, happy: 1 }
+const CORNER_PRIORITY: Partial<Record<SammyMood, number>> = { celebrate: 3, flex: 3, oops: 2, munch: 1, happy: 1 }
+// A streak milestone celebration waits this long after it's detected, so it
+// never lands on top of the once-a-session greeting wave
+const STREAK_CELEBRATE_DELAY_MS = 3500
 // Sparkle colors when a ring closes (hex, since they're SVG fills)
 const RING_SPARKLE_COLORS = { cal: '#d8b61c', protein: '#5bb448', carbs: '#d17ccd', fat: '#fb7185' } as const
 
@@ -703,6 +707,66 @@ export default function DashboardPage() {
     return getDayTrack(selectedHall, now, selectedDayOffset)
   }, [selectedHall, selectedDayOffset, now])
 
+  // Logging streak (Sammy's flame badge). The History calendar's query only
+  // runs when the calendar opens and pulls every log with its food joined,
+  // so this is its own light query: just log_date for the last
+  // STREAK_LOOKBACK_DAYS days. null until it's loaded.
+  const [streakDates, setStreakDates] = useState<Set<string> | null>(null)
+  const loadStreakDates = async (): Promise<Set<string> | null> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const since = shiftDate(logDateFor(new Date()), -STREAK_LOOKBACK_DAYS)
+    const { data, error } = await supabase
+      .from('meal_logs')
+      .select('log_date')
+      .eq('user_id', user.id)
+      .gte('log_date', since)
+    return !error && data ? new Set(data.map((row) => row.log_date as string)) : null
+  }
+  const fetchStreakDates = async () => {
+    const dates = await loadStreakDates()
+    if (dates) setStreakDates(dates)
+  }
+  useEffect(() => {
+    let cancelled = false
+    loadStreakDates().then((dates) => {
+      if (!cancelled && dates) setStreakDates(dates)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const streak = useMemo(
+    () => (streakDates ? computeStreak(streakDates, logDateFor(now)) : { count: 0, start: '' }),
+    [streakDates, now]
+  )
+
+  // Corner Sammy's speech bubble from the dashboard (streak milestones)
+  const [cornerSay, setCornerSay] = useState<{ text: string; key: number } | null>(null)
+
+  // First time a run of days reaches 3, then 7: a short celebration. Each
+  // milestone celebrates once per run. Nothing is ever said when a run ends.
+  useEffect(() => {
+    const milestone = streakMilestone(streak.count)
+    if (!milestone) return
+    const runKey = `${streak.start}:${milestone}`
+    try {
+      if (localStorage.getItem(STREAK_CELEBRATED_STORAGE_KEY) === runKey) return
+    } catch {
+      return // Can't remember it, so don't risk celebrating every visit
+    }
+    const days = streak.count
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(STREAK_CELEBRATED_STORAGE_KEY, runKey)
+      } catch {}
+      playCorner([{ mood: 'celebrate', ms: 1300 }])
+      setCornerSay((prev) => ({ text: `${days} days in a row!`, key: (prev?.key ?? 0) + 1 }))
+    }, STREAK_CELEBRATE_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [streak.count, streak.start])
+
   // Dragging the slug's head along the day track lets the person browse a
   // different meal period's menu directly from the track instead of using
   // the tabs above it — the head becomes a hand-movable "which menu am I
@@ -876,9 +940,11 @@ export default function DashboardPage() {
           ? `${newlyClosed[0]} ring closed!`
           : `${newlyClosed.slice(0, -1).join(', ')} & ${newlyClosed[newlyClosed.length - 1]} rings closed!`
       showToast(message, 'success')
-      // Sparkles in the closed ring(s)' own colors
+      // Sparkles in the closed ring(s)' own colors. All four closed: the full
+      // celebrate; otherwise a flex for the ring(s) that just closed.
       const colors = ringLabels.filter(({ key }) => closed[key] && !prev[key]).map(({ key }) => RING_SPARKLE_COLORS[key])
-      playCorner([{ mood: 'celebrate', ms: 1300, colors }])
+      const allClosedNow = closed.cal && closed.protein && closed.carbs && closed.fat
+      playCorner([allClosedNow ? { mood: 'celebrate', ms: 1300, colors } : { mood: 'flex', ms: 1200, colors }])
     }
 
     prevRingsClosedRef.current = closed
@@ -1520,6 +1586,7 @@ export default function DashboardPage() {
       clearServingPreview()
       // Munch first, then the happy hop
       playCorner([{ mood: 'munch', ms: 900 }, { mood: 'happy', ms: 600 }])
+      setStreakDates((prev) => (prev && !prev.has(todayStr) ? new Set(prev).add(todayStr) : prev))
       setJustLogged(prev => ({ ...prev, [foodId]: true }))
       setTimeout(() => {
         setJustLogged(prev => {
@@ -1645,6 +1712,7 @@ export default function DashboardPage() {
     } else {
       await fetchTodayTotals()
       fetchHistoricalLogs() // keep the calendar in sync if it's open
+      fetchStreakDates()
     }
     setHiddenLogIds(prev => prev.filter(id => id !== logId))
   }
@@ -2867,6 +2935,11 @@ export default function DashboardPage() {
               variety
               onTapMessage={sammyTapMessage}
               bubbleAlign="right"
+              greet
+              watchTouches
+              dressUp
+              streak={streak.count}
+              message={cornerSay}
             />
           </span>
           <span
