@@ -108,6 +108,11 @@ const DAY_OFFSETS = [0, 1, 2]
 // else logged (Brunch, a cafe's "Menu"/"ALL") sorts after these.
 const LOG_MEAL_ORDER = ['Breakfast', 'Brunch', 'Lunch', 'Dinner', 'Late Night']
 
+// Corner Sammy's one-shot moods: a higher number can't be interrupted by a lower one
+const CORNER_PRIORITY: Partial<Record<SammyMood, number>> = { celebrate: 3, oops: 2, munch: 1, happy: 1 }
+// Sparkle colors when a ring closes (hex, since they're SVG fills)
+const RING_SPARKLE_COLORS = { cal: '#d8b61c', protein: '#5bb448', carbs: '#d17ccd', fat: '#fb7185' } as const
+
 // "Close my rings" macro chips: saved selection key + chip labels
 const SUGGEST_FOCUS_STORAGE_KEY = 'ucsc_suggest_focus'
 const MACRO_CHIP_LABELS: Record<MacroKey, string> = { calories: 'Calories', protein: 'Protein', carbs: 'Carbs', fat: 'Fat' }
@@ -554,18 +559,44 @@ export default function DashboardPage() {
   // In-app toasts (ring closed, errors) -- replaces alert(); see ToastStack
   const { toasts, showToast, dismissToast } = useToasts()
 
-  // Sammy perched on the bottom nav: hops when a food is logged, celebrates
-  // when a ring closes, then settles back to idle. The key restarts the
-  // one-shot animation when the same mood fires twice in a row.
-  const [cornerMood, setCornerMood] = useState<SammyMood>('idle')
-  const [cornerMoodKey, setCornerMoodKey] = useState(0)
-  const cornerMoodTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const playCornerMood = (mood: 'happy' | 'celebrate') => {
-    setCornerMood(mood)
-    setCornerMoodKey((k) => k + 1)
-    if (cornerMoodTimerRef.current) clearTimeout(cornerMoodTimerRef.current)
-    cornerMoodTimerRef.current = setTimeout(() => setCornerMood('idle'), mood === 'celebrate' ? 1300 : 700)
+  // Sammy perched on the bottom nav. One-shot moods play through a single
+  // queue: a new request replaces what's playing unless something more
+  // important is mid-way (celebrate > oops > munch/happy), so animations
+  // never stack. When the queue empties he goes back to resting (asleep
+  // while the hall is closed). `key` replays a mood that fires twice.
+  const [cornerPlay, setCornerPlay] = useState<{ mood: SammyMood; key: number; colors?: string[] } | null>(null)
+  const cornerQueueRef = useRef<{ priority: number; timers: ReturnType<typeof setTimeout>[] }>({ priority: 0, timers: [] })
+  const playCorner = (steps: { mood: SammyMood; ms: number; colors?: string[] }[]) => {
+    const priority = Math.max(...steps.map((s) => CORNER_PRIORITY[s.mood] ?? 0))
+    const queue = cornerQueueRef.current
+    if (queue.priority > priority) return
+    queue.timers.forEach(clearTimeout)
+    queue.timers = []
+    queue.priority = priority
+    let at = 0
+    for (const step of steps) {
+      queue.timers.push(setTimeout(() => setCornerPlay((c) => ({ mood: step.mood, key: (c?.key ?? 0) + 1, colors: step.colors })), at))
+      at += step.ms
+    }
+    queue.timers.push(setTimeout(() => {
+      queue.priority = 0
+      setCornerPlay(null)
+    }, at))
   }
+  useEffect(() => {
+    const queue = cornerQueueRef.current
+    return () => queue.timers.forEach(clearTimeout)
+  }, [])
+
+  // Error toasts make Sammy worried (Toast ids only ever increase)
+  const lastToastIdRef = useRef(0)
+  useEffect(() => {
+    const newest = toasts[toasts.length - 1]
+    if (!newest || newest.id <= lastToastIdRef.current) return
+    lastToastIdRef.current = newest.id
+    if (newest.tone === 'error') playCorner([{ mood: 'oops', ms: 1000 }])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toasts])
   const [isTargetsModalOpen, setIsTargetsModalOpen] = useState(false)
   // Food detail sheet -- tapping an item's name opens it with that item's
   // ingredients/allergens/dietary icons (closed = null).
@@ -807,7 +838,9 @@ export default function DashboardPage() {
           ? `${newlyClosed[0]} ring closed!`
           : `${newlyClosed.slice(0, -1).join(', ')} & ${newlyClosed[newlyClosed.length - 1]} rings closed!`
       showToast(message, 'success')
-      playCornerMood('celebrate')
+      // Sparkles in the closed ring(s)' own colors
+      const colors = ringLabels.filter(({ key }) => closed[key] && !prev[key]).map(({ key }) => RING_SPARKLE_COLORS[key])
+      playCorner([{ mood: 'celebrate', ms: 1300, colors }])
     }
 
     prevRingsClosedRef.current = closed
@@ -1447,7 +1480,8 @@ export default function DashboardPage() {
       // Quick, light confirmation tap — this is a frequent, low-stakes action.
       Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
       clearServingPreview()
-      playCornerMood('happy')
+      // Munch first, then the happy hop
+      playCorner([{ mood: 'munch', ms: 900 }, { mood: 'happy', ms: 600 }])
       setJustLogged(prev => ({ ...prev, [foodId]: true }))
       setTimeout(() => {
         setJustLogged(prev => {
@@ -1535,6 +1569,7 @@ export default function DashboardPage() {
       })
     }, 300)
     if (log) setUndoLog(log)
+    playCorner([{ mood: 'oops', ms: 1000 }])
 
     pendingDeleteTimersRef.current.set(logId, setTimeout(() => commitDeleteLog(logId), UNDO_WINDOW_MS))
   }
@@ -1618,6 +1653,33 @@ export default function DashboardPage() {
   // Under ~50 cal left there's nothing worth suggesting without going over
   const caloriesClosed = remainingMacros.calories < 50
 
+  // What Sammy says when tapped: a short line from today's real totals vs
+  // targets (progress only -- no health claims). Taps cycle through the
+  // lines that apply right now.
+  const sammyTapCountRef = useRef(0)
+  const sammyTapMessage = (): string => {
+    if (!totalsLoaded) return "Hi, I'm Sammy!"
+    if (allRingsClosed) return 'All rings closed!'
+    if (displayTotals.calories <= 0) return 'Nothing logged yet today. Ready when you are!'
+    const pct = (value: number, goal: number) => (goal > 0 ? Math.round((value / goal) * 100) : 0)
+    const rings = [
+      { name: 'Calories', pct: pct(displayTotals.calories, goalCalories) },
+      { name: 'Protein', pct: pct(displayTotals.protein, goalProtein) },
+      { name: 'Carbs', pct: pct(displayTotals.carbs, goalCarbs) },
+      { name: 'Fat', pct: pct(displayTotals.fat, goalFat) },
+    ]
+    const lines: string[] = []
+    const closedNow = rings.filter((r) => r.pct >= 100).map((r) => r.name)
+    if (closedNow.length > 0) lines.push(`${closedNow.join(' & ')} ${closedNow.length === 1 ? 'ring' : 'rings'} closed!`)
+    const protein = rings[1]
+    if (protein.pct < 100) lines.push(`Protein is at ${protein.pct}%!`)
+    if (rings[0].pct < 25) lines.push(`Nice start! Calories are at ${rings[0].pct}%.`)
+    if (remainingMacros.calories > 0) lines.push(`${Math.round(remainingMacros.calories)} cal left today.`)
+    const closest = rings.filter((r) => r.pct < 100).sort((a, b) => b.pct - a.pct)[0]
+    if (closest && closest.pct >= 50) lines.push(`${closest.name} is ${closest.pct}% there!`)
+    return lines[sammyTapCountRef.current++ % lines.length] ?? 'Keep going!'
+  }
+
   // (Re)builds the suggestion combos for the given rings to close. Toggling
   // a macro chip calls this again, which replaces any edits in the sheet.
   const computeSuggestions = (focus: MacroKey[]) => {
@@ -1636,8 +1698,30 @@ export default function DashboardPage() {
     setSuggestionCombos(suggestCombos(candidates, remainingMacros, focus).map((combo) => combo.items))
   }
 
+  // Sammy "thinks" for a beat while suggestions are built (the search itself
+  // takes ~70ms -- the pause just lets the think animation read). Closing
+  // the sheet cancels a pending run so it can't reopen it.
+  const [suggestionsThinking, setSuggestionsThinking] = useState(false)
+  const thinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runSuggestions = (focus: MacroKey[], thinkMs: number) => {
+    if (thinkTimerRef.current) clearTimeout(thinkTimerRef.current)
+    setSuggestionsThinking(true)
+    setSuggestionCombos((prev) => prev ?? [])
+    thinkTimerRef.current = setTimeout(() => {
+      thinkTimerRef.current = null
+      computeSuggestions(focus)
+      setSuggestionsThinking(false)
+    }, thinkMs)
+  }
+  const closeSuggestions = () => {
+    if (thinkTimerRef.current) clearTimeout(thinkTimerRef.current)
+    thinkTimerRef.current = null
+    setSuggestionsThinking(false)
+    setSuggestionCombos(null)
+  }
+
   const openSuggestions = () => {
-    computeSuggestions(suggestFocus)
+    runSuggestions(suggestFocus, 450)
     Haptics.selectionChanged().catch(() => {})
   }
 
@@ -1653,7 +1737,7 @@ export default function DashboardPage() {
     } catch {
       // Private mode etc. -- the choice still applies for this session
     }
-    computeSuggestions(next)
+    runSuggestions(next, 300)
     Haptics.selectionChanged().catch(() => {})
   }
 
@@ -1685,7 +1769,7 @@ export default function DashboardPage() {
     }
     setLoggingComboIndex(null)
     if (logged > 0) {
-      setSuggestionCombos(null)
+      closeSuggestions()
       showToast(
         logged === items.length
           ? `Logged ${logged} item${logged !== 1 ? 's' : ''}`
@@ -1845,7 +1929,7 @@ export default function DashboardPage() {
             from the current menu that fill it */}
         {activeTab === 'log' && (
           <div className="rounded-2xl pl-3 pr-2 py-2 mb-6 min-h-tap flex items-center gap-3 bg-surface border border-white/10">
-            <Sammy mood="idle" size={2} />
+            <Sammy mood="idle" size={2} onTapMessage={sammyTapMessage} bubbleAlign="left" className="-my-2.5 -mx-0.5" />
             {!totalsLoaded ? (
               <p className="text-sm text-fg-muted">Checking what&apos;s left…</p>
             ) : !targetsSaved ? (
@@ -2274,7 +2358,7 @@ export default function DashboardPage() {
                   line above already says this with more useful detail. */}
               {isClosedNow && !isOpeningLaterToday && (
                 <div role="status" className="rounded-2xl p-4 bg-surface-2 border border-white/10 text-sm flex items-center justify-center gap-3">
-                  <Sammy mood="idle" size={2} />
+                  <Sammy mood="sleep" size={2} />
                   <p className="min-w-0">
                     <span className="font-semibold text-fg">{closedLabel}</span>
                     {nextOpeningLabel && <span className="text-fg-muted"> · {nextOpeningLabel}</span>}
@@ -2312,7 +2396,7 @@ export default function DashboardPage() {
                     </div>
                   ) : Object.keys(groupedMenu).length === 0 ? (
                     <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-                      <Sammy mood="idle" size={3} />
+                      <Sammy mood={isClosedNow ? 'sleep' : 'idle'} size={3} />
                       {menu.length === 0
                         ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
                         : dietHiddenCount > 0 && !dietFilterOff
@@ -2704,10 +2788,19 @@ export default function DashboardPage() {
           className="pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
           {/* Sammy perched on top of the pill's right end -- above the nav,
-              never over its buttons, and pointer-events-none so he never
-              blocks a tap on what's scrolling behind him */}
-          <span className="absolute bottom-full right-6 pointer-events-none">
-            <Sammy key={cornerMoodKey} mood={cornerMood} size={2} />
+              never over its buttons. Tappable (44px target) for a progress
+              bubble; the menu's bottom padding lets every row scroll clear
+              of him, like the nav itself. */}
+          <span className="absolute bottom-full right-4">
+            <Sammy
+              mood={cornerPlay?.mood ?? (isClosedNow ? 'sleep' : 'idle')}
+              moodKey={cornerPlay?.key ?? 0}
+              sparkleColors={cornerPlay?.colors}
+              size={2}
+              variety
+              onTapMessage={sammyTapMessage}
+              bubbleAlign="right"
+            />
           </span>
           <span
             aria-hidden="true"
@@ -2814,17 +2907,17 @@ export default function DashboardPage() {
           (filtered) menu. Servings/removals update each combo's totals live;
           "Log all" goes through handleLogFood for every item. */}
       {suggestionCombos && (
-        <BottomSheet onClose={() => setSuggestionCombos(null)} labelledBy="suggestions-title">
+        <BottomSheet onClose={closeSuggestions} labelledBy="suggestions-title">
           <button
             type="button"
-            onClick={() => setSuggestionCombos(null)}
+            onClick={closeSuggestions}
             aria-label="Close"
             className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90 motion-reduce:active:scale-100"
           >
             <X size={20} />
           </button>
           <h2 id="suggestions-title" className="flex items-center gap-2 text-lg font-bold tracking-tight text-fg pr-10">
-            <Sammy mood="idle" size={2} />
+            <Sammy mood={suggestionsThinking ? 'think' : 'idle'} size={2} />
             Close my rings
           </h2>
           <p className="text-xs text-fg-muted mt-0.5">
@@ -2865,7 +2958,9 @@ export default function DashboardPage() {
             ) : null
           })()}
 
-          {suggestionCombos.length === 0 ? (
+          {suggestionsThinking ? (
+            <p role="status" className="py-10 text-center text-sm text-fg-muted">Sammy is thinking…</p>
+          ) : suggestionCombos.length === 0 ? (
             <p className="py-10 text-center text-sm text-fg-muted">
               {activeFocus(suggestFocus, remainingMacros).length === 0
                 ? 'Every ring you picked is already closed. Turn on another one above.'

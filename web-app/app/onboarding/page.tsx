@@ -50,7 +50,7 @@ export default function OnboardingPage() {
         <div
             className="flex min-h-screen flex-col items-center justify-center bg-app p-4 text-fg relative overflow-hidden"
         >
-            <Sammy mood="idle" size={4} className="mb-3" />
+            <Sammy mood="idle" size={4} variety className="mb-3" />
             <div className="w-full max-w-xs rounded-2xl p-6 bg-surface border border-white/10 text-center">
                 <h1 className="text-xl font-extrabold tracking-tight text-fg mb-2">
                     Welcome to Sammy's Palate!

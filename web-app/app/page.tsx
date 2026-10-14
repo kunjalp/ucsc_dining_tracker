@@ -91,7 +91,7 @@ export default function AuthPage() {
     >
 
       {/* Sammy the mascot, waiting by the sign-in card */}
-      <Sammy mood="idle" size={4} className="mb-3" />
+      <Sammy mood="idle" size={4} variety className="mb-3" />
 
       {/* Container Box */}
       <div className="w-full max-w-[340px] rounded-2xl p-4 bg-surface border border-white/10">

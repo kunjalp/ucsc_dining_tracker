@@ -228,7 +228,54 @@ body.hide-scrollbar::-webkit-scrollbar {
   15%, 55% { opacity: 1; }
 }
 
+/* Munch: a 1px chew dip in time with the mouth (3 bites in 0.9s) */
+@keyframes sammy-munch {
+  0%, 33%, 66%, 100% { transform: translateY(0); }
+  15%, 48%, 81% { transform: translateY(var(--sammy-px)); }
+}
+/* Open for the first half of each bite, closed (chewing) for the second */
+@keyframes sammy-munch-mouth {
+  0%, 33%, 66% { opacity: 1; }
+  15%, 48%, 81%, 100% { opacity: 0; }
+}
+/* SVG user units below: 1px = one sprite pixel */
+@keyframes sammy-crumb {
+  0% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(1px); }
+  75% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 0; transform: translateY(2px); }
+}
+@keyframes sammy-z {
+  0% { opacity: 0; transform: translateY(1px); }
+  20% { opacity: 1; transform: translateY(0); }
+  45% { opacity: 1; transform: translateY(-1px); }
+  70% { opacity: 1; transform: translateY(-2px); }
+  90%, 100% { opacity: 0; transform: translateY(-3px); }
+}
+@keyframes sammy-think-dot {
+  0%, 100% { opacity: 0.25; }
+  33% { opacity: 1; }
+  66% { opacity: 0.25; }
+}
+@keyframes sammy-shake {
+  0%, 100% { transform: translateX(0); }
+  15%, 45% { transform: translateX(calc(-1 * var(--sammy-px))); }
+  30%, 60% { transform: translateX(var(--sammy-px)); }
+  75% { transform: translateX(0); }
+}
+@keyframes sammy-sleep {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(var(--sammy-px)); }
+}
+
 .sammy-bob { animation: sammy-bob 2.4s steps(1, end) infinite; }
+.sammy-sleep { animation: sammy-sleep 3.6s steps(1, end) infinite; }
+.sammy-munch { animation: sammy-munch 0.9s steps(1, end) both; }
+.sammy-munch-mouth { opacity: 0; animation: sammy-munch-mouth 0.9s steps(1, end) both; }
+.sammy-crumb { opacity: 0; animation: sammy-crumb 0.6s steps(1, end) both; }
+.sammy-z { animation: sammy-z 2.4s steps(1, end) infinite; }
+.sammy-think-dot { opacity: 0.25; animation: sammy-think-dot 0.9s steps(1, end) infinite; }
+.sammy-shake { animation: sammy-shake 0.9s steps(1, end) both; }
 .sammy-loading { animation: sammy-loading 0.6s steps(1, end) infinite; }
 .sammy-hop { animation: sammy-hop 0.6s steps(1, end) both; }
 .sammy-celebrate { animation: sammy-celebrate 1.2s steps(1, end) both; }
@@ -252,7 +299,14 @@ body.hide-scrollbar::-webkit-scrollbar {
   .sammy-hop,
   .sammy-celebrate,
   .sammy-wiggle,
-  .sammy-sparkle {
+  .sammy-sparkle,
+  .sammy-sleep,
+  .sammy-munch,
+  .sammy-munch-mouth,
+  .sammy-crumb,
+  .sammy-z,
+  .sammy-think-dot,
+  .sammy-shake {
     animation: none;
   }
 }
