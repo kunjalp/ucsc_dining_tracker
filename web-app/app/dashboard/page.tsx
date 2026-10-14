@@ -9,6 +9,7 @@ import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountd
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
 import { useReducedMotion } from '@/lib/useReducedMotion'
+import { suggestCombos, comboTotals, SUGGESTION_SERVING_STEP, SUGGESTION_MIN_SERVINGS, SUGGESTION_MAX_SERVINGS, type ComboItem, type Macros } from '@/lib/mealSuggestions'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet from '../components/BottomSheet'
@@ -28,6 +29,7 @@ import {
   Plus,
   X,
   SlidersHorizontal,
+  Minus,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -512,6 +514,12 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
   const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
+  // "Close my rings": whether the student has ever saved targets (until
+  // then the 2000/120/250/70 placeholders aren't theirs to aim at), the
+  // open suggestions sheet's editable combos, and which combo is logging.
+  const [targetsSaved, setTargetsSaved] = useState(false)
+  const [suggestionCombos, setSuggestionCombos] = useState<ComboItem[][] | null>(null)
+  const [loggingComboIndex, setLoggingComboIndex] = useState<number | null>(null)
   // "Show" on the dietary chip: lists everything for this session only --
   // the saved profile's preferences are left untouched.
   const [dietFilterOff, setDietFilterOff] = useState(false)
@@ -887,6 +895,7 @@ export default function DashboardPage() {
     if (savedCarbs) setGoalCarbs(Number(savedCarbs))
     if (savedFat) setGoalFat(Number(savedFat))
     if (savedMode === 'recommended' || savedMode === 'manual') setGoalMode(savedMode)
+    setTargetsSaved(!!savedCals)
   }, [])
 
   // Process manual configurations save (called from SetTargetsModal)
@@ -904,6 +913,7 @@ export default function DashboardPage() {
     localStorage.setItem('ucsc_goal_carbs', String(carbs))
     localStorage.setItem('ucsc_goal_fat', String(fat))
     localStorage.setItem('ucsc_goal_mode', mode)
+    setTargetsSaved(true)
 
     setIsTargetsModalOpen(false)
 
@@ -1553,6 +1563,73 @@ export default function DashboardPage() {
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
   }, [totals, loggedMeals, hiddenLogIds])
 
+  // "Close my rings": targets minus the same totals the strip/rings show
+  // (pending undo-able deletes already subtracted)
+  const remainingMacros: Macros = {
+    calories: goalCalories - displayTotals.calories,
+    protein: goalProtein - displayTotals.protein,
+    carbs: goalCarbs - displayTotals.carbs,
+    fat: goalFat - displayTotals.fat,
+  }
+  const allRingsClosed = (['calories', 'protein', 'carbs', 'fat'] as const).every((k) => remainingMacros[k] <= 0)
+  // Under ~50 cal left there's nothing worth suggesting without going over
+  const caloriesClosed = remainingMacros.calories < 50
+
+  const openSuggestions = () => {
+    // Only what's on screen: filteredMenu already applies the dietary,
+    // allergen, station and search filters (and drops 0-nutrition rows)
+    const candidates = filteredMenu.map((entry) => ({
+      recipe_id: entry.food_items.recipe_id,
+      name: entry.food_items.name,
+      portion: entry.food_items.portion,
+      station: cleanStationName(getEffectiveStation(entry)),
+      calories: Number(entry.food_items.calories),
+      protein: Number(entry.food_items.protein),
+      carbs: Number(entry.food_items.carbs),
+      fat: Number(entry.food_items.fat),
+    }))
+    setSuggestionCombos(suggestCombos(candidates, remainingMacros).map((combo) => combo.items))
+    Haptics.selectionChanged().catch(() => {})
+  }
+
+  const updateComboItem = (comboIndex: number, itemIndex: number, servings: number | null) => {
+    setSuggestionCombos((prev) =>
+      prev?.map((items, ci) =>
+        ci !== comboIndex
+          ? items
+          : servings === null
+            ? items.filter((_, ii) => ii !== itemIndex)
+            : items.map((item, ii) => (ii === itemIndex ? { ...item, servings } : item))
+      ) ?? null
+    )
+    Haptics.selectionChanged().catch(() => {})
+  }
+
+  // Logs each item through handleLogFood (same totals/rings/undo path as the
+  // menu's Log buttons), one at a time so rows land in order.
+  const handleLogCombo = async (comboIndex: number) => {
+    const items = suggestionCombos?.[comboIndex]
+    if (!items || items.length === 0) return
+    setLoggingComboIndex(comboIndex)
+    let logged = 0
+    for (const item of items) {
+      // Stop at the first failure (e.g. signed out) -- handleLogFood has
+      // already shown why, and the rest would fail the same way
+      if (!(await handleLogFood(item.food.recipe_id, item.servings))) break
+      logged++
+    }
+    setLoggingComboIndex(null)
+    if (logged > 0) {
+      setSuggestionCombos(null)
+      showToast(
+        logged === items.length
+          ? `Logged ${logged} item${logged !== 1 ? 's' : ''}`
+          : `Logged ${logged} of ${items.length} items`,
+        logged === items.length ? 'success' : 'error'
+      )
+    }
+  }
+
   // Group and sum macros by local date strings for our calendar render
   const getHistoricalSumForDate = (dateStr: string) => {
     return historicalLogs
@@ -1677,7 +1754,7 @@ export default function DashboardPage() {
             its safe-area inset) so the "+N" serving preview stays visible while
             scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
         {activeTab === 'log' && (
-          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-6 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
+          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
               { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
               { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: 'var(--color-macro-protein)', unit: 'g', key: 'protein' as const },
@@ -1696,6 +1773,55 @@ export default function DashboardPage() {
                 preview={servingPreview ? (servingPreview.food[m.key] || 0) * servingPreview.servings : 0}
               />
             ))}
+          </div>
+        )}
+
+        {/* "Close my rings" -- what's left today, and a way to get combos
+            from the current menu that fill it */}
+        {activeTab === 'log' && (
+          <div className="rounded-2xl pl-4 pr-2 py-2 mb-6 min-h-tap flex items-center justify-between gap-3 bg-surface border border-white/10">
+            {!totalsLoaded ? (
+              <p className="text-sm text-fg-muted">Checking what&apos;s left…</p>
+            ) : !targetsSaved ? (
+              <>
+                <p className="text-sm text-fg-muted">Set targets to get suggestions</p>
+                <button
+                  type="button"
+                  onClick={() => setIsTargetsModalOpen(true)}
+                  className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 transition"
+                >
+                  Set targets
+                </button>
+              </>
+            ) : allRingsClosed ? (
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-gold">
+                <Check size={14} strokeWidth={3} aria-hidden="true" />
+                Rings closed
+              </p>
+            ) : caloriesClosed ? (
+              <p className="text-sm text-fg-muted">
+                Calorie ring closed
+                {remainingMacros.protein > 0 && ` · ${Math.round(remainingMacros.protein)}g protein left`}
+              </p>
+            ) : (
+              <>
+                <p className="min-w-0 text-sm font-semibold tabular-nums truncate">
+                  <span className="text-macro-cal">{Math.round(remainingMacros.calories)} cal</span>
+                  {remainingMacros.protein > 0 && (
+                    <span className="text-macro-protein"> · {Math.round(remainingMacros.protein)}g protein</span>
+                  )}
+                  <span className="text-fg-muted font-medium"> left</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={openSuggestions}
+                  aria-haspopup="dialog"
+                  className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition"
+                >
+                  Suggest meals
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -2602,6 +2728,142 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* "Close my rings" suggestions -- 2-3 editable combos from the current
+          (filtered) menu. Servings/removals update each combo's totals live;
+          "Log all" goes through handleLogFood for every item. */}
+      {suggestionCombos && (
+        <BottomSheet onClose={() => setSuggestionCombos(null)} labelledBy="suggestions-title">
+          <button
+            type="button"
+            onClick={() => setSuggestionCombos(null)}
+            aria-label="Close"
+            className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg transition active:scale-90 motion-reduce:active:scale-100"
+          >
+            <X size={20} />
+          </button>
+          <h2 id="suggestions-title" className="text-lg font-bold tracking-tight text-fg pr-10">
+            Close my rings
+          </h2>
+          <p className="text-xs text-fg-muted mt-0.5">
+            From {selectedHall}, {getDayOffsetLabel(selectedDayOffset).toLowerCase() === 'today' ? '' : `${getDayOffsetLabel(selectedDayOffset)} `}{selectedMeal}
+          </p>
+
+          {suggestionCombos.length === 0 ? (
+            <p className="py-10 text-center text-sm text-fg-muted">
+              Nothing on this menu fits what&apos;s left right now. Try another meal or loosen your station or search filters.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {suggestionCombos.map((items, comboIndex) => {
+                const t = comboTotals(items)
+                const after = {
+                  calories: remainingMacros.calories - t.calories,
+                  protein: remainingMacros.protein - t.protein,
+                }
+                const isLogging = loggingComboIndex === comboIndex
+                return (
+                  <section
+                    key={comboIndex}
+                    aria-labelledby={`combo-${comboIndex}-title`}
+                    className="rounded-xl border border-white/10 bg-white/5 p-3"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 id={`combo-${comboIndex}-title`} className="text-xs font-bold uppercase tracking-wider text-sky">
+                        Option {comboIndex + 1}
+                      </h3>
+                      <p className="text-11 text-fg-muted tabular-nums">
+                        {Math.round(after.calories) >= 0
+                          ? `Leaves ${Math.round(after.calories)} cal`
+                          : `${Math.abs(Math.round(after.calories))} cal over`}
+                        {remainingMacros.protein > 0 && ` · ${Math.max(0, Math.round(after.protein))}g protein left`}
+                      </p>
+                    </div>
+
+                    <ul className="mt-1 divide-y divide-white/10">
+                      {items.map((item, itemIndex) => (
+                        <li key={item.food.recipe_id} className="py-2 flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-fg leading-snug">{item.food.name}</p>
+                            <p className="text-11 text-fg-muted truncate">
+                              {item.food.station} · {Math.round(item.food.calories * item.servings)} cal · P {Math.round(item.food.protein * item.servings)}g
+                            </p>
+                          </div>
+                          {/* Servings stepper: 0.5 steps, 0.5-2. Visible buttons are
+                              small; ::after pads each tap area to 44px. */}
+                          <div role="group" aria-label={`Servings of ${item.food.name}`} className="shrink-0 flex items-center rounded-lg bg-app/60">
+                            <button
+                              type="button"
+                              onClick={() => updateComboItem(comboIndex, itemIndex, item.servings - SUGGESTION_SERVING_STEP)}
+                              disabled={isLogging || item.servings <= SUGGESTION_MIN_SERVINGS}
+                              aria-label={`Fewer servings of ${item.food.name}`}
+                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 transition"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="w-9 text-center text-xs font-bold text-gold tabular-nums" aria-live="polite">
+                              {item.servings}×
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateComboItem(comboIndex, itemIndex, item.servings + SUGGESTION_SERVING_STEP)}
+                              disabled={isLogging || item.servings >= SUGGESTION_MAX_SERVINGS}
+                              aria-label={`More servings of ${item.food.name}`}
+                              className="relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] size-7 flex items-center justify-center text-fg-muted hover:text-fg disabled:opacity-30 transition"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateComboItem(comboIndex, itemIndex, null)}
+                            disabled={isLogging}
+                            aria-label={`Remove ${item.food.name} from option ${comboIndex + 1}`}
+                            className="shrink-0 relative after:absolute after:-inset-2 after:content-[''] size-7 flex items-center justify-center rounded-lg text-fg-muted hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition"
+                          >
+                            <X size={14} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {items.length === 0 ? (
+                      <p className="py-2 text-sm text-fg-muted">All items removed.</p>
+                    ) : (
+                      <div className="mt-1 flex items-center justify-between gap-3">
+                        <p className="flex flex-wrap gap-1.5 text-11 font-semibold tabular-nums" aria-label={`Together: ${Math.round(t.calories)} calories, ${Math.round(t.protein)} grams protein, ${Math.round(t.carbs)} grams carbs, ${Math.round(t.fat)} grams fat`}>
+                          <span className="rounded-md px-1.5 bg-macro-cal/15 text-macro-cal">{Math.round(t.calories)} cal</span>
+                          <span className="rounded-md px-1.5 bg-macro-protein/15 text-macro-protein">P {Math.round(t.protein)}g</span>
+                          <span className="rounded-md px-1.5 bg-macro-carbs/15 text-macro-carbs">C {Math.round(t.carbs)}g</span>
+                          <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(t.fat)}g</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleLogCombo(comboIndex)}
+                          disabled={loggingComboIndex !== null}
+                          aria-label={`Log all ${items.length} items in option ${comboIndex + 1}`}
+                          className="shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] min-h-btn px-3.5 flex items-center gap-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 transition disabled:opacity-60"
+                        >
+                          {isLogging ? 'Logging…' : (
+                            <>
+                              <Plus size={14} strokeWidth={2.75} aria-hidden="true" />
+                              Log all
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
+          )}
+
+          <p className="mt-4 text-xs leading-relaxed text-fg-muted">
+            Suggestions use the menu&apos;s listed nutrition. Not medical advice.
+          </p>
+        </BottomSheet>
       )}
 
       {/* Station picker -- every station as a wrapping multi-select chip (same
