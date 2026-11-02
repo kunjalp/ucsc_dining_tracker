@@ -447,15 +447,27 @@ function RecipeBuilder({
 
   return (
     <BottomSheet onClose={() => setState(null)} labelledBy="recipe-builder-title" className="bg-surface-2 max-h-[90dvh]">
-      <SheetCloseButton
-        aria-label="Close"
-        className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
-      >
-        <X size={20} />
-      </SheetCloseButton>
-      <h2 id="recipe-builder-title" className="text-xl font-bold tracking-tight text-fg pr-10">
-        {state.id ? 'Edit recipe' : 'New recipe'}
-      </h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 id="recipe-builder-title" className="text-xl font-bold tracking-tight text-fg min-w-0">
+          {state.id ? 'Edit recipe' : 'New recipe'}
+        </h2>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={save}
+            disabled={!canSave}
+            className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] min-h-btn px-4 rounded-xl bg-gold text-sm font-semibold text-on-gold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <SheetCloseButton
+            aria-label="Close"
+            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+          >
+            <X size={20} />
+          </SheetCloseButton>
+        </div>
+      </div>
 
       <label className="block mt-4 text-xs font-semibold text-fg-muted">
         Name
@@ -570,27 +582,19 @@ function RecipeBuilder({
         </p>
       )}
 
-      <div className="flex gap-3 mt-5">
-        {state.id && (
+      {state.id && (
+        <div className="mt-5">
           <button
             type="button"
             onClick={remove_}
             disabled={saving}
-            className={`flex items-center justify-center gap-1.5 min-h-tap px-4 rounded-xl border text-sm font-semibold press active:scale-95 disabled:opacity-40 ${confirmDelete ? 'border-danger bg-danger/15 text-danger' : 'border-white/15 bg-white/5 text-fg hover:bg-white/10'}`}
+            className={`w-full flex items-center justify-center gap-1.5 min-h-tap px-4 rounded-xl border text-sm font-semibold press active:scale-95 disabled:opacity-40 ${confirmDelete ? 'border-danger bg-danger/15 text-danger' : 'border-white/15 bg-white/5 text-fg hover:bg-white/10'}`}
           >
             <Trash2 size={15} aria-hidden="true" />
-            {confirmDelete ? 'Tap to confirm' : 'Delete'}
+            {confirmDelete ? 'Tap again to delete' : 'Delete recipe'}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={save}
-          disabled={!canSave}
-          className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
-        >
-          {saving ? 'Saving…' : 'Save recipe'}
-        </button>
-      </div>
+        </div>
+      )}
     </BottomSheet>
   )
 }
