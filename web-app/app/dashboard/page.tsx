@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
+import BrowseTab, { type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
@@ -35,6 +36,7 @@ import {
   X,
   SlidersHorizontal,
   Minus,
+  LayoutGrid,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -498,7 +500,7 @@ const resumeUndoClock = (clock: UndoClock, minMs: number) => {
 export default function DashboardPage() {
   const supabase = createClient()
   const reduceMotion = useReducedMotion()
-  const [activeTab, setActiveTab] = useState<'log' | 'progress'>('log')
+  const [activeTab, setActiveTab] = useState<'log' | 'progress' | 'browse'>('log')
   const [loading, setLoading] = useState(true)
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
@@ -638,6 +640,9 @@ export default function DashboardPage() {
   // Food detail sheet -- tapping an item's name opens it with that item's
   // ingredients/allergens/dietary icons (closed = null).
   const [detailFood, setDetailFood] = useState<FoodItem | null>(null)
+  // Set when the food sheet was opened from the Browse tab: which hall and
+  // meal period "Log" should record (null = the Menu tab's selection)
+  const [detailLogContext, setDetailLogContext] = useState<BrowseLogContext | null>(null)
 
   // One-time welcome card for brand-new users — shown once, ever, gated by
   // a localStorage flag, then dismissed for good once they tap "Got it."
@@ -1567,7 +1572,12 @@ export default function DashboardPage() {
   // `count` is the serving multiplier: the menu row's + logs 1x, the food
   // detail sheet passes whatever the student picked there.
   // Resolves true once the log is saved, so callers (the detail sheet) can close.
-  const handleLogFood = async (foodId: string, count: number = 1): Promise<boolean> => {
+  const handleLogFood = async (
+    foodId: string,
+    count: number = 1,
+    // Browse tab: log under the hall/meal chosen there instead of the Menu tab's
+    context?: BrowseLogContext | null
+  ): Promise<boolean> => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       showToast('Please sign in to log food.', 'error')
@@ -1583,8 +1593,8 @@ export default function DashboardPage() {
       .insert({
         user_id: user.id,
         food_item_id: foodId,
-        dining_hall: selectedHall,
-        meal_type: selectedMeal,
+        dining_hall: context?.hall ?? selectedHall,
+        meal_type: context?.meal ?? selectedMeal,
         servings: count,
         log_date: todayStr
       })
@@ -2089,7 +2099,7 @@ export default function DashboardPage() {
         {/* Sticky just under the fixed header (3.75rem tall + 1px border, plus
             its safe-area inset) so the "+N" serving preview stays visible while
             scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
-        {activeTab === 'log' && (
+        {(activeTab === 'log' || activeTab === 'browse') && (
           <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
               { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
@@ -2624,6 +2634,7 @@ export default function DashboardPage() {
                                       <button
                                         type="button"
                                         onClick={() => {
+                                          setDetailLogContext(null)
                                           setDetailFood(food)
                                           setDetailServings(rowServings)
                                           Haptics.selectionChanged().catch(() => {})
@@ -2703,6 +2714,23 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        ) : activeTab === 'browse' ? (
+          /* BROWSE TAB -- every item from the five dining halls */
+          <BrowseTab
+            diningHalls={DINING_HALL_NAMES}
+            dietaryPreferences={userProfile.dietaryPreferences}
+            foodMatchesDietaryPreference={foodMatchesDietaryPreference}
+            dietChipLabel={dietChipLabel}
+            defaultMeal={getCurrentMealPeriodLabel(DINING_HALLS[0]) || selectedMeal}
+            justLogged={justLogged}
+            onLog={(food: BrowseFood, count: number, ctx: BrowseLogContext) => handleLogFood(food.recipe_id, count, ctx)}
+            onOpenDetail={(food: BrowseFood, count: number, ctx: BrowseLogContext) => {
+              setDetailLogContext(ctx)
+              setDetailFood(food as FoodItem)
+              setDetailServings(count)
+            }}
+            onServingPreview={(food: BrowseFood, count: number) => showServingPreview(food as FoodItem, count)}
+          />
         ) : (
           /* PROGRESS TAB */
           <div className="space-y-6">
@@ -2973,7 +3001,7 @@ export default function DashboardPage() {
       >
         <nav
           aria-label="Main"
-          className="glass-bar pointer-events-auto relative grid grid-cols-2 w-full max-w-[340px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
+          className="glass-bar pointer-events-auto relative grid grid-cols-3 w-full max-w-[400px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
           {/* Sammy perched on top of the pill's right end -- above the nav,
               never over its buttons. Tappable (44px target) for a progress
@@ -2997,8 +3025,8 @@ export default function DashboardPage() {
           </span>
           <span
             aria-hidden="true"
-            className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
-            style={{ transform: activeTab === 'progress' ? 'translateX(100%)' : 'translateX(0)' }}
+            className="absolute inset-y-1 left-1 w-[calc(33.333%-0.1667rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{ transform: `translateX(${activeTab === 'browse' ? 100 : activeTab === 'progress' ? 200 : 0}%)` }}
           />
           <button
             type="button"
@@ -3012,6 +3040,20 @@ export default function DashboardPage() {
           >
             <UtensilsCrossed size={20} strokeWidth={activeTab === 'log' ? 2.5 : 2} />
             <span className="text-10 font-bold leading-none mt-0.5">Menu</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('browse')
+              Haptics.selectionChanged().catch(() => {})
+            }}
+            aria-current={activeTab === 'browse' ? 'page' : undefined}
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full press after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'browse' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+              }`}
+          >
+            <LayoutGrid size={20} strokeWidth={activeTab === 'browse' ? 2.5 : 2} />
+            <span className="text-10 font-bold leading-none mt-0.5">Browse</span>
           </button>
 
           <button
@@ -3450,7 +3492,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const logged = await handleLogFood(detailFood.recipe_id, detailServings)
+                  const logged = await handleLogFood(detailFood.recipe_id, detailServings, detailLogContext)
                   if (logged) setDetailFood(null)
                 }}
                 className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] mt-3 w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-xl bg-gold text-on-gold text-sm font-semibold shadow-md hover:brightness-105 active:scale-[0.98] press"
