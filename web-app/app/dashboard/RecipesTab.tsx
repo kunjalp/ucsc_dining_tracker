@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChefHat, Minus, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Check, ChefHat, Link2, Minus, Pencil, Plus, Search, Share2, Trash2, X } from 'lucide-react'
 import { Haptics, NotificationType } from '@capacitor/haptics'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy from '../components/Sammy'
@@ -19,6 +19,7 @@ import {
   type Recipe,
   type RecipeItem,
 } from '@/lib/recipes'
+import { decodeRecipe, encodeRecipe, extractCode, loadSharedItems, shareUrl } from '@/lib/recipeShare'
 
 interface RecipesTabProps {
   diningHalls: string[]
@@ -28,6 +29,13 @@ interface RecipesTabProps {
   defaultMeal: string
   /** Logs every ingredient; resolves with how many were logged */
   onLogRecipe: (recipe: Recipe, meal: string, hall: string) => Promise<number>
+  /** Opens the builder with these ingredients (the "save this meal?" offer) */
+  prefill?: { key: number; name: string; items: RecipeItem[] } | null
+  onPrefillHandled?: () => void
+  /** A share code that arrived in a link; opens the import sheet */
+  incomingCode?: string | null
+  onIncomingHandled?: () => void
+  onNotify: (message: string, type: 'success' | 'error') => void
 }
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Late Night']
@@ -65,6 +73,11 @@ export default function RecipesTab({
   foodMatchesDietaryPreference,
   defaultMeal,
   onLogRecipe,
+  prefill,
+  onPrefillHandled,
+  incomingCode,
+  onIncomingHandled,
+  onNotify,
 }: RecipesTabProps) {
   const [recipes, setRecipes] = useState<Recipe[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -75,6 +88,22 @@ export default function RecipesTab({
   const [loggingId, setLoggingId] = useState<string | null>(null)
   const [loggedId, setLoggedId] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [importCode, setImportCode] = useState<string | null>(null)
+  const [pasteOpen, setPasteOpen] = useState(false)
+
+  useEffect(() => {
+    if (!prefill) return
+    setBuilder({ id: null, name: prefill.name, items: prefill.items.map((i) => ({ ...i })) })
+    onPrefillHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.key])
+
+  useEffect(() => {
+    if (!incomingCode) return
+    setImportCode(incomingCode)
+    onIncomingHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingCode])
 
   useEffect(() => {
     let cancelled = false
@@ -154,6 +183,26 @@ export default function RecipesTab({
     }
   }
 
+  // Native share sheet when there is one, else copy the link
+  const handleShare = async (recipe: Recipe) => {
+    const url = shareUrl(encodeRecipe(recipe.name, recipe.items))
+    const text = `Try my "${recipe.name}" on Sammy's Palate, the UCSC dining hall macro tracker:`
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({ title: recipe.name, text, url })
+        return
+      }
+    } catch (e) {
+      if ((e as { name?: string })?.name === 'AbortError') return
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`)
+      onNotify('Link copied. Paste it to a friend.', 'success')
+    } catch {
+      onNotify('Could not share this recipe. Try again.', 'error')
+    }
+  }
+
   const handleLog = async (recipe: Recipe) => {
     if (loggingId) return
     setLoggingId(recipe.id)
@@ -175,6 +224,19 @@ export default function RecipesTab({
             <p className="text-xs text-fg-muted mt-0.5">Save a go-to meal once, log it in one tap.</p>
           </div>
           {!setupNeeded && (
+            <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPasteOpen(true)
+                Haptics.selectionChanged().catch(() => {})
+              }}
+              aria-label="Add a recipe from a link or code"
+              className="flex items-center gap-1.5 min-h-btn px-3 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100"
+            >
+              <Link2 size={15} aria-hidden="true" />
+              Code
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -182,11 +244,12 @@ export default function RecipesTab({
                 setBuilder({ id: null, name: '', items: [] })
                 Haptics.selectionChanged().catch(() => {})
               }}
-              className="shrink-0 flex items-center gap-1.5 min-h-btn px-3.5 rounded-xl bg-gold text-on-gold text-sm font-bold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+              className="flex items-center gap-1.5 min-h-btn px-3.5 rounded-xl bg-gold text-on-gold text-sm font-bold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
             >
               <Plus size={16} strokeWidth={2.75} aria-hidden="true" />
               New
             </button>
+            </div>
           )}
         </div>
 
@@ -261,17 +324,27 @@ export default function RecipesTab({
                           {recipe.items.map((i) => (i.servings !== 1 ? `${i.servings}× ${i.name}` : i.name)).join(' · ')}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBuilder({ id: recipe.id, name: recipe.name, items: recipe.items.map((i) => ({ ...i })) })
-                          Haptics.selectionChanged().catch(() => {})
-                        }}
-                        aria-label={`Edit ${recipe.name}`}
-                        className="relative shrink-0 size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
-                      >
-                        <Pencil size={16} aria-hidden="true" />
-                      </button>
+                      <div className="shrink-0 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleShare(recipe)}
+                          aria-label={`Share ${recipe.name}`}
+                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
+                        >
+                          <Share2 size={16} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBuilder({ id: recipe.id, name: recipe.name, items: recipe.items.map((i) => ({ ...i })) })
+                            Haptics.selectionChanged().catch(() => {})
+                          }}
+                          aria-label={`Edit ${recipe.name}`}
+                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
+                        >
+                          <Pencil size={16} aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                     <MacroChips t={totals} />
                     {a.line && (
@@ -323,7 +396,209 @@ export default function RecipesTab({
           onDeleted={refresh}
         />
       )}
+
+      {pasteOpen && (
+        <PasteCodeSheet
+          onClose={() => setPasteOpen(false)}
+          onCode={(code) => {
+            setPasteOpen(false)
+            setImportCode(code)
+          }}
+        />
+      )}
+
+      {importCode && (
+        <ImportRecipeSheet
+          code={importCode}
+          onClose={() => setImportCode(null)}
+          onAdded={async () => {
+            await refresh()
+            Haptics.notification({ type: NotificationType.Success }).catch(() => {})
+            onNotify('Recipe added to your recipes', 'success')
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function PasteCodeSheet({ onClose, onCode }: { onClose: () => void; onCode: (code: string) => void }) {
+  const [value, setValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = () => {
+    const code = extractCode(value)
+    if (!decodeRecipe(code)) {
+      setError("That doesn't look like a recipe link or code.")
+      return
+    }
+    onCode(code)
+  }
+
+  return (
+    <BottomSheet onClose={onClose} labelledBy="paste-code-title" className="bg-surface-2 max-h-[90dvh]">
+      <div className="flex items-center justify-between gap-2">
+        <h2 id="paste-code-title" className="text-xl font-bold tracking-tight text-fg min-w-0">
+          Add from a link or code
+        </h2>
+        <SheetCloseButton
+          aria-label="Close"
+          className="shrink-0 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+        >
+          <X size={20} />
+        </SheetCloseButton>
+      </div>
+      <p className="text-sm text-fg-muted mt-1">Paste the link or code a friend sent you.</p>
+      <textarea
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value)
+          setError(null)
+        }}
+        rows={3}
+        aria-label="Recipe link or code"
+        placeholder="Paste here"
+        className="mt-3 w-full rounded-xl border border-white/10 bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
+      />
+      {error && (
+        <p role="alert" className="mt-2 text-sm font-semibold text-danger">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={value.trim().length === 0}
+        className="mt-4 w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+      >
+        Continue
+      </button>
+    </BottomSheet>
+  )
+}
+
+function ImportRecipeSheet({
+  code,
+  onClose,
+  onAdded,
+}: {
+  code: string
+  onClose: () => void
+  onAdded: () => Promise<void>
+}) {
+  const decoded = useMemo(() => decodeRecipe(code), [code])
+  const [items, setItems] = useState<RecipeItem[] | null>(null)
+  const [missing, setMissing] = useState(0)
+  const [name, setName] = useState(decoded?.name ?? '')
+  const [error, setError] = useState<string | null>(decoded ? null : "That recipe link isn't valid.")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!decoded) return
+    let cancelled = false
+    loadSharedItems(decoded.entries)
+      .then((r) => {
+        if (cancelled) return
+        setItems(r.items)
+        setMissing(r.missing)
+        if (r.items.length === 0) setError('None of this recipe\'s items are available anymore.')
+      })
+      .catch(() => {
+        if (!cancelled) setError('Could not load this recipe. Check your connection and try again.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [decoded])
+
+  const canAdd = !!items && items.length > 0 && name.trim().length > 0 && !saving
+
+  const add = async () => {
+    if (!canAdd || !items) return
+    setSaving(true)
+    setError(null)
+    try {
+      await saveRecipe(null, name, items)
+      await onAdded()
+      onClose()
+    } catch (e) {
+      setError((e as { message?: string })?.message || 'Could not add the recipe.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <BottomSheet onClose={onClose} labelledBy="import-recipe-title" className="bg-surface-2 max-h-[90dvh]">
+      <div className="flex items-center justify-between gap-2">
+        <h2 id="import-recipe-title" className="text-xl font-bold tracking-tight text-fg min-w-0">
+          Add a friend&apos;s recipe
+        </h2>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={add}
+            disabled={!canAdd}
+            className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] min-h-btn px-4 rounded-xl bg-gold text-sm font-semibold text-on-gold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+          >
+            {saving ? 'Adding…' : 'Add'}
+          </button>
+          <SheetCloseButton
+            aria-label="Close"
+            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+          >
+            <X size={20} />
+          </SheetCloseButton>
+        </div>
+      </div>
+
+      {decoded && (
+        <label className="block mt-4 text-xs font-semibold text-fg-muted">
+          Name
+          <input
+            type="text"
+            value={name}
+            maxLength={MAX_RECIPE_NAME}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-white/10 bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
+          />
+        </label>
+      )}
+
+      {!items && !error && (
+        <p className="text-sm text-fg-muted mt-4" role="status">
+          Loading recipe…
+        </p>
+      )}
+
+      {items && items.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-fg-muted">Ingredients</p>
+          <ul className="mt-1 divide-y divide-white/10">
+            {items.map((i) => (
+              <li key={i.recipe_id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 break-words font-semibold text-fg">{i.name}</span>
+                <span className="shrink-0 font-bold tabular-nums text-gold">{i.servings}×</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs font-semibold text-fg-muted">Total</span>
+            <MacroChips t={recipeTotals(items)} />
+          </div>
+          {missing > 0 && (
+            <p className="mt-2 text-11 font-semibold text-macro-fat">
+              {missing} ingredient{missing !== 1 ? 's are' : ' is'} no longer available and left out.
+            </p>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-3 text-sm font-semibold text-danger">
+          {error}
+        </p>
+      )}
+    </BottomSheet>
   )
 }
 

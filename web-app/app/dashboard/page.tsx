@@ -7,7 +7,10 @@ import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
 import RecipesTab from './RecipesTab'
-import type { Recipe } from '@/lib/recipes'
+import { PENDING_RECIPE_STORAGE_KEY } from '@/lib/recipeShare'
+import { MEAL_ORDER, fetchTodayDishes, type TodayDish } from '@/lib/favoriteAlerts'
+import WeeklySummaryCard from './WeeklySummaryCard'
+import type { Recipe, RecipeItem } from '@/lib/recipes'
 import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
@@ -73,11 +76,15 @@ interface MealLog {
   dining_hall: string
   meal_type: string
   log_date: string // YYYY-MM-DD
+  food_item_id?: string
   food_items: {
+    recipe_id?: string
     name: string
+    portion?: string
     calories: number
     protein: number
     carbs: number
+    sugar?: number
     fat: number
   }
 }
@@ -130,6 +137,10 @@ const RING_SPARKLE_COLORS = { cal: '#d8b61c', protein: '#5bb448', carbs: '#d17cc
 // "Close my rings" macro chips: saved selection key + chip labels
 const SUGGEST_FOCUS_STORAGE_KEY = 'ucsc_suggest_focus'
 const MACRO_CHIP_LABELS: Record<MacroKey, string> = { calories: 'Calories', protein: 'Protein', carbs: 'Carbs', fat: 'Fat' }
+// "Save this meal as a recipe?" dismissals (per day) and the favorite-alert banner's last-dismissed day
+const RECIPE_OFFER_STORAGE_KEY = 'ucsc_recipe_offer_dismissed'
+const FAV_ALERT_STORAGE_KEY = 'ucsc_fav_alert_dismissed'
+
 // "This meal" (sized by MEAL_SHARES) or "Rest of day" (everything left)
 type SuggestScope = 'meal' | 'day'
 const SUGGEST_SCOPE_STORAGE_KEY = 'ucsc_suggest_scope'
@@ -563,6 +574,16 @@ export default function DashboardPage() {
   // Favorites chip: show only the student's hearted dishes
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const favorites = useFavorites()
+  // "Save this meal as a recipe?" offer: meals already dismissed today, the
+  // ingredients to prefill the Recipes builder, and a share code from a link
+  const [offerDismissed, setOfferDismissed] = useState<string[]>([])
+  const [recipePrefill, setRecipePrefill] = useState<{ key: number; name: string; items: RecipeItem[] } | null>(null)
+  const [incomingRecipeCode, setIncomingRecipeCode] = useState<string | null>(null)
+  // Favorites on today's menus: everything served today, the day the banner
+  // was dismissed, and the list sheet
+  const [todayDishes, setTodayDishes] = useState<TodayDish[]>([])
+  const [favAlertDismissedDay, setFavAlertDismissedDay] = useState<string | null>(null)
+  const [isFavSheetOpen, setIsFavSheetOpen] = useState(false)
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
   const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
   // "Close my rings": whether the student has ever saved targets (until
@@ -1047,6 +1068,158 @@ export default function DashboardPage() {
     }
     fetchProfile()
   }, [])
+
+  // Remember which meals' "save as recipe" offers were dismissed today, and
+  // when the favorite-alert banner was last dismissed
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECIPE_OFFER_STORAGE_KEY)
+      const parsed = raw ? (JSON.parse(raw) as { date?: string; meals?: string[] }) : null
+      if (parsed?.date === logDateFor(new Date()) && Array.isArray(parsed.meals)) setOfferDismissed(parsed.meals)
+      setFavAlertDismissedDay(localStorage.getItem(FAV_ALERT_STORAGE_KEY))
+    } catch {
+      // Storage blocked: the banners just show again next visit
+    }
+  }, [])
+
+  const dismissRecipeOffer = (meal: string) => {
+    setOfferDismissed((prev) => {
+      if (prev.includes(meal)) return prev
+      const next = [...prev, meal]
+      try {
+        localStorage.setItem(RECIPE_OFFER_STORAGE_KEY, JSON.stringify({ date: logDateFor(new Date()), meals: next }))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
+
+  // A shared recipe link (…/dashboard?recipe=CODE) is stashed first, so it
+  // survives signing in; then it opens the "add a friend's recipe" sheet
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('recipe')
+      if (code) {
+        localStorage.setItem(PENDING_RECIPE_STORAGE_KEY, code)
+        params.delete('recipe')
+        const query = params.toString()
+        window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash)
+      }
+    } catch {
+      return
+    }
+    ;(async () => {
+      let pending: string | null = null
+      try {
+        pending = localStorage.getItem(PENDING_RECIPE_STORAGE_KEY)
+      } catch {
+        return
+      }
+      if (!pending) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return // keep it until they've signed in
+      try {
+        localStorage.removeItem(PENDING_RECIPE_STORAGE_KEY)
+      } catch {
+        // ignore
+      }
+      setIncomingRecipeCode(pending)
+      setActiveTab('recipes')
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Today's dishes at every dining hall, for the favorite alert (a moment
+  // after the dashboard opens, behind the Browse preload)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchTodayDishes(DINING_HALL_NAMES, logDateFor(new Date()))
+        .then(setTodayDishes)
+        .catch(() => {})
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Favorites on today's menus, leaving out meal periods already over at
+  // that hall
+  const favoriteAlerts = useMemo(() => {
+    if (favorites.size === 0) return []
+    const rank = (meal: string) => MEAL_ORDER.indexOf(meal)
+    return todayDishes
+      .filter((d) => {
+        if (!favorites.has(favoriteKey(d.name))) return false
+        const current = getCurrentMealPeriodLabel(d.hall)
+        return !(current && rank(d.meal) !== -1 && rank(current) !== -1 && rank(d.meal) < rank(current === 'Brunch' ? 'Lunch' : current))
+      })
+      .sort((a, b) => rank(a.meal) - rank(b.meal) || a.name.localeCompare(b.name) || a.hall.localeCompare(b.hall))
+  }, [todayDishes, favorites])
+
+  const favBannerText = useMemo(() => {
+    if (favoriteAlerts.length === 0) return ''
+    const names = Array.from(new Set(favoriteAlerts.map((d) => d.name.toLowerCase())))
+    const hallName = (h: string) => h.replace(/ Dining Hall$/, '')
+    if (names.length === 1) {
+      const first = favoriteAlerts[0]
+      const others = favoriteAlerts.length - 1
+      return `Your favorite ${first.name} is at ${hallName(first.hall)} for ${first.meal.toLowerCase()}${others > 0 ? ` and ${others} other spot${others !== 1 ? 's' : ''}` : ''}`
+    }
+    const more = names.length - 1
+    return `${favoriteAlerts[0].name} and ${more} more favorite${more !== 1 ? 's' : ''} are on today's menus`
+  }, [favoriteAlerts])
+
+  const showFavAlert =
+    activeTab === 'log' && selectedDayOffset === 0 && favoriteAlerts.length > 0 && favAlertDismissedDay !== logDateFor(new Date())
+
+  const dismissFavAlert = () => {
+    const today = logDateFor(new Date())
+    setFavAlertDismissedDay(today)
+    try {
+      localStorage.setItem(FAV_ALERT_STORAGE_KEY, today)
+    } catch {
+      // ignore
+    }
+  }
+
+  // After 3+ different items under one meal today, offer to save them as a recipe
+  const recipeOffer = useMemo(() => {
+    const byMeal = new Map<string, Map<string, RecipeItem>>()
+    for (const log of loggedMeals) {
+      if (hiddenLogIds.includes(log.id)) continue
+      const food = log.food_items
+      const id = log.food_item_id ?? food?.recipe_id
+      if (!id || !food) continue
+      const items = byMeal.get(log.meal_type) ?? new Map<string, RecipeItem>()
+      const existing = items.get(id)
+      const servings = Number(log.servings) || 1
+      if (existing) existing.servings += servings
+      else
+        items.set(id, {
+          recipe_id: id,
+          name: food.name,
+          portion: food.portion || '1 serving',
+          servings,
+          calories: Number(food.calories) || 0,
+          protein: Number(food.protein) || 0,
+          carbs: Number(food.carbs) || 0,
+          fat: Number(food.fat) || 0,
+          sugar: Number(food.sugar) || 0,
+        })
+      byMeal.set(log.meal_type, items)
+    }
+    let best: { meal: string; items: RecipeItem[] } | null = null
+    for (const [meal, items] of byMeal) {
+      if (offerDismissed.includes(meal) || items.size < 3) continue
+      if (!best || items.size > best.items.length) {
+        best = {
+          meal,
+          items: Array.from(items.values()).map((i) => ({ ...i, servings: Math.min(4, Math.max(0.25, i.servings)) })),
+        }
+      }
+    }
+    return best
+  }, [loggedMeals, hiddenLogIds, offerDismissed])
 
   // Quietly load the Browse list a moment after the dashboard opens so the
   // tab is already ready by the time it's tapped
@@ -1534,7 +1707,8 @@ export default function DashboardPage() {
         dining_hall,
         meal_type,
         log_date,
-        food_items:food_item_id (name, calories, protein, carbs, fat)
+        food_item_id,
+        food_items:food_item_id (recipe_id, name, portion, calories, protein, carbs, sugar, fat)
       `)
       .eq('user_id', user.id)
       .eq('log_date', todayStr)
@@ -1975,6 +2149,8 @@ export default function DashboardPage() {
       logged++
     }
     if (logged > 0) {
+      // The meal is already a recipe, so don't offer to save it again
+      dismissRecipeOffer(meal)
       showToast(
         logged === recipe.items.length
           ? `Logged ${recipe.name}`
@@ -2160,6 +2336,64 @@ export default function DashboardPage() {
                 preview={servingPreview ? (servingPreview.food[m.key] || 0) * servingPreview.servings : 0}
               />
             ))}
+          </div>
+        )}
+
+        {/* A favorite is being served today */}
+        {showFavAlert && (
+          <div className="rounded-2xl pl-4 pr-2 py-2 mb-3 min-h-tap flex items-center gap-2 bg-surface border border-macro-fat/30">
+            <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => {
+                setIsFavSheetOpen(true)
+                Haptics.selectionChanged().catch(() => {})
+              }}
+              className="flex-1 min-w-0 text-left text-sm font-semibold text-fg"
+              aria-haspopup="dialog"
+            >
+              {favBannerText}
+              <span className="block text-xs font-medium text-fg-muted">Tap to see where</span>
+            </button>
+            <button
+              type="button"
+              onClick={dismissFavAlert}
+              aria-label="Dismiss favorites alert"
+              className="relative shrink-0 size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {/* Offer to save what was just logged as a recipe */}
+        {recipeOffer && (activeTab === 'log' || activeTab === 'browse') && (
+          <div className="rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 bg-surface border border-gold/30">
+            <ChefHat size={20} className="shrink-0 text-gold" aria-hidden="true" />
+            <p className="flex-1 min-w-0 text-sm font-semibold text-fg">
+              You logged {recipeOffer.items.length} items for {recipeOffer.meal.toLowerCase()}. Save this as a recipe?
+            </p>
+            <div className="shrink-0 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecipePrefill({ key: Date.now(), name: '', items: recipeOffer.items })
+                  dismissRecipeOffer(recipeOffer.meal)
+                  setActiveTab('recipes')
+                  Haptics.selectionChanged().catch(() => {})
+                }}
+                className="min-h-btn px-3 rounded-xl bg-gold text-xs font-bold text-on-gold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => dismissRecipeOffer(recipeOffer.meal)}
+                className="text-11 font-semibold text-fg-muted hover:text-fg press active:scale-95"
+              >
+                Not now
+              </button>
+            </div>
           </div>
         )}
 
@@ -2783,6 +3017,11 @@ export default function DashboardPage() {
             foodMatchesDietaryPreference={foodMatchesDietaryPreference}
             defaultMeal={getCurrentMealPeriodLabel(DINING_HALLS[0]) || selectedMeal}
             onLogRecipe={handleLogRecipe}
+            prefill={recipePrefill}
+            onPrefillHandled={() => setRecipePrefill(null)}
+            incomingCode={incomingRecipeCode}
+            onIncomingHandled={() => setIncomingRecipeCode(null)}
+            onNotify={showToast}
           />
         ) : activeTab === 'browse' ? (
           /* BROWSE TAB -- every item from the five dining halls */
@@ -3072,6 +3311,18 @@ export default function DashboardPage() {
                 )
               })()}
             </div>
+
+            {/* Last 7 days: averages, best day, days on target */}
+            {!showCalendar && (
+              <WeeklySummaryCard
+                logs={historicalLogs}
+                goalCalories={goalCalories}
+                goalProtein={goalProtein}
+                targetsSaved={targetsSaved}
+                todayStr={logDateFor(new Date())}
+                loaded={totalsLoaded}
+              />
+            )}
           </div>
         )}
       </div>
@@ -3468,6 +3719,42 @@ export default function DashboardPage() {
               Done
             </SheetCloseButton>
           </div>
+        </BottomSheet>
+      )}
+
+      {/* Favorites being served today -- tap one to jump to that hall and meal */}
+      {isFavSheetOpen && (
+        <BottomSheet onClose={() => setIsFavSheetOpen(false)} labelledBy="fav-sheet-title">
+          <h2 id="fav-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-1">
+            Your favorites today
+          </h2>
+          <p className="text-sm text-fg-muted mb-3">Tap one to open that menu.</p>
+          <ul className="divide-y divide-white/10">
+            {favoriteAlerts.map((d) => (
+              <li key={`${d.name}|${d.hall}|${d.meal}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDayOffset(0)
+                    setSelectedHall(d.hall)
+                    setSelectedMeal(d.meal)
+                    setActiveStationFilters([])
+                    setSearchQuery(d.name)
+                    setActiveTab('log')
+                    setIsFavSheetOpen(false)
+                    Haptics.selectionChanged().catch(() => {})
+                  }}
+                  className="w-full py-3 flex items-center justify-between gap-3 text-left press active:opacity-70"
+                >
+                  <span className="min-w-0 font-semibold text-fg break-words">{d.name}</span>
+                  <span className="shrink-0 text-xs font-semibold text-fg-muted text-right">
+                    {d.hall.replace(/ Dining Hall$/, '')}
+                    <span className="block text-sky">{d.meal}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </BottomSheet>
       )}
 
