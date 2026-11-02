@@ -221,6 +221,8 @@ export default function RecipesTab({
 
   return (
     <div className="space-y-6">
+      <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} defaultMeal={defaultMeal} />
+
       <div className="rounded-2xl p-5 space-y-4 bg-surface border border-white/10">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -256,8 +258,6 @@ export default function RecipesTab({
             </div>
           )}
         </div>
-
-        <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} defaultMeal={defaultMeal} />
 
         <div>
           <p className="text-xs font-semibold text-fg-muted">Log to</p>
@@ -949,41 +949,40 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
   }
 
   return (
-    <section aria-label="Favorites" className="rounded-xl bg-surface-2 border border-white/10">
-      <div className="flex items-center">
+    <section aria-label="Favorites" className="rounded-2xl bg-surface border border-white/10">
+      <div className="flex items-center pr-2">
         <button
           type="button"
           onClick={toggle}
           aria-expanded={open}
           aria-controls="favorites-list"
-          className="flex-1 min-w-0 flex items-center gap-2 px-3 min-h-tap text-left press active:opacity-70"
+          className="flex-1 min-w-0 flex items-center gap-2 pl-5 pr-2 min-h-[3.5rem] text-left press active:opacity-70"
         >
-          <Heart size={16} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
-          <span className="font-semibold text-fg">Favorites</span>
-          <span className="rounded-md px-1.5 text-11 font-bold tabular-nums bg-macro-fat/15 text-macro-fat">{allEntries.length}</span>
-          {!open && (
-            <ChevronDown size={16} className="ml-auto shrink-0 text-fg-muted" aria-hidden="true" />
-          )}
+          <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
+          <h2 className="text-lg font-bold tracking-tight text-fg">Favorites</h2>
+          <span className="text-sm font-semibold tabular-nums text-fg-muted">{allEntries.length}</span>
+          {!open && <ChevronDown size={18} className="ml-auto shrink-0 text-fg-muted" aria-hidden="true" />}
         </button>
         {open && (
           <button
             type="button"
             onClick={toggle}
             aria-label="Close favorites"
-            className="relative shrink-0 size-8 mr-1.5 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
+            className="relative shrink-0 size-9 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
           >
-            <X size={18} aria-hidden="true" />
+            <X size={20} aria-hidden="true" />
           </button>
         )}
       </div>
 
       {open && (
-        <div id="favorites-list" className="px-3 pb-3 animate-row-in">
+        <div id="favorites-list" className="px-5 pb-4 animate-row-in">
           {allEntries.length === 0 ? (
-            <p className="text-sm text-fg-muted py-2 text-balance">Tap the heart on any item to save it here.</p>
+            <p className="text-sm text-fg-muted text-balance">Tap the heart on any item to save it here.</p>
           ) : (
             <>
-              <div role="radiogroup" aria-label="Show favorites served at" className="flex flex-wrap gap-1.5 pb-2">
+              {/* Plain text tabs: the picked meal is gold with an underline */}
+              <div role="radiogroup" aria-label="Show favorites served at" className="flex flex-wrap gap-x-5 gap-y-1 border-b border-white/10">
                 {['All', ...MEALS].map((m) => (
                   <button
                     key={m}
@@ -994,9 +993,9 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
                       setMealFilter(m)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`relative after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${mealFilter === m
-                      ? 'bg-gold/15 text-gold border-gold/40'
-                      : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                    className={`relative -mb-px py-2 text-sm font-bold border-b-2 press active:opacity-70 after:absolute after:-inset-x-1 after:inset-y-0 after:content-[''] ${mealFilter === m
+                      ? 'text-gold border-gold'
+                      : 'text-fg-muted hover:text-fg border-transparent'
                       }`}
                   >
                     {m}
@@ -1005,9 +1004,9 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
               </div>
 
               {mealFilter !== 'All' && !todayDishes ? (
-                <p className="text-sm text-fg-muted py-2" role="status">Checking today&apos;s menus…</p>
+                <p className="text-sm text-fg-muted pt-3" role="status">Checking today&apos;s menus…</p>
               ) : entries.length === 0 ? (
-                <p className="text-sm text-fg-muted py-2 text-balance">
+                <p className="text-sm text-fg-muted pt-3 text-balance">
                   None of your favorites are served at {mealFilter.toLowerCase()} today.
                 </p>
               ) : (
@@ -1017,33 +1016,29 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
                     return (
                       <li key={key} className="py-3 flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-fg break-words">{name}</p>
+                          <p className="font-semibold text-fg break-words">{name}</p>
                           {item && (
-                            <p className="text-11 text-fg-muted tabular-nums mt-0.5">
+                            <p className="text-xs text-fg-muted tabular-nums">
                               {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g
                             </p>
                           )}
                           {!todayDishes ? (
-                            <p className="text-11 text-fg-muted mt-1.5 min-h-[1rem]">Checking today&apos;s menus…</p>
+                            <p className="text-xs text-fg-muted mt-1 min-h-[1rem]">Checking today&apos;s menus…</p>
                           ) : spots.length > 0 ? (
-                            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                            <ul className="mt-1 space-y-0.5">
                               {spots.map((spot) => (
-                                <li
-                                  key={`${spot.hall}|${spot.meal}`}
-                                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 leading-tight"
-                                >
-                                  <span className="block text-11 font-semibold text-fg">
-                                    {spot.hall.replace(/ Dining Hall$/, '')}
-                                  </span>
-                                  <span className="block text-11 font-medium text-sky tabular-nums">
+                                <li key={`${spot.hall}|${spot.meal}`} className="text-xs text-fg-subtle">
+                                  {spot.hall.replace(/ Dining Hall$/, '')}
+                                  <span className="text-sky tabular-nums">
+                                    {' · '}
                                     {spot.meal}
-                                    {spot.times ? ` · ${spot.times}` : ''}
+                                    {spot.times ? ` ${spot.times}` : ''}
                                   </span>
                                 </li>
                               ))}
                             </ul>
                           ) : (
-                            <p className="text-11 text-fg-muted mt-1.5">Not on today&apos;s menus</p>
+                            <p className="text-xs text-fg-muted mt-1">Not on today&apos;s menus</p>
                           )}
                         </div>
                         <FavoriteButton name={name} />
