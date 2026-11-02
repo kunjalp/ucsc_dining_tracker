@@ -6,7 +6,9 @@ import { Haptics, NotificationType } from '@capacitor/haptics'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy from '../components/Sammy'
 import FavoriteButton from '../components/FavoriteButton'
-import { useFavorites } from '@/lib/favorites'
+import { favoriteKey, useFavorites } from '@/lib/favorites'
+import { fetchTodayDishes, MEAL_ORDER, type TodayDish } from '@/lib/favoriteAlerts'
+import { getMealPeriodTimes } from '@/lib/diningHours'
 import { getCatalogue, peekCatalogue, type BrowseFood, type BrowseItem } from './BrowseTab'
 import {
   MAX_RECIPES,
@@ -255,7 +257,7 @@ export default function RecipesTab({
           )}
         </div>
 
-        <FavoritesSection catalogue={catalogue} />
+        <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} />
 
         <div>
           <p className="text-xs font-semibold text-fg-muted">Log to</p>
@@ -880,9 +882,41 @@ function RecipeBuilder({
 
 // "Favorites": a collapsed row that opens into the student's whole favorites
 // list. The X (or tapping the header) folds it back up.
-function FavoritesSection({ catalogue }: { catalogue: BrowseItem[] | null }) {
+function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] | null; diningHalls: string[] }) {
   const favorites = useFavorites()
   const [open, setOpen] = useState(false)
+  const [todayDishes, setTodayDishes] = useState<TodayDish[] | null>(null)
+
+  // Where and when each favorite is served today (loaded the first time the
+  // list is opened; cached for the day)
+  useEffect(() => {
+    if (!open || todayDishes) return
+    let cancelled = false
+    fetchTodayDishes(diningHalls, new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }))
+      .then((d) => {
+        if (!cancelled) setTodayDishes(d)
+      })
+      .catch(() => {
+        if (!cancelled) setTodayDishes([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, todayDishes, diningHalls])
+
+  const spotsByKey = useMemo(() => {
+    const map = new Map<string, { hall: string; meal: string; times: string | null }[]>()
+    for (const d of todayDishes ?? []) {
+      const key = favoriteKey(d.name)
+      const list = map.get(key) ?? []
+      list.push({ hall: d.hall, meal: d.meal, times: getMealPeriodTimes(d.hall, d.meal) })
+      map.set(key, list)
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => MEAL_ORDER.indexOf(a.meal) - MEAL_ORDER.indexOf(b.meal) || a.hall.localeCompare(b.hall))
+    }
+    return map
+  }, [todayDishes])
 
   const entries = useMemo(() => {
     const byName = new Map<string, BrowseItem>()
@@ -935,7 +969,7 @@ function FavoritesSection({ catalogue }: { catalogue: BrowseItem[] | null }) {
       {open && (
         <div id="favorites-list" className="px-3 pb-3 animate-row-in">
           {entries.length === 0 ? (
-            <p className="text-sm text-fg-muted py-2">Tap the heart on any item in Menu or Browse to add favorites.</p>
+            <p className="text-sm text-fg-muted py-2 text-balance">Tap the heart on any item to save it here.</p>
           ) : (
             <ul className="max-h-[22rem] overflow-y-auto overscroll-contain divide-y divide-white/10">
               {entries.map(({ key, name, item }) => (
@@ -944,11 +978,22 @@ function FavoritesSection({ catalogue }: { catalogue: BrowseItem[] | null }) {
                     <p className="text-sm font-semibold text-fg break-words">{name}</p>
                     {item && (
                       <p className="text-11 text-fg-muted tabular-nums">
-                        {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g ·{' '}
-                        <span className={item.onToday ? 'font-semibold text-macro-protein' : ''}>
-                          {item.onToday ? "On today's menu" : "Not on today's menu"}
-                        </span>
+                        {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g
                       </p>
+                    )}
+                    {!todayDishes ? (
+                      <p className="text-11 text-fg-muted">Checking today&apos;s menus…</p>
+                    ) : (spotsByKey.get(key)?.length ?? 0) > 0 ? (
+                      <ul className="mt-0.5 space-y-0.5">
+                        {spotsByKey.get(key)!.map((spot) => (
+                          <li key={`${spot.hall}|${spot.meal}`} className="text-11 font-semibold text-macro-protein">
+                            Today: {spot.hall.replace(/ Dining Hall$/, '')} · {spot.meal}
+                            {spot.times ? ` (${spot.times})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-11 text-fg-muted">Not on today&apos;s menus</p>
                     )}
                   </div>
                   <FavoriteButton name={name} />

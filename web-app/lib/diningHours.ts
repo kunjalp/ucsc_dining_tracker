@@ -694,6 +694,23 @@ export function getDayTrack(hallName: string, now: Date = new Date(), dayOffset:
   }
 }
 
+/**
+ * The clock times a meal period is served at a hall today, e.g. "11am–2pm".
+ * Weekend "Brunch" covers the scraped Breakfast and Lunch menus. Null when the
+ * hall has no published schedule for that meal today.
+ */
+export function getMealPeriodTimes(hallName: string, meal: string, now: Date = new Date()): string | null {
+  const schedule = MEAL_PERIOD_SCHEDULES[hallName]
+  if (!schedule) return null
+  const { dayOfWeek } = getPacificParts(now)
+  const periods = schedule[dayOfWeek]
+  if (!periods) return null
+  const period =
+    periods.find((p) => p.label === meal) ??
+    (meal === 'Breakfast' || meal === 'Lunch' ? periods.find((p) => p.label === 'Brunch') : undefined)
+  return period ? `${formatTimeShort(period.start)}–${formatTimeShort(period.end)}` : null
+}
+
 function getPacificParts(now: Date) {
   // en-CA gives YYYY-MM-DD directly, which is exactly what we need as a key
   const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
