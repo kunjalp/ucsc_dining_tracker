@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChefHat, Link2, Minus, Pencil, Plus, Search, Share2, Trash2, X } from 'lucide-react'
+import { Check, ChefHat, ChevronDown, Heart, Link2, Minus, Pencil, Plus, Search, Share2, Trash2, X } from 'lucide-react'
 import { Haptics, NotificationType } from '@capacitor/haptics'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy from '../components/Sammy'
+import FavoriteButton from '../components/FavoriteButton'
+import { useFavorites } from '@/lib/favorites'
 import { getCatalogue, peekCatalogue, type BrowseFood, type BrowseItem } from './BrowseTab'
 import {
   MAX_RECIPES,
@@ -252,6 +254,8 @@ export default function RecipesTab({
             </div>
           )}
         </div>
+
+        <FavoritesSection catalogue={catalogue} />
 
         <div>
           <p className="text-xs font-semibold text-fg-muted">Log to</p>
@@ -871,5 +875,89 @@ function RecipeBuilder({
         </div>
       )}
     </BottomSheet>
+  )
+}
+
+// "Favorites": a collapsed row that opens into the student's whole favorites
+// list. The X (or tapping the header) folds it back up.
+function FavoritesSection({ catalogue }: { catalogue: BrowseItem[] | null }) {
+  const favorites = useFavorites()
+  const [open, setOpen] = useState(false)
+
+  const entries = useMemo(() => {
+    const byName = new Map<string, BrowseItem>()
+    for (const it of catalogue ?? []) {
+      const key = it.food.name.trim().toLowerCase()
+      if (!byName.has(key)) byName.set(key, it)
+    }
+    return Array.from(favorites)
+      .map((key) => {
+        const found = byName.get(key)
+        return { key, name: found?.food.name ?? key.replace(/^./, (c) => c.toUpperCase()), item: found }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [favorites, catalogue])
+
+  const toggle = () => {
+    setOpen((o) => !o)
+    Haptics.selectionChanged().catch(() => {})
+  }
+
+  return (
+    <section aria-label="Favorites" className="rounded-xl bg-surface-2 border border-white/10">
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls="favorites-list"
+          className="flex-1 min-w-0 flex items-center gap-2 px-3 min-h-tap text-left press active:opacity-70"
+        >
+          <Heart size={16} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
+          <span className="font-semibold text-fg">Favorites</span>
+          <span className="rounded-md px-1.5 text-11 font-bold tabular-nums bg-macro-fat/15 text-macro-fat">{entries.length}</span>
+          {!open && (
+            <ChevronDown size={16} className="ml-auto shrink-0 text-fg-muted" aria-hidden="true" />
+          )}
+        </button>
+        {open && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Close favorites"
+            className="relative shrink-0 size-8 mr-1.5 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div id="favorites-list" className="px-3 pb-3 animate-row-in">
+          {entries.length === 0 ? (
+            <p className="text-sm text-fg-muted py-2">Tap the heart on any item in Menu or Browse to add favorites.</p>
+          ) : (
+            <ul className="max-h-[22rem] overflow-y-auto overscroll-contain divide-y divide-white/10">
+              {entries.map(({ key, name, item }) => (
+                <li key={key} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-fg break-words">{name}</p>
+                    {item && (
+                      <p className="text-11 text-fg-muted tabular-nums">
+                        {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g ·{' '}
+                        <span className={item.onToday ? 'font-semibold text-macro-protein' : ''}>
+                          {item.onToday ? "On today's menu" : "Not on today's menu"}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <FavoriteButton name={name} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
