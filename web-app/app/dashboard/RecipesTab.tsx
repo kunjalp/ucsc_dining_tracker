@@ -257,7 +257,7 @@ export default function RecipesTab({
           )}
         </div>
 
-        <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} />
+        <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} defaultMeal={defaultMeal} />
 
         <div>
           <p className="text-xs font-semibold text-fg-muted">Log to</p>
@@ -882,9 +882,12 @@ function RecipeBuilder({
 
 // "Favorites": a collapsed row that opens into the student's whole favorites
 // list. The X (or tapping the header) folds it back up.
-function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] | null; diningHalls: string[] }) {
+function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: BrowseItem[] | null; diningHalls: string[]; defaultMeal: string }) {
   const favorites = useFavorites()
   const [open, setOpen] = useState(false)
+  // Which meal's favorites to show: starts on the meal it is right now when
+  // the student opens the app, or everything if no meal is being served
+  const [mealFilter, setMealFilter] = useState<string>(MEALS.includes(defaultMeal) ? defaultMeal : 'All')
   const [todayDishes, setTodayDishes] = useState<TodayDish[] | null>(null)
 
   // Where and when each favorite is served today (loaded the first time the
@@ -918,7 +921,7 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
     return map
   }, [todayDishes])
 
-  const entries = useMemo(() => {
+  const allEntries = useMemo(() => {
     const byName = new Map<string, BrowseItem>()
     for (const it of catalogue ?? []) {
       const key = it.food.name.trim().toLowerCase()
@@ -931,6 +934,14 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
       })
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [favorites, catalogue])
+
+  // With a meal picked, only favorites served at that meal today (the spots
+  // shown on each row are narrowed to that meal too)
+  const entries = useMemo(() => {
+    if (mealFilter === 'All') return allEntries
+    if (!todayDishes) return []
+    return allEntries.filter(({ key }) => (spotsByKey.get(key) ?? []).some((spot) => spot.meal === mealFilter))
+  }, [allEntries, mealFilter, todayDishes, spotsByKey])
 
   const toggle = () => {
     setOpen((o) => !o)
@@ -949,7 +960,7 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
         >
           <Heart size={16} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
           <span className="font-semibold text-fg">Favorites</span>
-          <span className="rounded-md px-1.5 text-11 font-bold tabular-nums bg-macro-fat/15 text-macro-fat">{entries.length}</span>
+          <span className="rounded-md px-1.5 text-11 font-bold tabular-nums bg-macro-fat/15 text-macro-fat">{allEntries.length}</span>
           {!open && (
             <ChevronDown size={16} className="ml-auto shrink-0 text-fg-muted" aria-hidden="true" />
           )}
@@ -968,38 +979,80 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
 
       {open && (
         <div id="favorites-list" className="px-3 pb-3 animate-row-in">
-          {entries.length === 0 ? (
+          {allEntries.length === 0 ? (
             <p className="text-sm text-fg-muted py-2 text-balance">Tap the heart on any item to save it here.</p>
           ) : (
-            <ul className="divide-y divide-white/10">
-              {entries.map(({ key, name, item }) => (
-                <li key={key} className="py-2.5 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-fg break-words">{name}</p>
-                    {item && (
-                      <p className="text-11 text-fg-muted tabular-nums">
-                        {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g
-                      </p>
-                    )}
-                    {!todayDishes ? (
-                      <p className="text-11 text-fg-muted min-h-[1rem]">Checking today&apos;s menus…</p>
-                    ) : (spotsByKey.get(key)?.length ?? 0) > 0 ? (
-                      <ul className="mt-0.5 space-y-0.5">
-                        {spotsByKey.get(key)!.map((spot) => (
-                          <li key={`${spot.hall}|${spot.meal}`} className="text-11 font-semibold text-macro-protein">
-                            Today: {spot.hall.replace(/ Dining Hall$/, '')} · {spot.meal}
-                            {spot.times ? ` (${spot.times})` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-11 text-fg-muted">Not on today&apos;s menus</p>
-                    )}
-                  </div>
-                  <FavoriteButton name={name} />
-                </li>
-              ))}
-            </ul>
+            <>
+              <div role="radiogroup" aria-label="Show favorites served at" className="flex flex-wrap gap-1.5 pb-2">
+                {['All', ...MEALS].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mealFilter === m}
+                    onClick={() => {
+                      setMealFilter(m)
+                      Haptics.selectionChanged().catch(() => {})
+                    }}
+                    className={`relative after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${mealFilter === m
+                      ? 'bg-gold/15 text-gold border-gold/40'
+                      : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                      }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              {mealFilter !== 'All' && !todayDishes ? (
+                <p className="text-sm text-fg-muted py-2" role="status">Checking today&apos;s menus…</p>
+              ) : entries.length === 0 ? (
+                <p className="text-sm text-fg-muted py-2 text-balance">
+                  None of your favorites are served at {mealFilter.toLowerCase()} today.
+                </p>
+              ) : (
+                <ul className="divide-y divide-white/10">
+                  {entries.map(({ key, name, item }) => {
+                    const spots = (spotsByKey.get(key) ?? []).filter((spot) => mealFilter === 'All' || spot.meal === mealFilter)
+                    return (
+                      <li key={key} className="py-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-fg break-words">{name}</p>
+                          {item && (
+                            <p className="text-11 text-fg-muted tabular-nums mt-0.5">
+                              {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g
+                            </p>
+                          )}
+                          {!todayDishes ? (
+                            <p className="text-11 text-fg-muted mt-1.5 min-h-[1rem]">Checking today&apos;s menus…</p>
+                          ) : spots.length > 0 ? (
+                            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                              {spots.map((spot) => (
+                                <li
+                                  key={`${spot.hall}|${spot.meal}`}
+                                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 leading-tight"
+                                >
+                                  <span className="block text-11 font-semibold text-fg">
+                                    {spot.hall.replace(/ Dining Hall$/, '')}
+                                  </span>
+                                  <span className="block text-11 font-medium text-sky tabular-nums">
+                                    {spot.meal}
+                                    {spot.times ? ` · ${spot.times}` : ''}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-11 text-fg-muted mt-1.5">Not on today&apos;s menus</p>
+                          )}
+                        </div>
+                        <FavoriteButton name={name} />
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </div>
       )}
