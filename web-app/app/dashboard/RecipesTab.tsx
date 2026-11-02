@@ -971,7 +971,7 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
           {entries.length === 0 ? (
             <p className="text-sm text-fg-muted py-2 text-balance">Tap the heart on any item to save it here.</p>
           ) : (
-            <ul className="max-h-[22rem] overflow-y-auto overscroll-contain divide-y divide-white/10">
+            <ul className="divide-y divide-white/10">
               {entries.map(({ key, name, item }) => (
                 <li key={key} className="py-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -982,7 +982,7 @@ function FavoritesSection({ catalogue, diningHalls }: { catalogue: BrowseItem[] 
                       </p>
                     )}
                     {!todayDishes ? (
-                      <p className="text-11 text-fg-muted">Checking today&apos;s menus…</p>
+                      <p className="text-11 text-fg-muted min-h-[1rem]">Checking today&apos;s menus…</p>
                     ) : (spotsByKey.get(key)?.length ?? 0) > 0 ? (
                       <ul className="mt-0.5 space-y-0.5">
                         {spotsByKey.get(key)!.map((spot) => (
