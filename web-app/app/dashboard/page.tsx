@@ -16,9 +16,11 @@ import { suggestCombos, comboTotals, activeFocus, MACRO_KEYS, DEFAULT_FOCUS, SUG
 import { mealTarget, mealParts, comboSizeFor, DAY_COMBO_SIZE, MIN_MEAL_CALORIES } from '@/lib/mealShares'
 import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } from '@/lib/textSize'
 import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
+import { favoriteKey, loadFavoritesFromAccount, useFavorites } from '@/lib/favorites'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
+import FavoriteButton from '../components/FavoriteButton'
 import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
 import {
@@ -37,6 +39,7 @@ import {
   SlidersHorizontal,
   Minus,
   LayoutGrid,
+  Heart,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -554,6 +557,9 @@ export default function DashboardPage() {
 
   // SEARCH & STATION FILTER STATES
   const [searchQuery, setSearchQuery] = useState('')
+  // Favorites chip: show only the student's hearted dishes
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const favorites = useFavorites()
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
   const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
   // "Close my rings": whether the student has ever saved targets (until
@@ -1023,6 +1029,7 @@ export default function DashboardPage() {
         const savedMascot = user.user_metadata?.mascot_animations
         const mascotAnimations = typeof savedMascot === 'boolean' ? savedMascot : getLocalMascotAnimations()
         setLocalMascotAnimations(mascotAnimations)
+        loadFavoritesFromAccount(user.user_metadata?.favorites)
 
         setUserProfile({
           nickname: (user.user_metadata?.nickname as string) || '',
@@ -1400,6 +1407,8 @@ export default function DashboardPage() {
         (food.fat ?? 0) !== 0
       if (!hasNutrition) return false
 
+      if (favoritesOnly && !favorites.has(favoriteKey(food.name))) return false
+
       const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStation =
         activeStationFilters.length === 0 ||
@@ -1416,7 +1425,7 @@ export default function DashboardPage() {
       return true
     })
     return { filteredMenu: list, dietHiddenCount: hidden }
-  }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences, dietFilterOff])
+  }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences, dietFilterOff, favoritesOnly, favorites])
 
   // The filter row (diet chip, Stations button, selected stations) only
   // becomes a sideways scroller when its chips are actually wider than the
@@ -2487,7 +2496,7 @@ export default function DashboardPage() {
                         (after:-inset-2) pokes out vertically, giving the row a few
                         px of up/down/diagonal drag. No touch-action restriction, so
                         vertical swipes starting here still scroll the page. */}
-                    {(availableStations.length > 0 || dietHiddenCount > 0) && (
+                    {(
                       <div
                         ref={filterRowRef}
                         className={`flex items-center gap-2 pt-1 -mx-5 px-5 ${filterRowOverflows ? 'overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none' : ''}`}
@@ -2511,6 +2520,21 @@ export default function DashboardPage() {
                             </button>
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFavoritesOnly((on) => !on)
+                            Haptics.selectionChanged().catch(() => {})
+                          }}
+                          aria-pressed={favoritesOnly}
+                          className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
+                            ? 'bg-macro-fat/15 text-macro-fat border-macro-fat/40'
+                            : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                            }`}
+                        >
+                          <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+                          Favorites
+                        </button>
                         {availableStations.length > 0 && (
                           <button
                             type="button"
@@ -2597,7 +2621,9 @@ export default function DashboardPage() {
                       <Sammy mood={isClosedNow ? 'sleep' : 'idle'} size={3} />
                       {menu.length === 0
                         ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
-                        : dietHiddenCount > 0 && !dietFilterOff
+                        : favoritesOnly
+                          ? 'None of your favorites are on this menu. Tap the heart on an item to add one.'
+                          : dietHiddenCount > 0 && !dietFilterOff
                           ? 'No menu items match your search, station or dietary filters.'
                           : 'No menu items match your search or station filters.'}
                     </div>
@@ -2631,6 +2657,7 @@ export default function DashboardPage() {
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
                                       {/* Name, portion and macros are one tap target that opens the food sheet */}
+                                      <div className="flex items-start gap-1 min-w-0 sm:flex-1">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2640,7 +2667,7 @@ export default function DashboardPage() {
                                           Haptics.selectionChanged().catch(() => {})
                                         }}
                                         aria-label={`${food.name}, details`}
-                                        className="group min-w-0 sm:flex-1 text-left rounded-lg active:opacity-70"
+                                        className="group min-w-0 flex-1 text-left rounded-lg active:opacity-70"
                                       >
                                         <span className="flex items-start gap-1 font-semibold text-fg">
                                           <span className="min-w-0">{food.name}</span>
@@ -2658,6 +2685,8 @@ export default function DashboardPage() {
                                           <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(food.fat * rowServings)}g</span>
                                         </span>
                                       </button>
+                                      <FavoriteButton name={food.name} className="-mt-1" />
+                                      </div>
 
                                       <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
                                         <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
@@ -3385,7 +3414,8 @@ export default function DashboardPage() {
               <X size={20} />
             </SheetCloseButton>
 
-            <h2 id="food-detail-title" className="text-xl font-bold tracking-tight text-fg pr-10">
+            <FavoriteButton name={detailFood.name} className="absolute -top-0.5 right-12" />
+            <h2 id="food-detail-title" className="text-xl font-bold tracking-tight text-fg pr-20">
               {detailFood.name}
             </h2>
             <p className="text-sm text-fg-muted mt-1">

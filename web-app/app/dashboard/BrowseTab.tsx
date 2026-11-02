@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Check, ChevronRight, Heart, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
 import { classifyByName } from '@/lib/stationClassifier'
 import Sammy from '../components/Sammy'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
+import FavoriteButton from '../components/FavoriteButton'
+import { favoriteKey, useFavorites } from '@/lib/favorites'
 
 // Everything the Browse tab needs to show, filter and log an item. Matches
 // the FoodItem shape on the dashboard page (the page passes its own through).
@@ -206,6 +208,8 @@ export default function BrowseTab({
   const [meal, setMeal] = useState(MEALS.includes(defaultMeal) ? defaultMeal : 'Lunch')
   const [dietFilterOff, setDietFilterOff] = useState(false)
   const [activeStations, setActiveStations] = useState<string[]>([])
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const favorites = useFavorites()
   const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
   const [servings, setServings] = useState<Record<string, number>>({})
   const [visible, setVisible] = useState(PAGE_SIZE)
@@ -262,6 +266,7 @@ export default function BrowseTab({
     const out = items.filter((it) => {
       if (hallFilter && !it.halls.includes(hallFilter)) return false
       if (debounced && !it.food.name.toLowerCase().includes(debounced)) return false
+      if (favoritesOnly && !favorites.has(favoriteKey(it.food.name))) return false
       if (activeStations.length > 0 && !it.stations.some((st) => activeStations.includes(st))) return false
       const matchesDiet = dietaryPreferences.every((pref) => foodMatchesDietaryPreference(it.food, pref))
       if (!matchesDiet) {
@@ -275,12 +280,12 @@ export default function BrowseTab({
     else if (sort === 'calories') sorted.sort((a, b) => a.food.calories - b.food.calories || a.food.name.localeCompare(b.food.name))
     else if (sort === 'today') sorted.sort((a, b) => Number(b.onToday) - Number(a.onToday) || a.food.name.localeCompare(b.food.name))
     return { list: sorted, dietHidden: hidden }
-  }, [items, hallFilter, debounced, sort, activeStations, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
+  }, [items, hallFilter, debounced, sort, activeStations, favoritesOnly, favorites, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
 
   // Back to the top of the list whenever the filters change
   useEffect(() => {
     setVisible(PAGE_SIZE)
-  }, [hallFilter, debounced, sort, activeStations, dietFilterOff, dietaryPreferences])
+  }, [hallFilter, debounced, sort, activeStations, favoritesOnly, dietFilterOff, dietaryPreferences])
 
   // Log under the hall the student picked, else the hall serving it today,
   // else the first hall that has ever served it.
@@ -322,7 +327,7 @@ export default function BrowseTab({
         </div>
 
         {/* Dietary chip, Stations button and the selected stations, same as the Menu tab */}
-        {(dietaryPreferences.length > 0 || availableStations.length > 0) && (
+        {(
           <div className="flex flex-wrap items-center gap-2">
             {dietaryPreferences.length > 0 && (
             <div className="flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 max-w-full">
@@ -343,6 +348,21 @@ export default function BrowseTab({
               </button>
             </div>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                setFavoritesOnly((on) => !on)
+                Haptics.selectionChanged().catch(() => {})
+              }}
+              aria-pressed={favoritesOnly}
+              className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
+                ? 'bg-macro-fat/15 text-macro-fat border-macro-fat/40'
+                : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                }`}
+            >
+              <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+              Favorites
+            </button>
             {availableStations.length > 0 && (
               <button
                 type="button"
@@ -482,9 +502,11 @@ export default function BrowseTab({
             <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
               <Sammy mood="idle" size={3} />
               <p>
-                {dietHidden > 0 && !dietFilterOff
-                  ? 'No items match your search or dietary filters.'
-                  : 'No items match your search.'}
+                {favoritesOnly
+                  ? 'No favorites match. Tap the heart on an item to add one.'
+                  : dietHidden > 0 && !dietFilterOff
+                    ? 'No items match your search or dietary filters.'
+                    : 'No items match your search.'}
               </p>
             </div>
           ) : (
@@ -502,6 +524,7 @@ export default function BrowseTab({
                       className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
                       style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 8) * 35}ms` }}
                     >
+                      <div className="flex items-start gap-1 min-w-0 sm:flex-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -509,7 +532,7 @@ export default function BrowseTab({
                           Haptics.selectionChanged().catch(() => {})
                         }}
                         aria-label={`${food.name}, details`}
-                        className="group min-w-0 sm:flex-1 text-left rounded-lg active:opacity-70"
+                        className="group min-w-0 flex-1 text-left rounded-lg active:opacity-70"
                       >
                         <span className="flex items-start gap-1 font-semibold text-fg">
                           <span className="min-w-0">{food.name}</span>
@@ -534,6 +557,8 @@ export default function BrowseTab({
                           {it.halls.map(shortHall).join(', ')}
                         </span>
                       </button>
+                      <FavoriteButton name={food.name} className="-mt-1" />
+                      </div>
 
                       <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
                         <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
