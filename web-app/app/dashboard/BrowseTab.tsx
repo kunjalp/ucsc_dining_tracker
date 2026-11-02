@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, Search, X } from 'lucide-react'
+import { Check, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
+import { classifyByName } from '@/lib/stationClassifier'
 import Sammy from '../components/Sammy'
+import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 
 // Everything the Browse tab needs to show, filter and log an item. Matches
 // the FoodItem shape on the dashboard page (the page passes its own through).
@@ -25,6 +27,7 @@ export interface BrowseFood {
 interface BrowseItem {
   food: BrowseFood
   halls: string[] // dining halls (in the app's usual order) that have served it
+  stations: string[] // stations it has been served at, e.g. "Grill"
   onToday: boolean
   todayHalls: string[]
 }
@@ -63,6 +66,8 @@ const SORT_LABELS: Record<SortKey, string> = {
 }
 
 const shortHall = (hall: string) => hall.replace(/ Dining Hall$/, '')
+// Same cleanup the Menu tab applies to scraped station names ("-- Grill --")
+const cleanStation = (raw: string) => raw.replace(/--/g, '').trim()
 
 // Loaded once per app session; switching tabs back and forth is instant.
 let catalogueCache: BrowseItem[] | null = null
@@ -82,7 +87,7 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
 
     // 1. Which items each dining hall has ever served. Only the three small
     //    columns are fetched, in pages of 1000 (the API's per-request cap).
-    const menuCols = 'food_item_id, dining_hall, date'
+    const menuCols = 'food_item_id, dining_hall, date, station'
     const base = () =>
       supabase
         .from('daily_menus')
@@ -93,7 +98,7 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
 
     const first = await base().range(0, DB_PAGE - 1)
     if (first.error) throw first.error
-    type MenuRow = { food_item_id: string | null; dining_hall: string; date: string }
+    type MenuRow = { food_item_id: string | null; dining_hall: string; date: string; station: string | null }
     const rows: MenuRow[] = [...((first.data ?? []) as MenuRow[])]
     const total = first.count ?? rows.length
 
@@ -109,15 +114,16 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
       }
     }
 
-    const servedBy = new Map<string, { halls: Set<string>; todayHalls: Set<string> }>()
+    const servedBy = new Map<string, { halls: Set<string>; todayHalls: Set<string>; stations: Set<string> }>()
     for (const r of rows) {
       if (!r.food_item_id) continue
       let entry = servedBy.get(r.food_item_id)
       if (!entry) {
-        entry = { halls: new Set(), todayHalls: new Set() }
+        entry = { halls: new Set(), todayHalls: new Set(), stations: new Set() }
         servedBy.set(r.food_item_id, entry)
       }
       entry.halls.add(r.dining_hall)
+      entry.stations.add(cleanStation(r.station ?? ''))
       if (r.date === today) entry.todayHalls.add(r.dining_hall)
     }
 
@@ -152,6 +158,8 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
       if (!hasNutrition) continue
       const served = servedBy.get(food.recipe_id)
       if (!served) continue
+      // Blank stations fall back to the same name-based guess the Menu tab uses
+      const stations = Array.from(served.stations).map((st) => st || classifyByName(food.name) || 'General')
       const key = [food.name.trim().toLowerCase(), food.calories, food.protein, food.carbs, food.fat].join('|')
       const existing = merged.get(key)
       if (existing) {
@@ -160,10 +168,11 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
         existing.halls = Array.from(halls).sort((a, b) => hallOrder(a) - hallOrder(b))
         existing.todayHalls = Array.from(todayHalls).sort((a, b) => hallOrder(a) - hallOrder(b))
         existing.onToday = existing.todayHalls.length > 0
+        existing.stations = Array.from(new Set([...existing.stations, ...stations]))
       } else {
         const halls = Array.from(served.halls).sort((a, b) => hallOrder(a) - hallOrder(b))
         const todayHalls = Array.from(served.todayHalls).sort((a, b) => hallOrder(a) - hallOrder(b))
-        merged.set(key, { food, halls, todayHalls, onToday: todayHalls.length > 0 })
+        merged.set(key, { food, halls, stations: Array.from(new Set(stations)), todayHalls, onToday: todayHalls.length > 0 })
       }
     }
 
@@ -196,6 +205,8 @@ export default function BrowseTab({
   const [sort, setSort] = useState<SortKey>('az')
   const [meal, setMeal] = useState(MEALS.includes(defaultMeal) ? defaultMeal : 'Lunch')
   const [dietFilterOff, setDietFilterOff] = useState(false)
+  const [activeStations, setActiveStations] = useState<string[]>([])
+  const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
   const [servings, setServings] = useState<Record<string, number>>({})
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [debounced, setDebounced] = useState('')
@@ -221,12 +232,37 @@ export default function BrowseTab({
     return () => clearTimeout(t)
   }, [query])
 
+  // Stations offered in the picker: those of the items in the chosen hall(s)
+  const availableStations = useMemo(() => {
+    if (!items) return [] as string[]
+    const found = new Set<string>()
+    for (const it of items) {
+      if (hallFilter && !it.halls.includes(hallFilter)) continue
+      it.stations.forEach((st) => found.add(st))
+    }
+    return Array.from(found).sort((a, b) => a.localeCompare(b))
+  }, [items, hallFilter])
+
+  // Picking a hall can remove stations that hall doesn't have
+  useEffect(() => {
+    setActiveStations((prev) => {
+      const next = prev.filter((st) => availableStations.includes(st))
+      return next.length === prev.length ? prev : next
+    })
+  }, [availableStations])
+
+  const toggleStation = (station: string) => {
+    Haptics.selectionChanged().catch(() => {})
+    setActiveStations((prev) => (prev.includes(station) ? prev.filter((st) => st !== station) : [...prev, station]))
+  }
+
   const { list, dietHidden } = useMemo(() => {
     if (!items) return { list: [] as BrowseItem[], dietHidden: 0 }
     let hidden = 0
     const out = items.filter((it) => {
       if (hallFilter && !it.halls.includes(hallFilter)) return false
       if (debounced && !it.food.name.toLowerCase().includes(debounced)) return false
+      if (activeStations.length > 0 && !it.stations.some((st) => activeStations.includes(st))) return false
       const matchesDiet = dietaryPreferences.every((pref) => foodMatchesDietaryPreference(it.food, pref))
       if (!matchesDiet) {
         hidden++
@@ -239,12 +275,12 @@ export default function BrowseTab({
     else if (sort === 'calories') sorted.sort((a, b) => a.food.calories - b.food.calories || a.food.name.localeCompare(b.food.name))
     else if (sort === 'today') sorted.sort((a, b) => Number(b.onToday) - Number(a.onToday) || a.food.name.localeCompare(b.food.name))
     return { list: sorted, dietHidden: hidden }
-  }, [items, hallFilter, debounced, sort, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
+  }, [items, hallFilter, debounced, sort, activeStations, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
 
   // Back to the top of the list whenever the filters change
   useEffect(() => {
     setVisible(PAGE_SIZE)
-  }, [hallFilter, debounced, sort, dietFilterOff, dietaryPreferences])
+  }, [hallFilter, debounced, sort, activeStations, dietFilterOff, dietaryPreferences])
 
   // Log under the hall the student picked, else the hall serving it today,
   // else the first hall that has ever served it.
@@ -285,9 +321,10 @@ export default function BrowseTab({
           )}
         </div>
 
-        {/* Dietary chip, same as the Menu tab */}
-        {dietaryPreferences.length > 0 && (
-          <div className="flex">
+        {/* Dietary chip, Stations button and the selected stations, same as the Menu tab */}
+        {(dietaryPreferences.length > 0 || availableStations.length > 0) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {dietaryPreferences.length > 0 && (
             <div className="flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 max-w-full">
               <span className="text-xs font-semibold text-sky truncate">{dietChipLabel}</span>
               <span className="text-xs text-fg-muted tabular-nums whitespace-nowrap">
@@ -305,6 +342,40 @@ export default function BrowseTab({
                 {dietFilterOff ? 'Hide' : 'Show'}
               </button>
             </div>
+            )}
+            {availableStations.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStationSheetOpen(true)
+                  Haptics.selectionChanged().catch(() => {})
+                }}
+                aria-haspopup="dialog"
+                aria-label={`Filter by station, ${activeStations.length || 'all'} selected`}
+                className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${activeStations.length > 0
+                  ? 'bg-gold/15 text-gold border-gold/40'
+                  : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                  }`}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                Stations · {activeStations.length || 'All'}
+              </button>
+            )}
+            {activeStations.map((station) => {
+              const name = station.includes(' - ') ? station.split(' - ')[1] : station
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  onClick={() => toggleStation(station)}
+                  aria-label={`Remove ${name} filter`}
+                  className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold press active:scale-95 motion-reduce:active:scale-100"
+                >
+                  {name}
+                  <X size={12} strokeWidth={2.75} aria-hidden="true" />
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -515,6 +586,58 @@ export default function BrowseTab({
           )}
         </div>
       </div>
+
+      {/* Station picker -- same wrapping multi-select chips as the Menu tab */}
+      {isStationSheetOpen && (
+        <BottomSheet onClose={() => setIsStationSheetOpen(false)} labelledBy="browse-station-sheet-title">
+          <h2 id="browse-station-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-3">
+            Stations
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {availableStations.map((station) => {
+              const isActive = activeStations.includes(station)
+              const [parentLabel, subLabel] = station.includes(' - ') ? station.split(' - ') : [null, station]
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  onClick={() => toggleStation(station)}
+                  aria-pressed={isActive}
+                  className={`px-3 py-1.5 rounded-full border press active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
+                    ? 'bg-gold/15 text-gold border-gold/40'
+                    : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                    }`}
+                >
+                  {parentLabel && (
+                    <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
+                      {parentLabel}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold">{subLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStations([])
+                Haptics.selectionChanged().catch(() => {})
+              }}
+              disabled={activeStations.length === 0}
+              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+            >
+              Clear
+            </button>
+            <SheetCloseButton
+              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+            >
+              Done
+            </SheetCloseButton>
+          </div>
+        </BottomSheet>
+      )}
     </div>
   )
 }
