@@ -26,7 +26,7 @@ export interface BrowseFood {
   dietary_tags?: string[] | null
 }
 
-interface BrowseItem {
+export interface BrowseItem {
   food: BrowseFood
   halls: string[] // dining halls (in the app's usual order) that have served it
   stations: string[] // stations it has been served at, e.g. "Grill"

@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase'
 import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
+import RecipesTab from './RecipesTab'
+import type { Recipe } from '@/lib/recipes'
 import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
@@ -40,6 +42,7 @@ import {
   Minus,
   LayoutGrid,
   Heart,
+  ChefHat,
 } from 'lucide-react'
 
 interface FoodItem {
@@ -503,7 +506,7 @@ const resumeUndoClock = (clock: UndoClock, minMs: number) => {
 export default function DashboardPage() {
   const supabase = createClient()
   const reduceMotion = useReducedMotion()
-  const [activeTab, setActiveTab] = useState<'log' | 'progress' | 'browse'>('log')
+  const [activeTab, setActiveTab] = useState<'log' | 'progress' | 'browse' | 'recipes'>('log')
   const [loading, setLoading] = useState(true)
   const [menu, setMenu] = useState<MenuEntry[]>([])
   const [selectedHall, setSelectedHall] = useState(DINING_HALLS[0])
@@ -1960,6 +1963,28 @@ export default function DashboardPage() {
 
   // Logs each item through handleLogFood (same totals/rings/undo path as the
   // menu's Log buttons), one at a time so rows land in order.
+  // Recipes tab: logs every ingredient of a saved recipe under the chosen
+  // hall and meal, through the same path as a single log (rings, streak, undo).
+  // Resolves with how many ingredients were logged.
+  const handleLogRecipe = async (recipe: Recipe, meal: string, hall: string): Promise<number> => {
+    let logged = 0
+    for (const item of recipe.items) {
+      // Stop at the first failure (e.g. signed out) -- handleLogFood has
+      // already shown why, and the rest would fail the same way
+      if (!(await handleLogFood(item.recipe_id, item.servings, { hall, meal }))) break
+      logged++
+    }
+    if (logged > 0) {
+      showToast(
+        logged === recipe.items.length
+          ? `Logged ${recipe.name}`
+          : `Logged ${logged} of ${recipe.items.length} items`,
+        logged === recipe.items.length ? 'success' : 'error'
+      )
+    }
+    return logged
+  }
+
   const handleLogCombo = async (comboIndex: number) => {
     const items = suggestionCombos?.[comboIndex]
     if (!items || items.length === 0) return
@@ -2115,7 +2140,7 @@ export default function DashboardPage() {
         {/* Sticky just under the fixed header (3.75rem tall + 1px border, plus
             its safe-area inset) so the "+N" serving preview stays visible while
             scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
-        {(activeTab === 'log' || activeTab === 'browse') && (
+        {(activeTab === 'log' || activeTab === 'browse' || activeTab === 'recipes') && (
           <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
               { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
@@ -2750,6 +2775,15 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        ) : activeTab === 'recipes' ? (
+          /* RECIPES TAB -- saved go-to meals, logged in one tap */
+          <RecipesTab
+            diningHalls={DINING_HALL_NAMES}
+            dietaryPreferences={userProfile.dietaryPreferences}
+            foodMatchesDietaryPreference={foodMatchesDietaryPreference}
+            defaultMeal={getCurrentMealPeriodLabel(DINING_HALLS[0]) || selectedMeal}
+            onLogRecipe={handleLogRecipe}
+          />
         ) : activeTab === 'browse' ? (
           /* BROWSE TAB -- every item from the five dining halls */
           <BrowseTab
@@ -3052,7 +3086,7 @@ export default function DashboardPage() {
       >
         <nav
           aria-label="Main"
-          className="glass-bar pointer-events-auto relative grid grid-cols-3 w-full max-w-[400px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
+          className="glass-bar pointer-events-auto relative grid grid-cols-4 w-full max-w-[420px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
           {/* Sammy perched on top of the pill's right end -- above the nav,
               never over its buttons. Tappable (44px target) for a progress
@@ -3076,8 +3110,8 @@ export default function DashboardPage() {
           </span>
           <span
             aria-hidden="true"
-            className="absolute inset-y-1 left-1 w-[calc(33.333%-0.1667rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
-            style={{ transform: `translateX(${activeTab === 'browse' ? 100 : activeTab === 'progress' ? 200 : 0}%)` }}
+            className="absolute inset-y-1 left-1 w-[calc(25%-0.125rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{ transform: `translateX(${activeTab === 'browse' ? 100 : activeTab === 'recipes' ? 200 : activeTab === 'progress' ? 300 : 0}%)` }}
           />
           <button
             type="button"
@@ -3105,6 +3139,20 @@ export default function DashboardPage() {
           >
             <LayoutGrid size={20} strokeWidth={activeTab === 'browse' ? 2.5 : 2} />
             <span className="text-10 font-bold leading-none mt-0.5">Browse</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('recipes')
+              Haptics.selectionChanged().catch(() => {})
+            }}
+            aria-current={activeTab === 'recipes' ? 'page' : undefined}
+            className={`relative z-10 flex flex-col items-center justify-center py-1 rounded-full press after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 active:scale-95 motion-reduce:active:scale-100 ${activeTab === 'recipes' ? 'text-gold' : 'text-fg-muted hover:text-fg'
+              }`}
+          >
+            <ChefHat size={20} strokeWidth={activeTab === 'recipes' ? 2.5 : 2} />
+            <span className="text-10 font-bold leading-none mt-0.5">Recipes</span>
           </button>
 
           <button
