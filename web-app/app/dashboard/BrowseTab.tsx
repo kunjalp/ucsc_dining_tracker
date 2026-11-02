@@ -71,115 +71,213 @@ const shortHall = (hall: string) => hall.replace(/ Dining Hall$/, '')
 // Same cleanup the Menu tab applies to scraped station names ("-- Grill --")
 const cleanStation = (raw: string) => raw.replace(/--/g, '').trim()
 
-// Loaded once per app session; switching tabs back and forth is instant.
+// --- Loading the catalogue -------------------------------------------------
+// Fast path: the browse_items() Postgres function (web-app/supabase/
+// browse_items.sql) returns every dish, already merged, in ONE request.
+// Fallback: if that function hasn't been created yet, page through
+// daily_menus like before (slow, but it works).
+// The result is kept in memory and in localStorage, so reopening Browse is
+// instant and refreshes quietly in the background.
+
+const CACHE_KEY = 'ucsc_browse_catalogue_v1'
+const FRESH_MS = 30 * 60 * 1000
+
 let catalogueCache: BrowseItem[] | null = null
+let catalogueDay = ''
+let catalogueSavedAt = 0
 let catalogueRequest: Promise<BrowseItem[]> | null = null
+
+interface RawItem {
+  food: BrowseFood
+  halls: string[]
+  todayHalls: string[]
+  stations: string[]
+}
 
 function todayLA(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 }
 
-async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
-  if (catalogueCache) return catalogueCache
+function readStored() {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as { day?: string; savedAt?: number; items?: BrowseItem[] }
+    if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+      catalogueCache = parsed.items
+      catalogueDay = parsed.day ?? ''
+      catalogueSavedAt = parsed.savedAt ?? 0
+    }
+  } catch {
+    // Corrupt or blocked storage: just load fresh
+  }
+}
+
+function writeStored() {
+  try {
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ day: catalogueDay, savedAt: catalogueSavedAt, items: catalogueCache })
+    )
+  } catch {
+    // Storage full or blocked: the in-memory copy still works
+  }
+}
+
+/** What's already available without a network request (memory, then this device). */
+export function peekCatalogue(): BrowseItem[] | null {
+  if (!catalogueCache) readStored()
+  return catalogueCache
+}
+
+export function clearCatalogue() {
+  catalogueCache = null
+  catalogueDay = ''
+  catalogueSavedAt = 0
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+async function fetchRaw(diningHalls: string[]): Promise<RawItem[]> {
+  const supabase = createClient()
+
+  // Fast path
+  const rpc = await supabase.rpc('browse_items')
+  if (!rpc.error && Array.isArray(rpc.data)) {
+    type RpcRow = BrowseFood & { halls: string[] | null; today_halls: string[] | null; stations: string[] | null }
+    return (rpc.data as RpcRow[]).map((row) => {
+      const { halls, today_halls, stations, ...food } = row
+      return {
+        food: food as BrowseFood,
+        halls: (halls ?? []).filter((h) => diningHalls.includes(h)),
+        todayHalls: (today_halls ?? []).filter((h) => diningHalls.includes(h)),
+        stations: stations ?? [],
+      }
+    })
+  }
+
+  // Fallback: page through daily_menus (function not created yet)
+  const today = todayLA()
+  const base = () =>
+    supabase
+      .from('daily_menus')
+      .select('food_item_id, dining_hall, date, station', { count: 'exact' })
+      .in('dining_hall', diningHalls)
+      .order('date', { ascending: false })
+      .order('id', { ascending: true })
+
+  const first = await base().range(0, DB_PAGE - 1)
+  if (first.error) throw first.error
+  type MenuRow = { food_item_id: string | null; dining_hall: string; date: string; station: string | null }
+  const rows: MenuRow[] = [...((first.data ?? []) as MenuRow[])]
+  const total = first.count ?? rows.length
+  const starts: number[] = []
+  for (let st = DB_PAGE; st < total; st += DB_PAGE) starts.push(st)
+  for (let i = 0; i < starts.length; i += 6) {
+    const batch = await Promise.all(starts.slice(i, i + 6).map((st) => base().range(st, st + DB_PAGE - 1)))
+    for (const res of batch) {
+      if (res.error) throw res.error
+      rows.push(...((res.data ?? []) as MenuRow[]))
+    }
+  }
+
+  const servedBy = new Map<string, { halls: Set<string>; todayHalls: Set<string>; stations: Set<string> }>()
+  for (const r of rows) {
+    if (!r.food_item_id) continue
+    let entry = servedBy.get(r.food_item_id)
+    if (!entry) {
+      entry = { halls: new Set(), todayHalls: new Set(), stations: new Set() }
+      servedBy.set(r.food_item_id, entry)
+    }
+    entry.halls.add(r.dining_hall)
+    entry.stations.add(cleanStation(r.station ?? ''))
+    if (r.date === today) entry.todayHalls.add(r.dining_hall)
+  }
+
+  const ids = Array.from(servedBy.keys())
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += ID_CHUNK) chunks.push(ids.slice(i, i + ID_CHUNK))
+  const out: RawItem[] = []
+  for (let i = 0; i < chunks.length; i += 5) {
+    const batch = await Promise.all(
+      chunks.slice(i, i + 5).map((chunk) =>
+        supabase
+          .from('food_items')
+          .select('recipe_id, name, portion, calories, protein, carbs, sugar, fat, allergens, dietary_tags')
+          .in('recipe_id', chunk)
+      )
+    )
+    for (const res of batch) {
+      if (res.error) throw res.error
+      for (const food of (res.data ?? []) as BrowseFood[]) {
+        const served = servedBy.get(food.recipe_id)
+        if (!served) continue
+        out.push({
+          food,
+          halls: Array.from(served.halls),
+          todayHalls: Array.from(served.todayHalls),
+          stations: Array.from(served.stations),
+        })
+      }
+    }
+  }
+  return out
+}
+
+// One row per dish. The same dish often has a different recipe_id in each
+// hall, so merge entries with the same name and nutrition.
+function mergeRaw(raw: RawItem[], diningHalls: string[]): BrowseItem[] {
+  const hallOrder = (h: string) => diningHalls.indexOf(h)
+  const byOrder = (list: string[]) => Array.from(new Set(list)).sort((a, b) => hallOrder(a) - hallOrder(b))
+  const merged = new Map<string, BrowseItem>()
+  for (const { food, halls, todayHalls, stations: rawStations } of raw) {
+    const hasNutrition =
+      (food.calories ?? 0) !== 0 || (food.protein ?? 0) !== 0 || (food.carbs ?? 0) !== 0 || (food.fat ?? 0) !== 0
+    if (!hasNutrition || halls.length === 0) continue
+    // Blank stations fall back to the same name-based guess the Menu tab uses
+    const stations = rawStations.map((st) => cleanStation(st) || classifyByName(food.name) || 'General')
+    const key = [food.name.trim().toLowerCase(), food.calories, food.protein, food.carbs, food.fat].join('|')
+    const existing = merged.get(key)
+    if (existing) {
+      existing.halls = byOrder([...existing.halls, ...halls])
+      existing.todayHalls = byOrder([...existing.todayHalls, ...todayHalls])
+      existing.onToday = existing.todayHalls.length > 0
+      existing.stations = Array.from(new Set([...existing.stations, ...stations]))
+    } else {
+      merged.set(key, {
+        food,
+        halls: byOrder(halls),
+        stations: Array.from(new Set(stations)),
+        todayHalls: byOrder(todayHalls),
+        onToday: todayHalls.length > 0,
+      })
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => a.food.name.localeCompare(b.food.name))
+}
+
+/**
+ * Returns the catalogue. Cached copies from today that are under 30 minutes
+ * old are returned immediately; otherwise it loads fresh (callers can show
+ * peekCatalogue() in the meantime).
+ */
+export async function getCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
+  if (!catalogueCache) readStored()
+  const fresh = catalogueCache && catalogueDay === todayLA() && Date.now() - catalogueSavedAt < FRESH_MS
+  if (catalogueCache && fresh) return catalogueCache
   if (catalogueRequest) return catalogueRequest
 
   catalogueRequest = (async () => {
-    const supabase = createClient()
-    const today = todayLA()
-
-    // 1. Which items each dining hall has ever served. Only the three small
-    //    columns are fetched, in pages of 1000 (the API's per-request cap).
-    const menuCols = 'food_item_id, dining_hall, date, station'
-    const base = () =>
-      supabase
-        .from('daily_menus')
-        .select(menuCols, { count: 'exact' })
-        .in('dining_hall', diningHalls)
-        .order('date', { ascending: false })
-        .order('id', { ascending: true })
-
-    const first = await base().range(0, DB_PAGE - 1)
-    if (first.error) throw first.error
-    type MenuRow = { food_item_id: string | null; dining_hall: string; date: string; station: string | null }
-    const rows: MenuRow[] = [...((first.data ?? []) as MenuRow[])]
-    const total = first.count ?? rows.length
-
-    const starts: number[] = []
-    for (let s = DB_PAGE; s < total; s += DB_PAGE) starts.push(s)
-    for (let i = 0; i < starts.length; i += 6) {
-      const batch = await Promise.all(
-        starts.slice(i, i + 6).map((s) => base().range(s, s + DB_PAGE - 1))
-      )
-      for (const res of batch) {
-        if (res.error) throw res.error
-        rows.push(...((res.data ?? []) as MenuRow[]))
-      }
-    }
-
-    const servedBy = new Map<string, { halls: Set<string>; todayHalls: Set<string>; stations: Set<string> }>()
-    for (const r of rows) {
-      if (!r.food_item_id) continue
-      let entry = servedBy.get(r.food_item_id)
-      if (!entry) {
-        entry = { halls: new Set(), todayHalls: new Set(), stations: new Set() }
-        servedBy.set(r.food_item_id, entry)
-      }
-      entry.halls.add(r.dining_hall)
-      entry.stations.add(cleanStation(r.station ?? ''))
-      if (r.date === today) entry.todayHalls.add(r.dining_hall)
-    }
-
-    // 2. The nutrition rows for those items, in chunks so the request URL
-    //    stays short.
-    const ids = Array.from(servedBy.keys())
-    const chunks: string[][] = []
-    for (let i = 0; i < ids.length; i += ID_CHUNK) chunks.push(ids.slice(i, i + ID_CHUNK))
-    const foods: BrowseFood[] = []
-    for (let i = 0; i < chunks.length; i += 5) {
-      const batch = await Promise.all(
-        chunks.slice(i, i + 5).map((chunk) =>
-          supabase
-            .from('food_items')
-            .select('recipe_id, name, portion, calories, protein, carbs, sugar, fat, ingredients, allergens, dietary_tags')
-            .in('recipe_id', chunk)
-        )
-      )
-      for (const res of batch) {
-        if (res.error) throw res.error
-        foods.push(...((res.data ?? []) as BrowseFood[]))
-      }
-    }
-
-    // 3. One row per dish. The same dish often has a different recipe_id in
-    //    each hall, so merge entries with the same name and nutrition.
-    const hallOrder = (h: string) => diningHalls.indexOf(h)
-    const merged = new Map<string, BrowseItem>()
-    for (const food of foods) {
-      const hasNutrition =
-        (food.calories ?? 0) !== 0 || (food.protein ?? 0) !== 0 || (food.carbs ?? 0) !== 0 || (food.fat ?? 0) !== 0
-      if (!hasNutrition) continue
-      const served = servedBy.get(food.recipe_id)
-      if (!served) continue
-      // Blank stations fall back to the same name-based guess the Menu tab uses
-      const stations = Array.from(served.stations).map((st) => st || classifyByName(food.name) || 'General')
-      const key = [food.name.trim().toLowerCase(), food.calories, food.protein, food.carbs, food.fat].join('|')
-      const existing = merged.get(key)
-      if (existing) {
-        const halls = new Set([...existing.halls, ...served.halls])
-        const todayHalls = new Set([...existing.todayHalls, ...served.todayHalls])
-        existing.halls = Array.from(halls).sort((a, b) => hallOrder(a) - hallOrder(b))
-        existing.todayHalls = Array.from(todayHalls).sort((a, b) => hallOrder(a) - hallOrder(b))
-        existing.onToday = existing.todayHalls.length > 0
-        existing.stations = Array.from(new Set([...existing.stations, ...stations]))
-      } else {
-        const halls = Array.from(served.halls).sort((a, b) => hallOrder(a) - hallOrder(b))
-        const todayHalls = Array.from(served.todayHalls).sort((a, b) => hallOrder(a) - hallOrder(b))
-        merged.set(key, { food, halls, stations: Array.from(new Set(stations)), todayHalls, onToday: todayHalls.length > 0 })
-      }
-    }
-
-    catalogueCache = Array.from(merged.values()).sort((a, b) => a.food.name.localeCompare(b.food.name))
-    return catalogueCache
+    const items = mergeRaw(await fetchRaw(diningHalls), diningHalls)
+    catalogueCache = items
+    catalogueDay = todayLA()
+    catalogueSavedAt = Date.now()
+    writeStored()
+    return items
   })()
 
   try {
@@ -187,6 +285,11 @@ async function loadCatalogue(diningHalls: string[]): Promise<BrowseItem[]> {
   } finally {
     catalogueRequest = null
   }
+}
+
+/** Starts loading in the background so the tab is ready when it's tapped. */
+export function prefetchCatalogue(diningHalls: string[]) {
+  getCatalogue(diningHalls).catch(() => {})
 }
 
 export default function BrowseTab({
@@ -200,8 +303,9 @@ export default function BrowseTab({
   onOpenDetail,
   onServingPreview,
 }: BrowseTabProps) {
-  const [items, setItems] = useState<BrowseItem[] | null>(catalogueCache)
+  const [items, setItems] = useState<BrowseItem[] | null>(() => peekCatalogue())
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [query, setQuery] = useState('')
   const [hallFilter, setHallFilter] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('az')
@@ -215,20 +319,21 @@ export default function BrowseTab({
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [debounced, setDebounced] = useState('')
 
+  // Shows the saved copy straight away (see useState above) and refreshes it
+  // in the background when it's stale.
   useEffect(() => {
-    if (items) return
     let cancelled = false
-    loadCatalogue(diningHalls)
+    getCatalogue(diningHalls)
       .then((result) => {
         if (!cancelled) setItems(result)
       })
       .catch((e: { message?: string }) => {
-        if (!cancelled) setError(e?.message || 'Could not load items.')
+        if (!cancelled && !peekCatalogue()) setError(e?.message || 'Could not load items.')
       })
     return () => {
       cancelled = true
     }
-  }, [items, diningHalls])
+  }, [diningHalls, attempt])
 
   // Search runs ~150ms after typing stops so a 1,600-item list stays smooth
   useEffect(() => {
@@ -490,8 +595,9 @@ export default function BrowseTab({
                 type="button"
                 onClick={() => {
                   setError(null)
-                  catalogueCache = null
+                  clearCatalogue()
                   setItems(null)
+                  setAttempt((n) => n + 1)
                 }}
                 className="px-4 py-2 rounded-xl bg-gold text-on-gold text-sm font-bold press active:scale-95"
               >

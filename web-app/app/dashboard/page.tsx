@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase'
 import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
 import UserProfileModal, { UserProfile } from './UserProfileModal'
-import BrowseTab, { type BrowseFood, type BrowseLogContext } from './BrowseTab'
+import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { classifyByName } from '@/lib/stationClassifier'
@@ -1043,6 +1043,13 @@ export default function DashboardPage() {
       }
     }
     fetchProfile()
+  }, [])
+
+  // Quietly load the Browse list a moment after the dashboard opens so the
+  // tab is already ready by the time it's tapped
+  useEffect(() => {
+    const t = setTimeout(() => prefetchCatalogue(DINING_HALL_NAMES), 1500)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
@@ -2499,7 +2506,7 @@ export default function DashboardPage() {
                     {(
                       <div
                         ref={filterRowRef}
-                        className={`flex items-center gap-2 pt-1 -mx-5 px-5 ${filterRowOverflows ? 'overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none' : ''}`}
+                        className="flex flex-wrap items-center gap-2 pt-1"
                       >
                         {dietHiddenCount > 0 && (
                           <div className="shrink-0 flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 whitespace-nowrap">
@@ -2757,6 +2764,21 @@ export default function DashboardPage() {
               setDetailLogContext(ctx)
               setDetailFood(food as FoodItem)
               setDetailServings(count)
+              // The Browse list leaves out the long ingredients text to load
+              // faster; fetch it now for the sheet
+              if (food.ingredients === undefined) {
+                supabase
+                  .from('food_items')
+                  .select('ingredients')
+                  .eq('recipe_id', food.recipe_id)
+                  .maybeSingle()
+                  .then(({ data }) => {
+                    if (!data) return
+                    setDetailFood((prev) =>
+                      prev && prev.recipe_id === food.recipe_id ? { ...prev, ingredients: data.ingredients ?? null } : prev
+                    )
+                  })
+              }
             }}
             onServingPreview={(food: BrowseFood, count: number) => showServingPreview(food as FoodItem, count)}
           />
