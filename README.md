@@ -12,6 +12,8 @@ A macro and nutrition tracker built specifically for UC Santa Cruz dining halls,
 
 **[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up and try it out. Also **[available on the App Store](https://apps.apple.com/app/sammys-palate/id6806954658)** for iPhone.
 
+**80+** downloads · **233K+** menu records indexed across **14** dining halls · **470+** scraper runs at 100% success · **90+** days of history stored · **64** iOS builds / **4** App Store releases shipped via CI/CD
+
 ---
 
 ## Table of Contents
