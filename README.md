@@ -1,6 +1,6 @@
-# Sammy's Palate — UCSC Macro Tracker
+# Sammy's Palate: UCSC Macro Tracker
 
-A macro and nutrition tracker built specifically for UC Santa Cruz dining halls, cafes, and markets — browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
+A macro and nutrition tracker built specifically for UC Santa Cruz dining halls, cafes, and markets. Browse today's menu, log what you eat in a couple of taps, and watch your calories/protein/carbs/fat update in real time.
 
 [![Live App](https://img.shields.io/badge/demo-live-brightgreen)](https://ucsc-dining-tracker.vercel.app)
 [![App Store](https://img.shields.io/badge/App%20Store-download-0D96F6?logo=apple)](https://apps.apple.com/app/sammys-palate/id6806954658)
@@ -10,7 +10,7 @@ A macro and nutrition tracker built specifically for UC Santa Cruz dining halls,
 ![iOS](https://img.shields.io/badge/iOS-Capacitor-000000?logo=apple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)** — sign up and try it out. Also **[available on the App Store](https://apps.apple.com/app/sammys-palate/id6806954658)** for iPhone.
+**[🔗 Live Demo](https://ucsc-dining-tracker.vercel.app/)**: sign up and try it out. Also **[available on the App Store](https://apps.apple.com/app/sammys-palate/id6806954658)** for iPhone.
 
 **80+** downloads · **233K+** menu records indexed across **14** dining halls · **470+** scraper runs at 100% success · **90+** days of history stored · **64** iOS builds / **4** App Store releases shipped via CI/CD
 
@@ -29,7 +29,7 @@ A macro and nutrition tracker built specifically for UC Santa Cruz dining halls,
 
 ## Why I Built This
 
-UCSC's official dining hall nutrition calculator technically has the data I need, but using it is a pain: the interface makes it slow to find items, there's no way to search or filter by station, and — most importantly — **it doesn't save anything**. Every day starts from zero, with no history of what you've eaten or how close you are to your goals.
+UCSC's official dining hall nutrition calculator technically has the data I need, but using it is a pain: the interface makes it slow to find items, there's no way to search or filter by station, and, most importantly, **it doesn't save anything**. Every day starts from zero, with no history of what you've eaten or how close you are to your goals.
 
 Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current menu for every UCSC dining hall, cafe, and market. The web app turns that data into a fast, searchable menu you can log meals from in seconds, with your daily macro totals, progress rings, and history saved automatically. It's also shipped as a native iOS app.
 
@@ -42,7 +42,7 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 </tr>
 <tr>
 <td align="center" width="50%"><img src="screenshots/progress.png" alt="Progress dashboard" width="380" /><br/><sub>Live macro breakdown against your daily targets</sub></td>
-<td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal — or set your own manually</sub></td>
+<td align="center" width="50%"><img src="screenshots/set-targets.png" alt="Set targets modal" width="380" /><br/><sub>Recommended targets from age, sex, height, weight, and goal, or set your own manually</sub></td>
 </tr>
 <tr>
 <td align="center" colspan="2"><img src="screenshots/history-calendar.png" alt="History calendar" width="380" /><br/><sub>Past days at a glance, ring completion by metric</sub></td>
@@ -55,7 +55,7 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 - Live menu pulled daily for every UCSC dining hall, cafe, and market
 - Filter by meal period (Breakfast/Lunch/Dinner/Late Night) and by station (Entrees, Grill, Hot Bars, Soups, Cereal, Condiments, and more)
 - Free-text search across today's items
-- Instant open/closed status per dining hall, computed from published hours — no scraping delay
+- Instant open/closed status per dining hall, computed from published hours, with no scraping delay
 
 **Logging & tracking**
 - One-tap logging with adjustable serving size (¼x–2x)
@@ -86,7 +86,7 @@ Sammy's Palate solves that. Every morning at 6 AM, a scraper pulls the current m
 |---|---|
 | Frontend | Next.js (App Router), TypeScript |
 | Auth & Database | Supabase (Postgres + Auth, Google OAuth) |
-| Scraper | Python — Playwright (dynamic page rendering), BeautifulSoup (HTML parsing), python-dotenv, supabase-py |
+| Scraper | Python: Playwright (dynamic page rendering), BeautifulSoup (HTML parsing), python-dotenv, supabase-py |
 | Automation | GitHub Actions (scheduled cron: daily menu scrape + frequent hall status updates) |
 | Native App | Capacitor (iOS), Codemagic (CI/CD) |
 | Hosting | Vercel |
@@ -158,7 +158,7 @@ The scraper writes directly to your Supabase database, so make sure your Supabas
 ## Roadmap
 
 - [ ] Automated backend unit tests for the scraper's parsing logic
-- [ ] Macro optimization engine — suggest meal combos that hit a target
+- [ ] Macro optimization engine that suggests meal combos to hit a target
 - [ ] Meal history export
 - [ ] Push/email reminders to log meals
 
@@ -168,4 +168,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-Built by [Kunjal Purohit](https://github.com/kunjalp) — UCSC's official nutrition calculator is a pain to use, so I built my own.
+Built by [Kunjal Purohit](https://github.com/kunjalp). UCSC's official nutrition calculator is a pain to use, so I built my own.
