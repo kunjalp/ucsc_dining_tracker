@@ -2434,7 +2434,8 @@ export default function DashboardPage() {
                   form field. The real <select> lies invisibly over it, so a tap
                   anywhere on the title opens the same native picker as before.
                   The name wraps instead of truncating. */}
-              <div className="relative flex w-fit max-w-full min-h-tap items-center gap-1.5 rounded-lg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold/40">
+              <div className="space-y-2">
+              <div className="relative flex w-fit max-w-full items-center gap-1.5 rounded-lg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold/40">
                 <span aria-hidden="true" className="min-w-0 text-lg font-bold tracking-tight text-fg">
                   {selectedHall}
                 </span>
@@ -2446,7 +2447,7 @@ export default function DashboardPage() {
                     setSelectedHall(e.target.value)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 text-input"
+                  className="absolute -inset-y-2.5 inset-x-0 h-[calc(100%+1.25rem)] w-full cursor-pointer appearance-none opacity-0 text-input"
                 >
                   <optgroup label="Dining Halls">
                     {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
@@ -2459,7 +2460,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-surface-2 p-1 rounded-lg gap-1">
+              <div className="flex bg-surface-2 p-0.5 rounded-lg gap-0.5">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -2468,7 +2469,7 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-md press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
+                    className={`relative flex-1 px-2 py-1 text-xs font-semibold rounded-md press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
                       ? 'bg-app text-fg'
                       : 'text-fg-muted hover:text-fg'
                       }`}
@@ -2476,6 +2477,7 @@ export default function DashboardPage() {
                     {getDayOffsetLabel(offset)}
                   </button>
                 ))}
+              </div>
               </div>
 
               {/* Meal-period selection now lives entirely on the day track
