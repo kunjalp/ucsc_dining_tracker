@@ -36,6 +36,7 @@ import {
   UtensilsCrossed,
   LineChart,
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   User,
@@ -2416,14 +2417,23 @@ export default function DashboardPage() {
           <div className="px-2">
             {/* Hall, day and meal, then the menu -- straight on the page, no card */}
             <div className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-3">
+              {/* The hall reads as the page's title with a small chevron, not a
+                  form field. The real <select> lies invisibly over it, so a tap
+                  anywhere on the title opens the same native picker as before.
+                  The name wraps instead of truncating. */}
+              <div className="relative flex w-fit max-w-full min-h-tap items-center gap-1.5 rounded-lg has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold/40">
+                <span aria-hidden="true" className="min-w-0 text-lg font-bold tracking-tight text-fg">
+                  {selectedHall}
+                </span>
+                <ChevronDown size={18} className="shrink-0 text-fg-muted" aria-hidden="true" />
                 <select
+                  aria-label="Dining hall"
                   value={selectedHall}
                   onChange={(e) => {
                     setSelectedHall(e.target.value)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="flex-1 rounded-lg bg-surface-2 p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 text-input"
                 >
                   <optgroup label="Dining Halls">
                     {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
