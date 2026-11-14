@@ -29,6 +29,8 @@
   --color-on-gold: #0b1326;      /* text/icons on gold -- 9.6:1 */
   --color-sky: #a1c9ff;          /* links, info, station headers */
   --color-danger: #ff8a80;       /* allergens, destructive actions */
+  --color-line: rgb(255 255 255 / 0.08); /* the one hairline: row dividers, unlit tracks */
+  --color-track: #3f7fb0;        /* day track outline and tick dots */
   --color-macro-cal: #d8b61c;
   --color-macro-protein: #5bb448;
   --color-macro-carbs: #d17ccd;  /* was #bd5db8 (4.4:1) */
@@ -460,6 +462,9 @@ body.hide-scrollbar::-webkit-scrollbar {
 
 /* Increase Contrast: solid bars with a clearly visible edge */
 @media (prefers-contrast: more) {
+  :root {
+    --color-line: rgb(255 255 255 / 0.4);
+  }
   /* A solid, clearly visible line under the header instead of the fade */
   .app-header {
     border-bottom: 1px solid rgb(255 255 255 / 0.4);

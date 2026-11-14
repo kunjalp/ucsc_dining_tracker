@@ -133,7 +133,7 @@ const CORNER_PRIORITY: Partial<Record<SammyMood, number>> = { celebrate: 3, flex
 // never lands on top of the once-a-session greeting wave
 const STREAK_CELEBRATE_DELAY_MS = 3500
 // Sparkle colors when a ring closes (hex, since they're SVG fills)
-const RING_SPARKLE_COLORS = { cal: '#d8b61c', protein: '#5bb448', carbs: '#d17ccd', fat: '#fb7185' } as const
+const RING_SPARKLE_COLORS = { cal: 'var(--color-macro-cal)', protein: 'var(--color-macro-protein)', carbs: 'var(--color-macro-carbs)', fat: 'var(--color-macro-fat)' } as const
 
 // "Close my rings" macro chips: saved selection key + chip labels
 const SUGGEST_FOCUS_STORAGE_KEY = 'ucsc_suggest_focus'
@@ -241,7 +241,7 @@ const getEffectiveStation = (entry: MenuEntry): string => {
 function SlugHead() {
   return (
     <g className="text-gold">
-      <circle cx="0" cy="0" r="3.4" fill="currentColor" stroke="#3f7fb0" strokeWidth="1.2" />
+      <circle cx="0" cy="0" r="3.4" fill="currentColor" stroke="var(--color-track)" strokeWidth="1.2" />
       <line x1="-2" y1="-2.5" x2="-4" y2="-5.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <line x1="1" y1="-3" x2="0.3" y2="-6.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <circle cx="-4.5" cy="-6.6" r="1.5" fill="currentColor" />
@@ -836,8 +836,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const el = dayTrackGlowRef.current
     if (!el || reduceMotion) return
-    const rest = 'drop-shadow(0 0 3px rgba(214,185,58,0.85))'
-    const peak = 'drop-shadow(0 0 8px rgba(214,185,58,0.85))'
+    // The path is text-gold, so its computed color is the gold token
+    const glow = `color-mix(in srgb, ${getComputedStyle(el).color} 85%, transparent)`
+    const rest = `drop-shadow(0 0 3px ${glow})`
+    const peak = `drop-shadow(0 0 8px ${glow})`
     const pulse = el.animate([{ filter: rest }, { filter: peak }, { filter: rest }], {
       duration: 1500,
       iterations: 2,
@@ -2283,7 +2285,7 @@ export default function DashboardPage() {
 
           {/* Stacked container */}
           <div className="flex flex-col">
-            <span className="font-extrabold text-lg text-[#ffe6ab] tracking-tight leading-none mb-0.5">
+            <span className="font-bold text-lg text-fg tracking-tight leading-none mb-0.5">
               Sammy's Palate
             </span>
             <span className="text-xs font-bold text-fg/70">
@@ -2554,11 +2556,11 @@ export default function DashboardPage() {
                           portion, where the glowing stroke gives way to the
                           plain unlit track. */}
                       <radialGradient id="dayTrackEdgeGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#3f7fb0" stopOpacity="0.7" />
-                        <stop offset="100%" stopColor="#3f7fb0" stopOpacity="0" />
+                        <stop offset="0%" stopColor="var(--color-track)" stopOpacity="0.7" />
+                        <stop offset="100%" stopColor="var(--color-track)" stopOpacity="0" />
                       </radialGradient>
                     </defs>
-                    <path d={DAY_TRACK_PATH} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeLinecap="round" />
+                    <path d={DAY_TRACK_PATH} fill="none" stroke="var(--color-line)" strokeWidth="6" strokeLinecap="round" />
                     {/* Invisible, generously wide hit target spanning the whole
                         path — lets a single tap anywhere on the track jump the
                         head straight there (same snap + haptic as a drag),
@@ -2580,14 +2582,14 @@ export default function DashboardPage() {
                     <path
                       d={DAY_TRACK_PATH}
                       fill="none"
-                      stroke="#3f7fb0"
+                      stroke="var(--color-track)"
                       strokeOpacity="1"
                       strokeWidth="11"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
-                      style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.6))' }}
+                      style={{ filter: 'drop-shadow(0 0 2px color-mix(in srgb, var(--color-track) 60%, transparent))' }}
                       className="transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
                     />
                     <path
@@ -2600,13 +2602,13 @@ export default function DashboardPage() {
                       pathLength={100}
                       strokeDasharray={100}
                       strokeDashoffset={100 - dayTrack.markerPct}
-                      style={{ filter: 'drop-shadow(0 0 3px rgba(214,185,58,0.85))' }}
+                      style={{ filter: 'drop-shadow(0 0 3px color-mix(in srgb, var(--color-gold) 85%, transparent))' }}
                       ref={dayTrackGlowRef}
                       className="text-gold transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
                     />
                     {[...dayTrack.segments.map((seg) => seg.startPct), 100].map((pct, i) => {
                       const [tx, ty] = wavePoint(pct / 100)
-                      return <circle key={i} cx={tx} cy={ty} r="2" fill="#3f7fb0" fillOpacity="0.6" />
+                      return <circle key={i} cx={tx} cy={ty} r="2" fill="var(--color-track)" fillOpacity="0.6" />
                     })}
                     {(() => {
                       // While the hall is actually closed right now (today only —
@@ -2652,7 +2654,7 @@ export default function DashboardPage() {
                               itself is parked. */}
                           <g
                             transform="scale(-2.6, 2.6)"
-                            style={{ filter: 'drop-shadow(0 0 2px rgba(63,127,176,0.7))', pointerEvents: 'none' }}
+                            style={{ filter: 'drop-shadow(0 0 2px color-mix(in srgb, var(--color-track) 70%, transparent))', pointerEvents: 'none' }}
                           >
                             {isSleeping ? (
                               <g transform="rotate(18)">
@@ -2754,7 +2756,7 @@ export default function DashboardPage() {
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + station filter pills — hidden when the hall is closed right now */}
                 {showMenuSection && (
-                  <div className="flex-1 min-w-0 pt-4 border-t border-white/10 space-y-3">
+                  <div className="flex-1 min-w-0 pt-4 border-t border-line space-y-3">
                     <div className="relative w-full">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
                       <input
@@ -2935,7 +2937,7 @@ export default function DashboardPage() {
                                   {sub}
                                 </p>
                               )}
-                              <div className="divide-y divide-white/10">
+                              <div className="divide-y divide-line">
                                 {entries.map((entry, entryIndex) => {
                                   const food = entry.food_items
                                   if (!food) return null
