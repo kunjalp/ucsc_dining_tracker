@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { animateSpring, createVelocityTracker, project, rubberband, type Spring } from '@/lib/spring'
 import { useReducedMotion } from '@/lib/useReducedMotion'
+import { lockScroll, unlockScroll } from '@/lib/scrollLock'
 
 interface BottomSheetProps {
   onClose: () => void
@@ -85,6 +86,12 @@ export default function BottomSheet({ onClose, labelledBy, children, className =
     springRef.current = null
   }
   useEffect(() => stopSpring, [])
+
+  // Every sheet locks the page behind it while mounted
+  useEffect(() => {
+    lockScroll()
+    return unlockScroll
+  }, [])
 
   // Slide down past the bottom edge (the way it came in), then unmount.
   // Reduce Motion: closes instantly, as before.
@@ -230,7 +237,7 @@ export default function BottomSheet({ onClose, labelledBy, children, className =
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center"
+      className="fixed inset-0 z-[100] flex items-end justify-center overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
