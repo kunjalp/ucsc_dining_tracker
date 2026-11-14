@@ -344,58 +344,6 @@ function useCountUp(target: number, duration = 500) {
   return reduceMotion ? target : display
 }
 
-// One column of the live macro totals strip. Pulled out of the inline
-// .map() below because useCountUp is a hook — hooks can't be called from
-// inside an array callback, each column needs its own instance of it.
-interface MacroBarItemProps {
-  label: string
-  value: number
-  goal: number
-  color: string
-  unit: string
-  bordered: boolean
-  // What logging the row's picked serving would add -- shown as "+N" and a
-  // faded bar extension while a serving pill was just tapped
-  preview: number
-  // false until today's logs have loaded -- shows "–" instead of a fake 0
-  loaded: boolean
-}
-
-function MacroBarItem({ label, value, goal, color, unit, bordered, preview, loaded }: MacroBarItemProps) {
-  const animatedValue = useCountUp(value)
-  const pctOf = (v: number) => `${Math.min((v / Math.max(goal, 1)) * 100, 100)}%`
-
-  return (
-    <div className={`flex-1 min-w-0 ${bordered ? 'border-l border-white/10 pl-4' : ''}`}>
-      <p className="text-10 font-semibold text-fg-muted truncate">{label}</p>
-      <p className="text-sm font-black mt-0.5 leading-tight tabular-nums" style={{ color }}>
-        {loaded ? `${Math.round(animatedValue)}${unit}` : '–'}
-      </p>
-      {preview > 0 ? (
-        <p className="text-11 font-bold leading-tight tabular-nums truncate" style={{ color }}>
-          +{Math.round(preview)}{unit}
-        </p>
-      ) : (
-        <p className="text-11 font-semibold text-fg-muted leading-tight tabular-nums">
-          / {Math.round(goal)}{unit}
-        </p>
-      )}
-      <div className="relative h-1 rounded-full bg-white/10 mt-1.5 overflow-hidden">
-        {preview > 0 && (
-          <div
-            className="absolute inset-y-0 left-0 rounded-full opacity-40 transition-all motion-reduce:transition-none"
-            style={{ width: pctOf(value + preview), backgroundColor: color }}
-          />
-        )}
-        <div
-          className="relative h-full rounded-full transition-all motion-reduce:transition-none"
-          style={{ width: pctOf(animatedValue), backgroundColor: color }}
-        />
-      </div>
-    </div>
-  )
-}
-
 // Pure SVG Circular Progress Ring UI Component
 interface ProgressRingProps {
   value: number
@@ -543,6 +491,19 @@ export default function DashboardPage() {
   const clearServingPreview = () => {
     if (servingPreviewTimerRef.current) clearTimeout(servingPreviewTimerRef.current)
     setServingPreview(null)
+  }
+  // The one menu row whose servings stepper is open (null = all closed).
+  // Log always logs the row's current servings, which start at 1x.
+  const [openStepperId, setOpenStepperId] = useState<string | null>(null)
+  // - / + walk through SERVING_OPTIONS, so the allowed amounts stay the same
+  const stepServings = (food: FoodItem, dir: -1 | 1) => {
+    const current = servings[food.recipe_id] ?? 1
+    const at = SERVING_OPTIONS.indexOf(current)
+    const next = SERVING_OPTIONS[Math.min(SERVING_OPTIONS.length - 1, Math.max(0, (at === -1 ? SERVING_OPTIONS.indexOf(1) : at) + dir))]
+    if (next === current) return
+    setServings((prev) => ({ ...prev, [food.recipe_id]: next }))
+    showServingPreview(food, next)
+    Haptics.selectionChanged().catch(() => {})
   }
   // Briefly shows a checkmark on a food's Log button right after it's logged
   const [justLogged, setJustLogged] = useState<{ [key: string]: boolean }>({})
@@ -2335,39 +2296,80 @@ export default function DashboardPage() {
       <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+124px)] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
-        {/* Live macro totals banner — Log Menu only; Progress has its own rings for this.
-            A slim single-row strip (value against target + a thin progress bar per
-            macro) instead of four separate boxed tiles stacked 2x2 — same information,
-            a fraction of the height. */}
-        {/* Sticky just under the fixed header (3.75rem tall + 1px border, plus
-            its safe-area inset) so the "+N" serving preview stays visible while
-            scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
-        {(activeTab === 'log' || activeTab === 'browse' || activeTab === 'recipes') && (
-          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-2 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
-            {[
-              { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
-              { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: 'var(--color-macro-protein)', unit: 'g', key: 'protein' as const },
-              { label: 'Carbs', value: displayTotals.carbs, goal: goalCarbs, color: 'var(--color-macro-carbs)', unit: 'g', key: 'carbs' as const },
-              { label: 'Fat', value: displayTotals.fat, goal: goalFat, color: 'var(--color-macro-fat)', unit: 'g', key: 'fat' as const },
-            ].map((m, i) => (
-              <MacroBarItem
-                key={m.label}
-                label={m.label}
-                value={m.value}
-                goal={m.goal}
-                color={m.color}
-                unit={m.unit}
-                bordered={i > 0}
-                loaded={totalsLoaded}
-                preview={servingPreview ? (servingPreview.food[m.key] || 0) * servingPreview.servings : 0}
+        {/* What's left today, in one sticky line: Menu and Browse only (Recipes
+            and Progress don't log single items). Sits flush under the fixed
+            header (3rem of content + its safe-area inset) on the page
+            background, edge to edge, so rows scroll cleanly under it. The thin
+            gold bar is calories against the goal; while a servings stepper was
+            just used, the line shows what logging that row would add. Desktop
+            divides by the 1.3 zoom below. -mt-6 takes back most of the gap
+            <main> leaves under the header for the card-topped tabs. */}
+        {(activeTab === 'log' || activeTab === 'browse') && (
+          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3rem)] lg:top-[calc(3rem/1.3)] -mx-3 px-5 lg:-mx-5 lg:px-7 -mt-6 pt-2.5 mb-4 bg-app">
+            <div className="flex items-center gap-3 h-9">
+              {servingPreview ? (
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums text-gold">
+                  Adds {Math.round((servingPreview.food.calories || 0) * servingPreview.servings)} cal · {Math.round((servingPreview.food.protein || 0) * servingPreview.servings)}g protein
+                </p>
+              ) : !totalsLoaded ? (
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg-muted">Checking what&apos;s left…</p>
+              ) : !targetsSaved ? (
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg-muted">Set targets to see what&apos;s left</p>
+              ) : allRingsClosed ? (
+                <p className="min-w-0 flex-1 flex items-center gap-1.5 text-sm font-semibold text-gold">
+                  <Check size={14} strokeWidth={3} aria-hidden="true" />
+                  Rings closed
+                </p>
+              ) : caloriesClosed ? (
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg-muted">
+                  Calorie ring closed
+                  {remainingMacros.protein > 0 && ` · ${Math.round(remainingMacros.protein)}g protein left`}
+                </p>
+              ) : (
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums text-fg">
+                  {Math.round(remainingMacros.calories)} cal
+                  {remainingMacros.protein > 0 && ` · ${Math.round(remainingMacros.protein)}g protein`}
+                  <span className="font-medium text-fg-muted"> left</span>
+                </p>
+              )}
+              {totalsLoaded && !targetsSaved ? (
+                <button
+                  type="button"
+                  onClick={() => setIsTargetsModalOpen(true)}
+                  className="shrink-0 relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] h-9 text-sm font-bold text-gold active:scale-95 motion-reduce:active:scale-100 press"
+                >
+                  Set targets
+                </button>
+              ) : totalsLoaded && !allRingsClosed && !caloriesClosed && activeTab === 'log' ? (
+                <button
+                  type="button"
+                  onClick={openSuggestions}
+                  aria-haspopup="dialog"
+                  aria-label="Suggest meals"
+                  className="shrink-0 relative after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] h-9 text-sm font-bold text-gold active:scale-95 motion-reduce:active:scale-100 press"
+                >
+                  Suggest
+                </button>
+              ) : null}
+            </div>
+            <div aria-hidden="true" className="relative h-0.5 bg-line overflow-hidden">
+              {servingPreview && (
+                <div
+                  className="absolute inset-y-0 left-0 bg-gold opacity-40 transition-[width] motion-reduce:transition-none"
+                  style={{ width: `${Math.min(((displayTotals.calories + (servingPreview.food.calories || 0) * servingPreview.servings) / Math.max(goalCalories, 1)) * 100, 100)}%` }}
+                />
+              )}
+              <div
+                className="relative h-full bg-gold transition-[width] duration-500 motion-reduce:transition-none"
+                style={{ width: totalsLoaded ? `${Math.min((displayTotals.calories / Math.max(goalCalories, 1)) * 100, 100)}%` : '0%' }}
               />
-            ))}
+            </div>
           </div>
         )}
 
         {/* A favorite is being served today */}
         {showFavAlert && (
-          <div className="rounded-2xl pl-4 pr-2 py-2 mb-3 min-h-tap flex items-center gap-2 bg-surface border border-macro-fat/30">
+          <div className="rounded-2xl pl-4 pr-2 py-2 mb-3 min-h-tap flex items-center gap-2 bg-surface">
             <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
             <button
               type="button"
@@ -2394,7 +2396,7 @@ export default function DashboardPage() {
 
         {/* Offer to save what was just logged as a recipe */}
         {recipeOffer && (activeTab === 'log' || activeTab === 'browse') && (
-          <div className="rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 bg-surface border border-gold/30">
+          <div className="rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 bg-surface">
             <ChefHat size={20} className="shrink-0 text-gold" aria-hidden="true" />
             <p className="flex-1 min-w-0 text-sm font-semibold text-fg">
               You logged {recipeOffer.items.length} items for {recipeOffer.meal.toLowerCase()}. Save this as a recipe?
@@ -2408,7 +2410,7 @@ export default function DashboardPage() {
                   setActiveTab('recipes')
                   Haptics.selectionChanged().catch(() => {})
                 }}
-                className="min-h-btn px-3 rounded-xl bg-gold text-xs font-bold text-on-gold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+                className="min-h-btn px-3 rounded-lg bg-gold/15 text-sm font-bold text-gold press active:scale-95 motion-reduce:active:scale-100"
               >
                 Save
               </button>
@@ -2423,59 +2425,10 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* "Close my rings" -- what's left today, and a way to get combos
-            from the current menu that fill it */}
-        {activeTab === 'log' && (
-          <div className="rounded-2xl pl-4 pr-2 py-2 mb-6 min-h-tap flex items-center gap-3 bg-surface border border-white/10">
-            {!totalsLoaded ? (
-              <p className="text-sm text-fg-muted">Checking what&apos;s left…</p>
-            ) : !targetsSaved ? (
-              <>
-                <p className="text-sm text-fg-muted">Set targets to get suggestions</p>
-                <button
-                  type="button"
-                  onClick={() => setIsTargetsModalOpen(true)}
-                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg text-xs font-bold text-sky hover:bg-sky/10 active:scale-95 motion-reduce:active:scale-100 press"
-                >
-                  Set targets
-                </button>
-              </>
-            ) : allRingsClosed ? (
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-gold">
-                <Check size={14} strokeWidth={3} aria-hidden="true" />
-                Rings closed
-              </p>
-            ) : caloriesClosed ? (
-              <p className="text-sm text-fg-muted">
-                Calorie ring closed
-                {remainingMacros.protein > 0 && ` · ${Math.round(remainingMacros.protein)}g protein left`}
-              </p>
-            ) : (
-              <>
-                <p className="min-w-0 text-sm font-semibold tabular-nums truncate">
-                  <span className="text-macro-cal">{Math.round(remainingMacros.calories)} cal</span>
-                  {remainingMacros.protein > 0 && (
-                    <span className="text-macro-protein"> · {Math.round(remainingMacros.protein)}g protein</span>
-                  )}
-                  <span className="text-fg-muted font-medium"> left</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={openSuggestions}
-                  aria-haspopup="dialog"
-                  className="ml-auto shrink-0 relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] px-3 py-1.5 rounded-lg bg-gold text-on-gold text-xs font-bold shadow-md hover:brightness-105 active:scale-95 motion-reduce:active:scale-100 press"
-                >
-                  Suggest meals
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
         {activeTab === 'log' ? (
-          <div className="space-y-6">
-            {/* Hall + meal selector */}
-            <div className="rounded-2xl p-5 space-y-4 bg-surface border border-white/10">
+          <div className="px-2">
+            {/* Hall, day and meal, then the menu -- straight on the page, no card */}
+            <div className="space-y-4">
               <div className="flex flex-col md:flex-row gap-3">
                 <select
                   value={selectedHall}
@@ -2483,7 +2436,7 @@ export default function DashboardPage() {
                     setSelectedHall(e.target.value)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="flex-1 rounded-xl border border-white/10 bg-surface-2 p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  className="flex-1 rounded-lg bg-surface-2 p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
                 >
                   <optgroup label="Dining Halls">
                     {DINING_HALLS.slice(0, 5).map(hall => <option key={hall} value={hall}>{hall}</option>)}
@@ -2496,7 +2449,7 @@ export default function DashboardPage() {
 
               {/* Day selector — lets students browse published upcoming menus.
                   Sits above the meal-type tabs so "which day" is chosen before "which meal". */}
-              <div className="flex bg-surface-2 p-1 rounded-xl gap-1">
+              <div className="flex bg-surface-2 p-1 rounded-lg gap-1">
                 {DAY_OFFSETS.map(offset => (
                   <button
                     key={offset}
@@ -2505,9 +2458,9 @@ export default function DashboardPage() {
                       setSelectedDayOffset(offset)
                       Haptics.selectionChanged().catch(() => {})
                     }}
-                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-lg press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
-                      ? 'bg-gold/15 text-gold border border-gold/40'
-                      : 'text-fg-muted hover:text-fg border border-transparent'
+                    className={`relative flex-1 px-2 py-1.5 text-xs font-semibold rounded-md press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${selectedDayOffset === offset
+                      ? 'bg-app text-fg'
+                      : 'text-fg-muted hover:text-fg'
                       }`}
                   >
                     {getDayOffsetLabel(offset)}
@@ -2766,7 +2719,7 @@ export default function DashboardPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
-                        className="scroll-mt-[calc(env(safe-area-inset-top)+10rem)] w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+                        className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
                       />
                       {searchQuery && (
                         <button
@@ -2794,10 +2747,10 @@ export default function DashboardPage() {
                         className="flex flex-wrap items-center gap-2 pt-1"
                       >
                         {dietHiddenCount > 0 && (
-                          <div className="shrink-0 flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 whitespace-nowrap">
-                            <span className="text-xs font-semibold text-sky max-w-[11rem] truncate">{dietChipLabel}</span>
-                            <span className="text-xs text-fg-muted tabular-nums">
-                              , {dietHiddenCount} {dietFilterOff ? 'shown' : 'hidden'}
+                          <div className="basis-full flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-medium text-fg-muted truncate">{dietChipLabel}</span>
+                            <span className="shrink-0 text-xs font-medium text-fg-muted tabular-nums">
+                              · {dietHiddenCount} {dietFilterOff ? 'shown' : 'hidden'}
                             </span>
                             <button
                               type="button"
@@ -2806,7 +2759,7 @@ export default function DashboardPage() {
                                 Haptics.selectionChanged().catch(() => {})
                               }}
                               aria-label={dietFilterOff ? 'Hide items that do not match your dietary preferences' : `Show ${dietHiddenCount} hidden items`}
-                              className="relative after:absolute after:-inset-2 after:content-[''] rounded-full px-2 py-0.5 text-xs font-bold text-gold hover:bg-gold/10 active:scale-95 press"
+                              className="shrink-0 relative after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-[''] px-1 text-xs font-bold text-gold active:scale-95 motion-reduce:active:scale-100 press"
                             >
                               {dietFilterOff ? 'Hide' : 'Show'}
                             </button>
@@ -2819,9 +2772,9 @@ export default function DashboardPage() {
                             Haptics.selectionChanged().catch(() => {})
                           }}
                           aria-pressed={favoritesOnly}
-                          className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
-                            ? 'bg-macro-fat/15 text-macro-fat border-macro-fat/40'
-                            : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                          className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
+                            ? 'bg-gold/15 text-gold'
+                            : 'bg-surface-2 text-fg-muted hover:text-fg'
                             }`}
                         >
                           <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
@@ -2836,9 +2789,9 @@ export default function DashboardPage() {
                             }}
                             aria-haspopup="dialog"
                             aria-label={`Filter by station, ${activeStationFilters.length || 'all'} selected`}
-                            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
-                              ? 'bg-gold/15 text-gold border-gold/40'
-                              : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
+                            className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
+                              ? 'bg-gold/15 text-gold'
+                              : 'bg-surface-2 text-fg-muted hover:text-fg'
                               }`}
                           >
                             <SlidersHorizontal size={14} aria-hidden="true" />
@@ -2854,7 +2807,7 @@ export default function DashboardPage() {
                               type="button"
                               onClick={() => handleToggleStationFilter(station)}
                               aria-label={`Remove ${name} filter`}
-                              className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold press active:scale-95 motion-reduce:active:scale-100"
+                              className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gold/15 text-gold text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100"
                             >
                               {name}
                               <X size={12} strokeWidth={2.75} aria-hidden="true" />
@@ -2871,7 +2824,7 @@ export default function DashboardPage() {
                   days. Suppressed when opening later today, since the "Opens at X" countdown
                   line above already says this with more useful detail. */}
               {isClosedNow && !isOpeningLaterToday && (
-                <div role="status" className="rounded-2xl p-4 bg-surface-2 border border-white/10 text-sm flex items-center justify-center gap-3">
+                <div role="status" className="rounded-2xl p-4 bg-surface text-sm flex items-center justify-center gap-3">
                   <Sammy mood="sleep" size={2} />
                   <p className="min-w-0">
                     <span className="font-semibold text-fg">{closedLabel}</span>
@@ -2884,7 +2837,7 @@ export default function DashboardPage() {
                   opening later today (previewing today's already-scraped menu before open) */}
               {showMenuSection && (
                 <div>
-                  <h2 className="text-lg font-bold mb-5 tracking-tight">
+                  <h2 className="text-lg font-bold mb-4 tracking-tight">
                     {getDayOffsetLabel(selectedDayOffset)}'s Menu
                     {availableMealTypes.length > 1 && ` (${selectedMeal})`}
                   </h2>
@@ -2920,20 +2873,18 @@ export default function DashboardPage() {
                           : 'No menu items match your search or station filters.'}
                     </div>
                   ) : (
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
-                        <div key={parent} className="space-y-3">
-                          <div className="flex items-center">
-                            <span className="text-xs font-black tracking-wider text-[#00325b] uppercase bg-sky border border-sky px-3 py-1 rounded-lg shadow-sm">
-                              {cleanStationName(parent)}
-                            </span>
-                            <div className="flex-1 h-px bg-white/10 ml-4" />
-                          </div>
+                        <div key={parent} className="space-y-1">
+                          {/* Station names are plain labels; the hairlines between rows do the dividing */}
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+                            {cleanStationName(parent)}
+                          </h3>
 
                           {subgroups.map(({ sub, entries }) => (
-                            <div key={sub || 'none'} className="space-y-2">
+                            <div key={sub || 'none'}>
                               {sub && (
-                                <p className="inline-block text-sm font-bold tracking-wider text-sky bg-sky/10 uppercase px-2 py-0.5 rounded-lg">
+                                <p className="pt-2 text-11 font-medium uppercase tracking-wider text-fg-muted">
                                   {sub}
                                 </p>
                               )}
@@ -2942,14 +2893,15 @@ export default function DashboardPage() {
                                   const food = entry.food_items
                                   if (!food) return null
                                   const rowServings = servings[food.recipe_id] ?? 1
+                                  const stepperOpen = openStepperId === food.recipe_id
+                                  const logged = !!justLogged[food.recipe_id]
                                   return (
                                     <article
                                       key={food.recipe_id}
-                                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
+                                      className="py-3 flex flex-wrap items-center gap-x-1 gap-y-1 animate-row-in"
                                       style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
                                     >
-                                      {/* Name, portion and macros are one tap target that opens the food sheet */}
-                                      <div className="flex items-start gap-1 min-w-0 sm:flex-1">
+                                      {/* Name and its one-line summary are one tap target that opens the food sheet */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2959,68 +2911,78 @@ export default function DashboardPage() {
                                           Haptics.selectionChanged().catch(() => {})
                                         }}
                                         aria-label={`${food.name}, details`}
-                                        className="group min-w-0 flex-1 text-left rounded-lg active:opacity-70"
+                                        className="group min-w-0 flex-1 self-stretch text-left rounded-lg active:opacity-70"
                                       >
-                                        <span className="flex items-start gap-1 font-semibold text-fg">
+                                        <span className="flex items-start gap-1 text-base font-semibold text-fg">
                                           <span className="min-w-0">{food.name}</span>
-                                          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted group-hover:text-fg transition-colors" aria-hidden="true" />
+                                          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted" aria-hidden="true" />
                                         </span>
-                                        <span className="block text-xs text-fg-muted mt-0.5">
+                                        {/* Scales with the stepper, so it shows what Log will add */}
+                                        <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
                                           {food.portion || '1 serving'}
                                           {rowServings !== 1 && ` × ${rowServings}`}
-                                        </span>
-                                        {/* Scales with the serving pills below, so it shows what Log will add */}
-                                        <span className="flex flex-wrap gap-1.5 mt-1.5 text-11 font-semibold tabular-nums">
-                                          <span className="rounded-md px-1.5 bg-macro-cal/15 text-macro-cal">{Math.round(food.calories * rowServings)} cal</span>
-                                          <span className="rounded-md px-1.5 bg-macro-protein/15 text-macro-protein">P {Math.round(food.protein * rowServings)}g</span>
-                                          <span className="rounded-md px-1.5 bg-macro-carbs/15 text-macro-carbs">C {Math.round(food.carbs * rowServings)}g</span>
-                                          <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(food.fat * rowServings)}g</span>
+                                          {' · '}
+                                          {Math.round(food.calories * rowServings)} cal
+                                          {' · '}
+                                          {Math.round(food.protein * rowServings)}P {Math.round(food.carbs * rowServings)}C {Math.round(food.fat * rowServings)}F
                                         </span>
                                       </button>
-                                      <FavoriteButton name={food.name} className="-mt-1" />
-                                      </div>
-
-                                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
-                                        <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
-                                          {SERVING_OPTIONS.map((value) => {
-                                            const isSelected = rowServings === value
-                                            return (
-                                              <button
-                                                key={value}
-                                                type="button"
-                                                role="radio"
-                                                aria-checked={isSelected}
-                                                onClick={() => {
-                                                  setServings({ ...servings, [food.recipe_id]: value })
-                                                  showServingPreview(food, value)
-                                                }}
-                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg press active:scale-90 ${isSelected
-                                                  ? 'bg-gold/15 text-gold'
-                                                  : 'text-fg-muted hover:text-fg'
-                                                  }`}
-                                              >
-                                                {value}x
-                                              </button>
-                                            )
-                                          })}
+                                      <FavoriteButton name={food.name} />
+                                      {/* Servings: quiet until tapped, then a - / + stepper opens under the row */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenStepperId(stepperOpen ? null : food.recipe_id)
+                                          Haptics.selectionChanged().catch(() => {})
+                                        }}
+                                        aria-expanded={stepperOpen}
+                                        aria-label={`${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}. Change servings`}
+                                        className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] shrink-0 flex min-h-btn min-w-12 items-center justify-center rounded-lg text-sm font-semibold tabular-nums press active:scale-95 motion-reduce:active:scale-100 ${stepperOpen || rowServings !== 1 ? 'text-fg' : 'text-fg-muted'}`}
+                                      >
+                                        {rowServings}×
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLogFood(food.recipe_id, rowServings)}
+                                        disabled={logged}
+                                        aria-label={logged ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}`}
+                                        className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] shrink-0 flex min-h-btn min-w-12 items-center justify-center rounded-lg px-3.5 text-sm font-bold transition-colors duration-300 active:scale-95 motion-reduce:active:scale-100 ${logged
+                                          ? 'bg-macro-protein/15 text-macro-protein'
+                                          : 'bg-gold/15 text-gold'
+                                          }`}
+                                      >
+                                        {logged ? (
+                                          <Check size={16} strokeWidth={3} className="animate-check-pop" />
+                                        ) : (
+                                          'Log'
+                                        )}
+                                      </button>
+                                      {stepperOpen && (
+                                        <div role="group" aria-label={`Servings of ${food.name}`} className="basis-full flex items-center justify-end gap-1 pb-1">
+                                          <span className="mr-auto text-xs font-medium text-fg-muted">Servings</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => stepServings(food, -1)}
+                                            disabled={rowServings <= SERVING_OPTIONS[0]}
+                                            aria-label="Fewer servings"
+                                            className="size-12 flex items-center justify-center rounded-lg bg-surface-2 text-fg press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+                                          >
+                                            <Minus size={18} aria-hidden="true" />
+                                          </button>
+                                          <span aria-live="polite" className="min-w-14 text-center text-base font-semibold tabular-nums text-fg">
+                                            {rowServings}×
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => stepServings(food, 1)}
+                                            disabled={rowServings >= SERVING_OPTIONS[SERVING_OPTIONS.length - 1]}
+                                            aria-label="More servings"
+                                            className="size-12 flex items-center justify-center rounded-lg bg-surface-2 text-fg press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
+                                          >
+                                            <Plus size={18} aria-hidden="true" />
+                                          </button>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleLogFood(food.recipe_id, rowServings)}
-                                          disabled={!!justLogged[food.recipe_id]}
-                                          aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}`}
-                                          className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] flex min-h-btn min-w-tap items-center justify-center rounded-lg px-3.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                                            ? 'bg-macro-protein text-on-gold'
-                                            : 'bg-gold text-on-gold hover:brightness-105'
-                                            }`}
-                                        >
-                                          {justLogged[food.recipe_id] ? (
-                                            <Check size={14} strokeWidth={3} className="animate-check-pop" />
-                                          ) : (
-                                            'Log'
-                                          )}
-                                        </button>
-                                      </div>
+                                      )}
                                     </article>
                                   )
                                 })}
