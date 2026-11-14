@@ -413,7 +413,7 @@ export default function BrowseTab({
     <div className="space-y-4">
       {/* Search, with the shared Filters button beside it. Dietary, favorites,
           stations, hall and sort all live in the sheet it opens. */}
-      <div className="flex items-stretch gap-2">
+      <div className="flex items-stretch gap-2 px-2">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
           <input
