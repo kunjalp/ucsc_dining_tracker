@@ -25,6 +25,7 @@ import { favoriteKey, loadFavoritesFromAccount, useFavorites } from '@/lib/favor
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
+import EmptyState, { LoadingRows } from '../components/EmptyState'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
 import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
@@ -1596,6 +1597,16 @@ export default function DashboardPage() {
     (favoritesOnly ? 1 : 0) +
     (dietHiddenCount > 0 && !dietFilterOff ? 1 : 0)
 
+  // "Clear filters" on the empty menu: search, stations, favorites only, and
+  // the dietary hide all go back to showing everything
+  const clearMenuFilters = () => {
+    setSearchQuery('')
+    setActiveStationFilters([])
+    setFavoritesOnly(false)
+    setDietFilterOff(true)
+    Haptics.selectionChanged().catch(() => {})
+  }
+
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
     const groups: { [station: string]: MenuEntry[] } = {}
@@ -2761,13 +2772,10 @@ export default function DashboardPage() {
                   days. Suppressed when opening later today, since the "Opens at X" countdown
                   line above already says this with more useful detail. */}
               {isClosedNow && !isOpeningLaterToday && (
-                <div role="status" className="rounded-2xl p-4 bg-surface text-sm flex items-center justify-center gap-3">
-                  <Sammy mood="sleep" size={2} />
-                  <p className="min-w-0">
-                    <span className="font-semibold text-fg">{closedLabel}</span>
-                    {nextOpeningLabel && <span className="text-fg-muted"> · {nextOpeningLabel}</span>}
-                  </p>
-                </div>
+                <p role="status" className="py-2 text-sm text-balance">
+                  <span className="font-semibold text-fg">{closedLabel}</span>
+                  {nextOpeningLabel && <span className="font-medium text-fg-muted"> · {nextOpeningLabel}</span>}
+                </p>
               )}
 
               {/* Menu items — hidden when the hall is closed right now, except when it's
@@ -2780,35 +2788,21 @@ export default function DashboardPage() {
                   </h2>
 
                   {loading ? (
-                    <div className="space-y-1" role="status" aria-label="Loading menu">
-                      <div className="flex justify-center pt-2 pb-1">
-                        <Sammy mood="loading" size={2} />
-                      </div>
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="py-4 flex items-center justify-between gap-4 animate-pulse motion-reduce:animate-none"
-                          style={{ animationDelay: `${i * 120}ms` }}
-                        >
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
-                            <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
-                          </div>
-                          <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
-                        </div>
-                      ))}
-                    </div>
+                    <LoadingRows label="Loading menu" />
                   ) : Object.keys(groupedMenu).length === 0 ? (
-                    <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-                      <Sammy mood={isClosedNow ? 'sleep' : 'idle'} size={3} />
-                      {menu.length === 0
-                        ? `No items found for this meal period ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`
-                        : favoritesOnly
-                          ? 'None of your favorites are on this menu. Tap the heart on an item to add one.'
-                          : dietHiddenCount > 0 && !dietFilterOff
-                          ? 'No menu items match your search, station or dietary filters.'
-                          : 'No menu items match your search or station filters.'}
-                    </div>
+                    menu.length === 0 ? (
+                      <EmptyState>
+                        {`Nothing on the menu for this meal ${selectedDayOffset === 0 ? 'today' : selectedDayOffset === 1 ? 'tomorrow' : `on ${getDayOffsetLabel(selectedDayOffset)}`}.`}
+                      </EmptyState>
+                    ) : favoritesOnly && favorites.size === 0 ? (
+                      <EmptyState action={{ label: 'Show all items', onClick: () => setFavoritesOnly(false) }}>
+                        No favorites yet. Tap a heart on any item to add one.
+                      </EmptyState>
+                    ) : (
+                      <EmptyState action={{ label: 'Clear filters', onClick: clearMenuFilters }}>
+                        {favoritesOnly ? 'None of your favorites are on this menu.' : 'No items match your search or filters.'}
+                      </EmptyState>
+                    )
                   ) : (
                     <div className="space-y-6">
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
@@ -3088,10 +3082,9 @@ export default function DashboardPage() {
                 )
                 if (visibleLogs.length === 0) {
                   return (
-                    <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-muted font-medium">
-                      <Sammy mood="idle" size={3} />
-                      You haven't logged any foods today yet. Go back to Log Menu to add meals!
-                    </div>
+                    <EmptyState action={{ label: 'Open the menu', onClick: () => setActiveTab('log') }}>
+                      Nothing logged today yet.
+                    </EmptyState>
                   )
                 }
 
@@ -3399,15 +3392,15 @@ export default function DashboardPage() {
           })()}
 
           {suggestionsThinking ? (
-            <p role="status" className="py-10 text-center text-sm text-fg-muted">Sammy is thinking…</p>
+            <EmptyState>Finding ideas…</EmptyState>
           ) : suggestionCombos.length === 0 ? (
-            <p className="py-10 text-center text-sm text-fg-muted">
+            <EmptyState>
               {suggestByMeal && (suggestTarget.calories <= 0 || activeFocus(suggestFocus, suggestTarget).length === 0) && activeFocus(suggestFocus, remainingMacros).length > 0
-                ? `You’ve already had about your share for ${selectedMeal.toLowerCase()}. Switch to Rest of day to see more.`
+                ? `You’ve had your share for ${selectedMeal.toLowerCase()}. Switch to Rest of day for more.`
                 : activeFocus(suggestFocus, remainingMacros).length === 0
-                  ? 'Every ring you picked is already closed. Turn on another one above.'
-                  : 'Nothing on this menu fits what’s left right now. Try another meal or loosen your station or search filters.'}
-            </p>
+                  ? 'Every ring you picked is closed. Turn on another above.'
+                  : 'Nothing on this menu fits what’s left. Try another meal or loosen your filters.'}
+            </EmptyState>
           ) : (
             <div className="mt-4 space-y-3">
               {suggestionCombos.map((items, comboIndex) => {

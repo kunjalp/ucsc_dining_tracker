@@ -19,7 +19,7 @@ interface WeeklySummaryCardProps {
 }
 
 function weekHeadline(hitDays: number, loggedDays: number): string {
-  if (loggedDays === 0) return 'No logs yet. Log a few days and your week shows up here.'
+  if (loggedDays === 0) return 'No logs in the last 7 days.'
   if (hitDays >= 6) return `${hitDays} of 7 days on target. Incredible week!`
   if (hitDays >= 4) return `${hitDays} of 7 days on target. Strong week!`
   if (hitDays >= 2) return `${hitDays} of 7 days on target. Nice, keep building.`
@@ -40,7 +40,7 @@ export default function WeeklySummaryCard({ logs, goalCalories, goalProtein, tar
   return (
     <section aria-label="Last 7 days" className="border-t border-line pt-4">
       <h2 className="text-lg font-bold tracking-tight">Last 7 days</h2>
-      <p className="text-sm font-semibold text-fg-subtle mt-0.5" aria-live="polite">
+      <p className="text-sm font-medium text-fg-muted text-balance mt-0.5" aria-live="polite">
         {!loaded ? 'Loading your week…' : !targetsSaved ? 'Set your targets to see how your week went.' : headline}
       </p>
 

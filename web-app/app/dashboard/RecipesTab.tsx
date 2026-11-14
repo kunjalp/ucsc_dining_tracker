@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, ChefHat, ChevronDown, Heart, Link2, Minus, Pencil, Plus, Search, Share2, Trash2, X } from 'lucide-react'
 import { Haptics, NotificationType } from '@capacitor/haptics'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
-import Sammy from '../components/Sammy'
+import EmptyState, { LoadingRows } from '../components/EmptyState'
 import FavoriteButton from '../components/FavoriteButton'
 import { favoriteKey, useFavorites } from '@/lib/favorites'
 import { fetchTodayDishes, MEAL_ORDER, type TodayDish } from '@/lib/favoriteAlerts'
@@ -278,35 +278,25 @@ export default function RecipesTab({
 
         <div className="border-t border-line">
           {setupNeeded ? (
-            <div role="status" className="py-8 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-              <Sammy mood="think" size={3} />
-              <p>Recipes aren&apos;t switched on yet. The database table still needs to be created.</p>
-            </div>
+            <EmptyState>Recipes aren&apos;t set up yet. The database table still needs to be created.</EmptyState>
           ) : loadError ? (
-            <div role="alert" className="py-8 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-              <Sammy mood="oops" size={3} />
-              <p>{loadError}</p>
-              <button
-                type="button"
-                onClick={() => {
+            <EmptyState
+              alert
+              action={{
+                label: 'Try again',
+                onClick: () => {
                   setLoadError(null)
                   setRecipes(null)
                   setAttempt((n) => n + 1)
-                }}
-                className="px-4 py-2 rounded-xl bg-gold text-on-gold text-sm font-bold press active:scale-95"
-              >
-                Try again
-              </button>
-            </div>
+                },
+              }}
+            >
+              {loadError}
+            </EmptyState>
           ) : !recipes ? (
-            <div className="flex justify-center py-6" role="status" aria-label="Loading recipes">
-              <Sammy mood="loading" size={2} />
-            </div>
+            <LoadingRows label="Loading recipes" rows={2} />
           ) : recipes.length === 0 ? (
-            <div className="py-10 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-              <Sammy mood="idle" size={3} />
-              <p>No recipes yet. Tap New to save your go-to meal, like a sandwich you always make.</p>
-            </div>
+            <EmptyState>No recipes yet. Tap New to save a go-to meal.</EmptyState>
           ) : (
             <ul className="divide-y divide-line">
               {recipes.map((recipe) => {
@@ -593,9 +583,7 @@ function ImportRecipeSheet({
       )}
 
       {!items && !error && (
-        <p className="text-sm text-fg-muted mt-4" role="status">
-          Loading recipe…
-        </p>
+        <EmptyState className="pt-6 pb-2">Loading recipe…</EmptyState>
       )}
 
       {items && items.length > 0 && (
@@ -852,9 +840,11 @@ function RecipeBuilder({
           />
         </div>
         {!catalogue ? (
-          <p className="text-sm text-fg-muted mt-3" role="status">Loading items…</p>
+          <EmptyState className="pt-6 pb-2">Loading items…</EmptyState>
         ) : q && results.length === 0 ? (
-          <p className="text-sm text-fg-muted mt-3">No items match.</p>
+          <EmptyState className="pt-6 pb-2" action={{ label: 'Clear search', onClick: () => setQuery('') }}>
+            No items match your search.
+          </EmptyState>
         ) : (
           <ul className="mt-1 divide-y divide-line">
             {results.map((it) => (
@@ -1000,7 +990,7 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
       {open && (
         <div id="favorites-list" className="pb-4 animate-row-in">
           {allEntries.length === 0 ? (
-            <p className="text-sm text-fg-muted text-balance">Tap the heart on any item to save it here.</p>
+            <EmptyState className="py-4">No favorites yet. Tap a heart on any item to save it here.</EmptyState>
           ) : (
             <>
               {/* Plain text tabs: the picked meal is gold with an underline */}
@@ -1026,11 +1016,11 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
               </div>
 
               {mealFilter !== 'All' && !todayDishes ? (
-                <p className="text-sm text-fg-muted pt-3" role="status">Checking today&apos;s menus…</p>
+                <EmptyState className="pt-4">Checking today&apos;s menus…</EmptyState>
               ) : entries.length === 0 ? (
-                <p className="text-sm text-fg-muted pt-3 text-balance">
-                  None of your favorites are served at {mealFilter.toLowerCase()} today.
-                </p>
+                <EmptyState className="pt-4" action={{ label: 'Show all favorites', onClick: () => setMealFilter('All') }}>
+                  {`None of your favorites are served at ${mealFilter.toLowerCase()} today.`}
+                </EmptyState>
               ) : (
                 <ul className="divide-y divide-line">
                   {entries.map(({ key, name, item }) => {

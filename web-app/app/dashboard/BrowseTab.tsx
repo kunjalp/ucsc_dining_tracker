@@ -5,7 +5,7 @@ import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
 import { classifyByName } from '@/lib/stationClassifier'
-import Sammy from '../components/Sammy'
+import EmptyState, { LoadingRows } from '../components/EmptyState'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import FoodRow, { SERVING_OPTIONS } from '../components/FoodRow'
@@ -397,6 +397,17 @@ export default function BrowseTab({
 
   // Log under the hall the student picked, else the hall serving it today,
   // else the first hall that has ever served it.
+  // "Clear filters" on the empty list: search, stations, favorites only, hall
+  // and the dietary hide all go back to showing everything (sort stays)
+  const clearBrowseFilters = () => {
+    setQuery('')
+    setActiveStations([])
+    setFavoritesOnly(false)
+    setHallFilter(null)
+    setDietFilterOff(true)
+    Haptics.selectionChanged().catch(() => {})
+  }
+
   const ctxFor = (it: BrowseItem): BrowseLogContext => ({
     hall: hallFilter ?? it.todayHalls[0] ?? it.halls[0] ?? diningHalls[0],
     meal,
@@ -442,37 +453,24 @@ export default function BrowseTab({
       {/* Results */}
       <div className="border-t border-line px-2">
         {!items && !error ? (
-          <div className="space-y-1 pt-3" role="status" aria-label="Loading items">
-            <div className="flex justify-center pt-2 pb-1">
-              <Sammy mood="loading" size={2} />
-            </div>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="py-4 flex items-center justify-between gap-4 animate-pulse motion-reduce:animate-none" style={{ animationDelay: `${i * 120}ms` }}>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
-                  <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
-                </div>
-                <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
-              </div>
-            ))}
+          <div className="pt-3">
+            <LoadingRows label="Loading items" />
           </div>
         ) : error ? (
-          <div role="alert" className="py-10 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-            <Sammy mood="oops" size={3} />
-            <p>Couldn&apos;t load the item list. {error}</p>
-            <button
-              type="button"
-              onClick={() => {
+          <EmptyState
+            alert
+            action={{
+              label: 'Try again',
+              onClick: () => {
                 setError(null)
                 clearCatalogue()
                 setItems(null)
                 setAttempt((n) => n + 1)
-              }}
-              className="min-h-btn px-4 rounded-lg bg-gold text-on-gold text-sm font-bold press active:scale-95 motion-reduce:active:scale-100"
-            >
-              Try again
-            </button>
-          </div>
+              },
+            }}
+          >
+            {`Couldn't load the item list. ${error}`}
+          </EmptyState>
         ) : (
           <>
             {/* The count, and where every log goes */}
@@ -496,13 +494,15 @@ export default function BrowseTab({
             </div>
 
             {list.length === 0 ? (
-              <p className="py-12 text-center text-fg-subtle font-medium">
-                {favoritesOnly
-                  ? 'No favorites match. Tap the heart on an item to add one.'
-                  : dietHidden > 0 && !dietFilterOff
-                    ? 'No items match your search or dietary filters.'
-                    : 'No items match your search.'}
-              </p>
+              favoritesOnly && favorites.size === 0 ? (
+                <EmptyState action={{ label: 'Show all items', onClick: () => setFavoritesOnly(false) }}>
+                  No favorites yet. Tap a heart on any item to add one.
+                </EmptyState>
+              ) : (
+                <EmptyState action={{ label: 'Clear filters', onClick: clearBrowseFilters }}>
+                  {favoritesOnly ? 'None of your favorites match.' : 'No items match your search or filters.'}
+                </EmptyState>
+              )
             ) : (
               <div className="divide-y divide-line">
                 {list.slice(0, visible).map((it, index) => {
