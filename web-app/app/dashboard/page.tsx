@@ -351,27 +351,28 @@ interface ProgressRingProps {
   value: number
   goal: number
   strokeColor: string
-  labelColor: string
   label: string
   unit: string
   loaded: boolean // false until today's logs have loaded -- shows "–", not 0
 }
 
-function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loaded }: ProgressRingProps) {
-  const radius = 38
-  const stroke = 9
+function ProgressRing({ value, goal, strokeColor, label, unit, loaded }: ProgressRingProps) {
+  const radius = 29
+  const stroke = 6
   const normalizedRadius = radius - stroke / 2 - 1
   const circumference = normalizedRadius * 2 * Math.PI
 
   const percentage = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
   const strokeDashoffset = circumference - (percentage / 100) * circumference
+  // Past the goal the ring stays full; a tick at the top marks the lap
+  const over = loaded && goal > 0 && value > goal
   // The ring's own stroke keeps animating via the CSS transition below off
   // the raw value; only the two text numbers ease toward it, so they move
   // in sync with the stroke instead of snapping ahead of it.
   const animatedValue = useCountUp(value)
 
   return (
-    <div className="flex flex-col items-center justify-center py-1">
+    <div className="flex min-w-0 flex-col items-center justify-center">
       <div className="relative flex items-center justify-center">
         <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
           <circle
@@ -395,21 +396,32 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loade
             cy={radius}
             className="transition-all duration-500 ease-out motion-reduce:transition-none"
           />
+          {over && (
+            <line
+              x1={radius + normalizedRadius - stroke / 2 - 1}
+              x2={radius + normalizedRadius + stroke / 2 + 1}
+              y1={radius}
+              y2={radius}
+              strokeWidth={2}
+              style={{ stroke: 'var(--color-fg)' }}
+            />
+          )}
         </svg>
 
         <div className="absolute text-center">
-          <span className="text-base font-black tracking-tight text-fg">
+          <span className="text-xs font-black tracking-tight tabular-nums text-fg">
             {!loaded ? '–' : `${goal > 0 ? Math.round((animatedValue / goal) * 100) : 0}%`}
           </span>
         </div>
       </div>
 
-      <div className="text-center mt-1">
-        <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
-        <p className="text-xs text-fg-subtle font-semibold mt-0.5">
-          {loaded ? Math.round(animatedValue) : '–'} / {goal} {unit}
-        </p>
-      </div>
+      <p className="mt-1.5 text-xs font-bold text-fg whitespace-nowrap">
+        {label}
+        {over && <span className="sr-only"> (over goal)</span>}
+      </p>
+      <p className="mt-0.5 text-11 font-medium text-fg-muted tabular-nums whitespace-nowrap">
+        {loaded ? Math.round(animatedValue) : '–'} / {goal}{unit ? ` ${unit}` : ''}
+      </p>
     </div>
   )
 }
@@ -2958,11 +2970,11 @@ export default function DashboardPage() {
               </div>
 
               {!showCalendar ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-1">
-                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" labelColor="var(--color-macro-cal)" label="Calories" unit="kcal" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" labelColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" labelColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" labelColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={totalsLoaded} />
+                <div className="grid grid-cols-4 border-y border-line py-3">
+                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" label="Calories" unit="" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={totalsLoaded} />
+                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={totalsLoaded} />
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -3062,7 +3074,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Meal history */}
-            <div className="border-t border-line pt-4">
+            <div className={showCalendar ? 'border-t border-line pt-4' : ''}>
               <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
               {/* Grouped by meal (only meals with items). Rows mid-undo stay
@@ -3119,7 +3131,7 @@ export default function DashboardPage() {
                                 <div
                                   aria-hidden="true"
                                   className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
-                                  style={{ visibility: swipeOffset < 0 ? 'visible' : 'hidden' }}
+                                  style={{ visibility: swipeOffset < -4 ? 'visible' : 'hidden' }}
                                 >
                                   <Trash2 size={18} />
                                 </div>
