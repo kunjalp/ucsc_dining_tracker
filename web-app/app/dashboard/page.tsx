@@ -3321,8 +3321,7 @@ export default function DashboardPage() {
           >
             <X size={20} />
           </SheetCloseButton>
-          <h2 id="suggestions-title" className="flex items-center gap-2 text-lg font-bold tracking-tight text-fg pr-10">
-            <Sammy mood={suggestionsThinking ? 'think' : 'idle'} size={2} />
+          <h2 id="suggestions-title" className="text-lg font-bold tracking-tight text-fg pr-10">
             Close my rings
           </h2>
           <p className="text-xs text-fg-muted mt-0.5">
