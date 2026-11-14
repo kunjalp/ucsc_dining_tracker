@@ -54,6 +54,44 @@ A web app that lets UCSC students track macros from dining hall menus.
 
 
 
+## Design rules (the "ledger" look)
+
+The look: dark navy (`bg-app`) with gold. Content is plain text rows straight on the page background, split by hairlines, not cards. Gold marks one thing per screen (the main action or the selected state). No boxes inside boxes, no pills inside pills. Applies to Menu, Browse, Recipes, Progress and the header.
+
+### Tokens (`web-app/app/globals.css`, `@theme static`)
+- Hairline: `line` (`border-line`, `divide-line`, `bg-line`). It is 8% white and goes to 40% under Increase Contrast. Do not use `border-white/10` or `bg-white/5` for new dividers or fills.
+- Radii: controls (buttons, inputs, steppers, Filters button) `rounded-lg`. Banners and cards `rounded-2xl`. Sheets `rounded-t-2xl`. Full-width sheet buttons (Done) `rounded-xl`. `rounded-full` only for the tab bar, switches, dots, avatar, the sheet grab handle, icon-only close buttons, and the station chips in `FiltersSheet`.
+- Type: `text-9`, `text-10`, `text-11` (named for px at the default size), then `text-xs`, `text-sm`, `text-base`, `text-lg`, `text-xl`. Inputs use `text-input`. No arbitrary `text-[..px]`. Weights: `font-medium` (muted), `font-semibold` (names, emphasis), `font-bold` (buttons, headings). No `font-black`. Use `tabular-nums` on numbers.
+- Colors: tokens only (`app`, `surface`, `surface-2`, `fg`, `fg-muted`, `fg-subtle`, `gold`, `on-gold`, `sky`, `danger`, `line`). No hex, no `text-[#...]`, no opacity on muted text. Tints like `bg-gold/15` are fine.
+- Macro colors (`macro-cal/protein/carbs/fat`) belong to the Progress rings (`ProgressRing` in `dashboard/page.tsx`). Do not add them elsewhere. Existing exceptions (logged check, favorite heart, error text) stay as they are.
+
+### Reuse these, do not fork them
+- Food row: `app/components/FoodRow.tsx`, used by Menu and Browse. Name with chevron (opens the food sheet), two `text-xs text-fg-muted` lines (portion and cal, then P/C/F), `FavoriteButton` heart, a quiet `1×` button that opens the stepper under the row, and a tinted Log (`bg-gold/15 text-gold`, becomes a green check once logged). Rows sit in `divide-y divide-line`. Need something new? Add a prop.
+- Section header: the sticky station `<h3>` in `dashboard/page.tsx` (search "cleanStationName(parent)"): `text-base font-semibold`, item count on the right in `text-fg-muted`, a hairline under it. Progress meal groups use `text-xs font-bold uppercase tracking-wider` with the calorie total on the right.
+- Filters: `FiltersButton` and `FiltersSheet` in `app/components/FiltersSheet.tsx`. The button sits beside the search field and shows a gold dot when a filter is on. The sheet holds diet Show/Hide, Favorites only, and stations. Browse adds `halls` and `sort`. Add new filters there, not as extra chips on the page.
+- "Log to" line: plain text `Log to {meal}` plus a chevron that opens a radio sheet (`BrowseTab.tsx`, `RecipesTab.tsx`). No box around it.
+- Macro bar: the sticky "cal left" line with the 2px gold calorie bar under the header (`dashboard/page.tsx`, search "What's left today"). Menu and Browse only. It previews a row's servings while the stepper is in use.
+- Delete: meal history rows on Progress swipe left past `SWIPE_DELETE_THRESHOLD` and always have a visible trash button. Deleting shows an undo toast (`handleDeleteLog`). Swipe is a shortcut, never the only way. Recipe delete asks "Tap again to delete".
+- Sheets: always `BottomSheet` (`app/components/BottomSheet.tsx`) with `SheetCloseButton`. Never a hand-rolled modal for new work.
+
+### Sammy
+One live Sammy, in the header (`dashboard/page.tsx`, "The one live Sammy"). He reacts to logs, ring closes and errors from there. No inline Sammy in lists or rows. Inline is allowed only for empty, loading and error states. None on Progress.
+
+### Must not regress
+- Haptics: `Haptics.selectionChanged()` on taps that change state, `NotificationType.Success` on a log.
+- Spring sheets: drag to dismiss, rubber band, velocity (`@/lib/spring`).
+- Text size: html is 93.75% and the Text size setting scales it. Use rem sizes, never px, so it scales.
+- Reduce Motion: `motion-reduce:` variants, the `press` utility, and `useReducedMotion` for JS animation.
+- Reduce Transparency: use `glass-bar` and `glass-scrim` on translucent chrome so they go solid.
+- Tap targets 44px: `min-h-tap`, `size-tap`, `min-h-btn` with the `after:` padding trick.
+
+### Before finishing any UI change
+1. `npx tsc --noEmit` in `web-app/`.
+2. Screenshot at 390px, light and dark.
+3. Open Menu, Browse, Recipes and Progress. Rows, headers, dividers and radii must still match each other.
+4. Grep your diff for `#`, `rounded-full`, `font-black`, `macro-` and `bg-white/`. Each hit needs a reason.
+5. Tell me what to check on my phone (haptics, sheet drag, swipe delete, Text size).
+
 \## Checks before saying you are done
 
 \- Run `npx tsc --noEmit` inside `web-app/` and fix errors.
