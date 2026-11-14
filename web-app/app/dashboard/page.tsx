@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import WelcomeCard from './WelcomeCard'
 import SetTargetsModal, { DailyTargets } from './SetTargetsModal'
@@ -27,6 +27,7 @@ import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
+import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
 import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
 import {
@@ -42,7 +43,6 @@ import {
   Check,
   Plus,
   X,
-  SlidersHorizontal,
   Minus,
   LayoutGrid,
   Heart,
@@ -258,8 +258,8 @@ type Point = [number, number]
 
 const WAVE_X0 = 10
 const WAVE_X1 = 290
-const WAVE_BASE_Y = 32
-const WAVE_AMPLITUDE = 4
+const WAVE_BASE_Y = 19
+const WAVE_AMPLITUDE = 3
 const WAVE_CYCLES = 1 // one gentle, shallow ripple across the track
 
 function wavePoint(t: number): Point {
@@ -547,7 +547,7 @@ export default function DashboardPage() {
   const [favAlertDismissedDay, setFavAlertDismissedDay] = useState<string | null>(null)
   const [isFavSheetOpen, setIsFavSheetOpen] = useState(false)
   const [activeStationFilters, setActiveStationFilters] = useState<string[]>([])
-  const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   // "Close my rings": whether the student has ever saved targets (until
   // then the 2000/120/250/70 placeholders aren't theirs to aim at), the
   // open suggestions sheet's editable combos, and which combo is logging.
@@ -1574,23 +1574,13 @@ export default function DashboardPage() {
     return { filteredMenu: list, dietHiddenCount: hidden }
   }, [menu, searchQuery, activeStationFilters, userProfile.dietaryPreferences, dietFilterOff, favoritesOnly, favorites])
 
-  // The filter row (diet chip, Stations button, selected stations) only
-  // becomes a sideways scroller when its chips are actually wider than the
-  // screen -- otherwise it has no overflow at all and can't be dragged in any
-  // direction. Re-measured when its chips change or resize (Text size setting,
-  // rotation).
-  const filterRowRef = useRef<HTMLDivElement | null>(null)
-  const [filterRowOverflows, setFilterRowOverflows] = useState(false)
-  useLayoutEffect(() => {
-    const el = filterRowRef.current
-    if (!el) return
-    const measure = () => setFilterRowOverflows(el.scrollWidth > el.clientWidth + 1)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    Array.from(el.children).forEach((child) => observer.observe(child))
-    return () => observer.disconnect()
-  }, [activeStationFilters, dietHiddenCount, dietFilterOff, dietChipLabel, availableStations.length, showMenuSection])
+  // How many filters are narrowing the list right now, for the dot on the
+  // Filters button: each selected station, favorites only, and the dietary
+  // preferences while they're actually hiding something.
+  const activeFilterCount =
+    activeStationFilters.length +
+    (favoritesOnly ? 1 : 0) +
+    (dietHiddenCount > 0 && !dietFilterOff ? 1 : 0)
 
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
@@ -1643,13 +1633,6 @@ export default function DashboardPage() {
   }, [groupedMenu])
 
 
-
-  const handleToggleStationFilter = (station: string) => {
-    Haptics.selectionChanged().catch(() => {})
-    setActiveStationFilters((prev) =>
-      prev.includes(station) ? prev.filter((s) => s !== station) : [...prev, station]
-    )
-  }
 
   // 5. Fetch what the user logged today to sum up live tracker macros
   const fetchTodayTotals = async () => {
@@ -2496,7 +2479,7 @@ export default function DashboardPage() {
                   each one elapses; a soft haptic tap marks the moment it
                   crosses into the next period. */}
               {dayTrack && (
-                <div className="space-y-1.5 pt-1 pb-1">
+                <div className="space-y-0.5">
                   {/* A rippling wave instead of a straight slider or a single arc —
                       echoes a slug's actual undulating crawl. Elapsed time is a
                       neon gold stroke with a glowing blue outline traced on both
@@ -2507,7 +2490,10 @@ export default function DashboardPage() {
                       the reveal (and the blue outline) stop exactly at "now" and
                       never bleed into the untraveled portion. Sammy's head rides
                       the wave, idling slowly between +65 and -65 degrees. */}
-                  <svg ref={dayTrackSvgRef} viewBox="0 0 300 64" className="w-full" style={{ height: 58, overflow: 'visible', touchAction: 'none' }}>
+                  {/* Compact: the viewBox is a 300 x 28 strip and the svg takes
+                      its height from its width (about 33px on a phone), capped
+                      so a wide desktop column doesn't blow it up. */}
+                  <svg ref={dayTrackSvgRef} viewBox="0 0 300 28" className="block w-full h-auto max-h-10" style={{ overflow: 'visible', touchAction: 'none' }}>
                     <defs>
                       {/* Soft neon fade at the leading edge of the completed
                           portion, where the glowing stroke gives way to the
@@ -2517,7 +2503,7 @@ export default function DashboardPage() {
                         <stop offset="100%" stopColor="var(--color-track)" stopOpacity="0" />
                       </radialGradient>
                     </defs>
-                    <path d={DAY_TRACK_PATH} fill="none" stroke="var(--color-line)" strokeWidth="6" strokeLinecap="round" />
+                    <path d={DAY_TRACK_PATH} fill="none" stroke="var(--color-line)" strokeWidth="5" strokeLinecap="round" />
                     {/* Invisible, generously wide hit target spanning the whole
                         path — lets a single tap anywhere on the track jump the
                         head straight there (same snap + haptic as a drag),
@@ -2541,7 +2527,7 @@ export default function DashboardPage() {
                       fill="none"
                       stroke="var(--color-track)"
                       strokeOpacity="1"
-                      strokeWidth="11"
+                      strokeWidth="9"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray={100}
@@ -2554,7 +2540,7 @@ export default function DashboardPage() {
                       fill="none"
                       stroke="currentColor"
                       strokeOpacity="1"
-                      strokeWidth="6"
+                      strokeWidth="5"
                       strokeLinecap="round"
                       pathLength={100}
                       strokeDasharray={100}
@@ -2587,7 +2573,7 @@ export default function DashboardPage() {
                           {/* Soft gradient fade marking the edge of the completed
                               (neon) portion of the track, right where the head
                               currently sits. */}
-                          <circle cx={0} cy={0} r={23} fill="url(#dayTrackEdgeGlow)" />
+                          <circle cx={0} cy={0} r={15} fill="url(#dayTrackEdgeGlow)" />
                           {/* Invisible, generously-sized hit target so the head is
                               easy to grab on a touchscreen — the drawn head itself
                               is much smaller than a comfortable tap/drag target. */}
@@ -2610,7 +2596,7 @@ export default function DashboardPage() {
                               the real time of day regardless of where the head
                               itself is parked. */}
                           <g
-                            transform="scale(-2.6, 2.6)"
+                            transform="scale(-1.8, 1.8)"
                             style={{ filter: 'drop-shadow(0 0 2px color-mix(in srgb, var(--color-track) 70%, transparent))', pointerEvents: 'none' }}
                           >
                             {isSleeping ? (
@@ -2645,7 +2631,7 @@ export default function DashboardPage() {
                           {/* Reduce Motion: the z's hold still at their visible opacity */}
                           {isSleeping && (
                             <g style={{ pointerEvents: 'none' }}>
-                              <text x="13" y="-16" fontSize="9" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.9 : undefined}>
+                              <text x="9" y="-10" fontSize="7" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.9 : undefined}>
                                 {!reduceMotion && (
                                   <>
                                     <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.7;1" dur="2.4s" repeatCount="indefinite" />
@@ -2654,7 +2640,7 @@ export default function DashboardPage() {
                                 )}
                                 z
                               </text>
-                              <text x="19" y="-23" fontSize="6" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.7 : undefined}>
+                              <text x="14" y="-15" fontSize="5" fontWeight="bold" className="fill-sky" opacity={reduceMotion ? 0.7 : undefined}>
                                 {!reduceMotion && (
                                   <>
                                     <animate attributeName="opacity" values="0;0.7;0.7;0" keyTimes="0;0.15;0.7;1" dur="2.4s" begin="0.6s" repeatCount="indefinite" />
@@ -2681,7 +2667,7 @@ export default function DashboardPage() {
                         }}
                         aria-label={`Show ${seg.label} menu`}
                         aria-pressed={i === dayTrackSegmentIndexForPct(dayTrack, headPct)}
-                        className={`@container relative text-center py-1 text-9 font-bold whitespace-nowrap transition-colors duration-500 active:scale-90 after:absolute after:inset-x-0 after:content-[''] after:-inset-y-3 ${
+                        className={`@container relative text-center py-0.5 text-9 font-bold whitespace-nowrap transition-colors duration-500 active:scale-90 after:absolute after:inset-x-0 after:content-[''] after:-top-1 after:-bottom-3 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-gold' : 'text-fg-muted'
                         }`}
                       >
@@ -2699,7 +2685,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
-                  <div className="flex justify-between">
+                  <div className="flex justify-between leading-none">
                     <span className="text-10 font-bold text-sky">
                       {dayTrack.opensAt}
                     </span>
@@ -2711,115 +2697,37 @@ export default function DashboardPage() {
               )}
 
               <div className="flex flex-col md:flex-row gap-3">
-                {/* Search + station filter pills — hidden when the hall is closed right now */}
+                {/* Search + Filters — hidden when the hall is closed right now */}
                 {showMenuSection && (
-                  <div className="flex-1 min-w-0 pt-4 border-t border-line space-y-3">
-                    <div className="relative w-full">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
-                      <input
-                        type="search"
-                        aria-label="Search menu items"
-                        placeholder="Search today's items..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
-                        className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
-                      />
-                      {searchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchQuery('')}
-                          aria-label="Clear search"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg press active:scale-90"
-                        >
-                          <X size={16} />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* One slim row: dietary chip, then the "Stations" button that
-                        opens the station picker sheet, then the stations currently
-                        selected. Only scrolls (sideways only) when it overflows --
-                        overflow-y-hidden matters because overflow-x-auto alone turns
-                        overflow-y to auto, and the Show button's enlarged tap area
-                        (after:-inset-2) pokes out vertically, giving the row a few
-                        px of up/down/diagonal drag. No touch-action restriction, so
-                        vertical swipes starting here still scroll the page. */}
-                    {(
-                      <div
-                        ref={filterRowRef}
-                        className="flex flex-wrap items-center gap-2 pt-1"
-                      >
-                        {dietHiddenCount > 0 && (
-                          <div className="basis-full flex items-center gap-1.5 min-w-0">
-                            <span className="text-xs font-medium text-fg-muted truncate">{dietChipLabel}</span>
-                            <span className="shrink-0 text-xs font-medium text-fg-muted tabular-nums">
-                              · {dietHiddenCount} {dietFilterOff ? 'shown' : 'hidden'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDietFilterOff((off) => !off)
-                                Haptics.selectionChanged().catch(() => {})
-                              }}
-                              aria-label={dietFilterOff ? 'Hide items that do not match your dietary preferences' : `Show ${dietHiddenCount} hidden items`}
-                              className="shrink-0 relative after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-[''] px-1 text-xs font-bold text-gold active:scale-95 motion-reduce:active:scale-100 press"
-                            >
-                              {dietFilterOff ? 'Hide' : 'Show'}
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFavoritesOnly((on) => !on)
-                            Haptics.selectionChanged().catch(() => {})
-                          }}
-                          aria-pressed={favoritesOnly}
-                          className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
-                            ? 'bg-gold/15 text-gold'
-                            : 'bg-surface-2 text-fg-muted hover:text-fg'
-                            }`}
-                        >
-                          <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
-                          Favorites
-                        </button>
-                        {availableStations.length > 0 && (
+                  <div className="flex-1 min-w-0 pt-4 border-t border-line">
+                    {/* Search, with one Filters button beside it. Dietary
+                        Show/Hide, favorites only and the station picker all
+                        live in the sheet it opens. */}
+                    <div className="flex items-stretch gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
+                        <input
+                          type="search"
+                          aria-label="Search menu items"
+                          placeholder="Search today's items..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
+                          className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+                        />
+                        {searchQuery && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setIsStationSheetOpen(true)
-                              Haptics.selectionChanged().catch(() => {})
-                            }}
-                            aria-haspopup="dialog"
-                            aria-label={`Filter by station, ${activeStationFilters.length || 'all'} selected`}
-                            className={`relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100 ${activeStationFilters.length > 0
-                              ? 'bg-gold/15 text-gold'
-                              : 'bg-surface-2 text-fg-muted hover:text-fg'
-                              }`}
+                            onClick={() => setSearchQuery('')}
+                            aria-label="Clear search"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg press active:scale-90"
                           >
-                            <SlidersHorizontal size={14} aria-hidden="true" />
-                            Stations · {activeStationFilters.length || 'All'}
+                            <X size={16} />
                           </button>
                         )}
-                        {/* What's filtering right now -- tap one to remove it */}
-                        {activeStationFilters.map((station) => {
-                          const name = cleanStationName(station.includes(' - ') ? station.split(' - ')[1] : station)
-                          return (
-                            <button
-                              key={station}
-                              type="button"
-                              onClick={() => handleToggleStationFilter(station)}
-                              aria-label={`Remove ${name} filter`}
-                              className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gold/15 text-gold text-xs font-semibold press active:scale-95 motion-reduce:active:scale-100"
-                            >
-                              {name}
-                              <X size={12} strokeWidth={2.75} aria-hidden="true" />
-                            </button>
-                          )
-                        })}
                       </div>
-                    )}
+                      <FiltersButton activeCount={activeFilterCount} onClick={() => setIsFiltersOpen(true)} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -3651,61 +3559,29 @@ export default function DashboardPage() {
         </BottomSheet>
       )}
 
-      {/* Station picker -- every station as a wrapping multi-select chip (same
-          toggle + look as the old inline pills). Changes apply as they're tapped;
-          Done just closes. */}
-      {isStationSheetOpen && (
-        <BottomSheet onClose={() => setIsStationSheetOpen(false)} labelledBy="station-sheet-title">
-          <h2 id="station-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-3">
-            Stations
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {availableStations.map((station) => {
-              const isActive = activeStationFilters.includes(station)
-              const [parentLabel, subLabel] = station.includes(' - ')
-                ? station.split(' - ')
-                : [null, station]
-
-              return (
-                <button
-                  key={station}
-                  type="button"
-                  onClick={() => handleToggleStationFilter(station)}
-                  aria-pressed={isActive}
-                  className={`px-3 py-1.5 rounded-full border press active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
-                    ? 'bg-gold/15 text-gold border-gold/40'
-                    : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                    }`}
-                >
-                  {parentLabel && (
-                    <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
-                      {parentLabel}
-                    </span>
-                  )}
-                  <span className="text-xs font-bold">{cleanStationName(subLabel)}</span>
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex gap-3 mt-5">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveStationFilters([])
-                Haptics.selectionChanged().catch(() => {})
-              }}
-              disabled={activeStationFilters.length === 0}
-              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
-            >
-              Clear
-            </button>
-            <SheetCloseButton
-              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
-            >
-              Done
-            </SheetCloseButton>
-          </div>
-        </BottomSheet>
+      {/* Filters -- dietary Show/Hide, favorites only and the station picker
+          in one sheet. Changes apply as they're tapped; Done just closes. */}
+      {isFiltersOpen && (
+        <FiltersSheet
+          onClose={() => setIsFiltersOpen(false)}
+          diet={userProfile.dietaryPreferences.length > 0 ? {
+            label: dietChipLabel,
+            hiddenCount: dietHiddenCount,
+            showing: dietFilterOff,
+            onToggle: () => setDietFilterOff((off) => !off),
+          } : undefined}
+          favoritesOnly={favoritesOnly}
+          onToggleFavorites={() => setFavoritesOnly((on) => !on)}
+          stations={availableStations}
+          activeStations={activeStationFilters}
+          onToggleStation={(station) =>
+            setActiveStationFilters((prev) =>
+              prev.includes(station) ? prev.filter((s) => s !== station) : [...prev, station]
+            )
+          }
+          onClearStations={() => setActiveStationFilters([])}
+          stationLabel={cleanStationName}
+        />
       )}
 
       {/* Favorites being served today -- tap one to jump to that hall and meal */}
