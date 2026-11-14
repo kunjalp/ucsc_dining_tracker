@@ -2923,14 +2923,22 @@ export default function DashboardPage() {
                                           <span className="min-w-0">{food.name}</span>
                                           <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted" aria-hidden="true" />
                                         </span>
-                                        {/* Scales with the stepper, so it shows what Log will add */}
+                                        {/* Two muted lines: portion and calories, then the three
+                                            macros spaced apart with the numbers a step brighter
+                                            than their letters. Both scale with the stepper, so
+                                            they show what Log will add. */}
                                         <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
                                           {food.portion || '1 serving'}
                                           {rowServings !== 1 && ` × ${rowServings}`}
                                           {' · '}
                                           {Math.round(food.calories * rowServings)} cal
-                                          {' · '}
-                                          {Math.round(food.protein * rowServings)}P {Math.round(food.carbs * rowServings)}C {Math.round(food.fat * rowServings)}F
+                                        </span>
+                                        <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
+                                          P <span className="text-fg-subtle">{Math.round(food.protein * rowServings)}g</span>
+                                          <span aria-hidden="true" className="mx-1.5">·</span>
+                                          C <span className="text-fg-subtle">{Math.round(food.carbs * rowServings)}g</span>
+                                          <span aria-hidden="true" className="mx-1.5">·</span>
+                                          F <span className="text-fg-subtle">{Math.round(food.fat * rowServings)}g</span>
                                         </span>
                                       </button>
                                       <FavoriteButton name={food.name} />
