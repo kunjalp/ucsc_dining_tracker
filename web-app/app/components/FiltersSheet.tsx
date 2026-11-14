@@ -1,7 +1,7 @@
 'use client'
 
 import { Haptics } from '@capacitor/haptics'
-import { SlidersHorizontal } from 'lucide-react'
+import { Check, SlidersHorizontal } from 'lucide-react'
 import BottomSheet, { SheetCloseButton } from './BottomSheet'
 
 // The dietary filter built from the student's saved preferences. Leave it
@@ -28,6 +28,42 @@ interface FiltersSheetProps {
   onClearStations: () => void
   // Tidies a raw station name for display
   stationLabel?: (name: string) => string
+  // One-of-many pickers, shown as plain rows with a gold check. Browse only.
+  halls?: ChoiceFilter
+  sort?: ChoiceFilter
+}
+
+export interface ChoiceFilter {
+  title: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (value: string) => void
+}
+
+function ChoiceSection({ title, options, value, onChange }: ChoiceFilter) {
+  return (
+    <div className="pt-1 pb-1">
+      <h3 className="min-h-tap flex items-center text-sm font-semibold text-fg">{title}</h3>
+      <div role="radiogroup" aria-label={title} className="divide-y divide-line">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={o.value === value}
+            onClick={() => {
+              onChange(o.value)
+              tick()
+            }}
+            className={`w-full min-h-tap flex items-center justify-between gap-3 text-left text-sm press active:opacity-70 ${o.value === value ? 'font-semibold text-fg' : 'font-medium text-fg-muted'}`}
+          >
+            {o.label}
+            {o.value === value && <Check size={16} strokeWidth={3} className="text-gold" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const tick = () => {
@@ -48,6 +84,8 @@ export default function FiltersSheet({
   onToggleStation,
   onClearStations,
   stationLabel = (name) => name,
+  halls,
+  sort,
 }: FiltersSheetProps) {
   return (
     <BottomSheet onClose={onClose} labelledBy="filters-sheet-title">
@@ -102,6 +140,9 @@ export default function FiltersSheet({
             />
           </span>
         </button>
+
+        {halls && <ChoiceSection {...halls} />}
+        {sort && <ChoiceSection {...sort} />}
 
         {stations.length > 0 && (
           <div className="pt-1 pb-2">

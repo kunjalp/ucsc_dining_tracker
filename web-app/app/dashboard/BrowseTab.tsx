@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, Heart, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
 import { classifyByName } from '@/lib/stationClassifier'
 import Sammy from '../components/Sammy'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
-import FavoriteButton from '../components/FavoriteButton'
+import FoodRow, { SERVING_OPTIONS } from '../components/FoodRow'
+import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
 import { favoriteKey, useFavorites } from '@/lib/favorites'
 
 // Everything the Browse tab needs to show, filter and log an item. Matches
@@ -54,7 +55,6 @@ interface BrowseTabProps {
   onServingPreview: (food: BrowseFood, servings: number) => void
 }
 
-const SERVING_OPTIONS = [0.25, 0.5, 1, 1.5, 2]
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Late Night']
 const PAGE_SIZE = 40
 const DB_PAGE = 1000
@@ -315,7 +315,9 @@ export default function BrowseTab({
   const [activeStations, setActiveStations] = useState<string[]>([])
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const favorites = useFavorites()
-  const [isStationSheetOpen, setIsStationSheetOpen] = useState(false)
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+  const [isMealSheetOpen, setIsMealSheetOpen] = useState(false)
+  const [openStepperId, setOpenStepperId] = useState<string | null>(null)
   const [servings, setServings] = useState<Record<string, number>>({})
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [debounced, setDebounced] = useState('')
@@ -400,17 +402,19 @@ export default function BrowseTab({
     meal,
   })
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-2xl p-5 space-y-4 bg-surface border border-white/10">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight">Browse all dining hall items</h2>
-          <p className="text-xs text-fg-muted mt-0.5">
-            Find something that isn&apos;t on a menu today and log it.
-          </p>
-        </div>
+  const activeFilterCount =
+    activeStations.length +
+    (favoritesOnly ? 1 : 0) +
+    (dietHidden > 0 && !dietFilterOff ? 1 : 0) +
+    (hallFilter ? 1 : 0) +
+    (sort !== 'az' ? 1 : 0)
 
-        <div className="relative w-full">
+  return (
+    <div className="space-y-4">
+      {/* Search, with the shared Filters button beside it. Dietary, favorites,
+          stations, hall and sort all live in the sheet it opens. */}
+      <div className="flex items-stretch gap-2">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
           <input
             type="search"
@@ -419,7 +423,7 @@ export default function BrowseTab({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
-            className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+            className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button
@@ -432,343 +436,186 @@ export default function BrowseTab({
             </button>
           )}
         </div>
+        <FiltersButton activeCount={activeFilterCount} onClick={() => setIsFiltersOpen(true)} />
+      </div>
 
-        {/* Dietary chip, Stations button and the selected stations, same as the Menu tab */}
-        {(
-          <div className="flex flex-wrap items-center gap-2">
-            {dietaryPreferences.length > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full border border-sky/30 bg-sky/10 pl-3 pr-1 py-1 max-w-full">
-              <span className="text-xs font-semibold text-sky truncate">{dietChipLabel}</span>
-              <span className="text-xs text-fg-muted tabular-nums whitespace-nowrap">
-                , {dietHidden} {dietFilterOff ? 'shown' : 'hidden'}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setDietFilterOff((off) => !off)
-                  Haptics.selectionChanged().catch(() => {})
-                }}
-                aria-label={dietFilterOff ? 'Hide items that do not match your dietary preferences' : `Show ${dietHidden} hidden items`}
-                className="relative after:absolute after:-inset-2 after:content-[''] rounded-full px-2 py-0.5 text-xs font-bold text-gold hover:bg-gold/10 active:scale-95 press"
-              >
-                {dietFilterOff ? 'Hide' : 'Show'}
-              </button>
+      {/* Results */}
+      <div className="border-t border-line">
+        {!items && !error ? (
+          <div className="space-y-1 pt-3" role="status" aria-label="Loading items">
+            <div className="flex justify-center pt-2 pb-1">
+              <Sammy mood="loading" size={2} />
             </div>
-            )}
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="py-4 flex items-center justify-between gap-4 animate-pulse motion-reduce:animate-none" style={{ animationDelay: `${i * 120}ms` }}>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
+                  <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
+                </div>
+                <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div role="alert" className="py-10 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
+            <Sammy mood="oops" size={3} />
+            <p>Couldn&apos;t load the item list. {error}</p>
             <button
               type="button"
               onClick={() => {
-                setFavoritesOnly((on) => !on)
-                Haptics.selectionChanged().catch(() => {})
+                setError(null)
+                clearCatalogue()
+                setItems(null)
+                setAttempt((n) => n + 1)
               }}
-              aria-pressed={favoritesOnly}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${favoritesOnly
-                ? 'bg-macro-fat/15 text-macro-fat border-macro-fat/40'
-                : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                }`}
+              className="min-h-btn px-4 rounded-lg bg-gold text-on-gold text-sm font-bold press active:scale-95 motion-reduce:active:scale-100"
             >
-              <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
-              Favorites
+              Try again
             </button>
-            {availableStations.length > 0 && (
+          </div>
+        ) : (
+          <>
+            {/* The count, and where every log goes */}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-fg-muted tabular-nums" aria-live="polite">
+                {list.length} item{list.length !== 1 ? 's' : ''}
+              </p>
               <button
                 type="button"
                 onClick={() => {
-                  setIsStationSheetOpen(true)
+                  setIsMealSheetOpen(true)
                   Haptics.selectionChanged().catch(() => {})
                 }}
                 aria-haspopup="dialog"
-                aria-label={`Filter by station, ${activeStations.length || 'all'} selected`}
-                className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${activeStations.length > 0
-                  ? 'bg-gold/15 text-gold border-gold/40'
-                  : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                  }`}
+                aria-label={`Log to ${meal}. Change meal`}
+                className="min-h-tap pl-3 flex items-center gap-0.5 text-sm font-semibold text-fg press active:opacity-70"
               >
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                Stations · {activeStations.length || 'All'}
-              </button>
-            )}
-            {activeStations.map((station) => {
-              const name = station.includes(' - ') ? station.split(' - ')[1] : station
-              return (
-                <button
-                  key={station}
-                  type="button"
-                  onClick={() => toggleStation(station)}
-                  aria-label={`Remove ${name} filter`}
-                  className="shrink-0 whitespace-nowrap flex items-center gap-1 px-2.5 py-1 rounded-full border bg-gold/15 text-gold border-gold/40 text-xs font-bold press active:scale-95 motion-reduce:active:scale-100"
-                >
-                  {name}
-                  <X size={12} strokeWidth={2.75} aria-hidden="true" />
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Dining hall chips */}
-        <div role="radiogroup" aria-label="Filter by dining hall" className="flex flex-wrap gap-2">
-          {[null, ...diningHalls].map((hall) => {
-            const selected = hallFilter === hall
-            return (
-              <button
-                key={hall ?? 'all'}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => {
-                  setHallFilter(hall)
-                  Haptics.selectionChanged().catch(() => {})
-                }}
-                className={`relative after:absolute after:inset-x-0 after:content-[''] after:-inset-y-1 px-3 py-1.5 rounded-full border text-xs font-bold press active:scale-95 motion-reduce:active:scale-100 ${selected
-                  ? 'bg-gold/15 text-gold border-gold/40'
-                  : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                  }`}
-              >
-                {hall ? shortHall(hall) : 'All halls'}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <label className="flex-1 min-w-0 text-xs font-semibold text-fg-muted">
-            Sort
-            <select
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as SortKey)
-                Haptics.selectionChanged().catch(() => {})
-              }}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-surface-2 p-2.5 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
-            >
-              {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
-                <option key={k} value={k}>{SORT_LABELS[k]}</option>
-              ))}
-            </select>
-          </label>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-fg-muted">Log to</p>
-            <div role="radiogroup" aria-label="Meal to log to" className="mt-1 flex bg-surface-2 p-1 rounded-xl gap-1">
-              {MEALS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="radio"
-                  aria-checked={meal === m}
-                  onClick={() => {
-                    setMeal(m)
-                    Haptics.selectionChanged().catch(() => {})
-                  }}
-                  className={`relative flex-1 px-1 py-1.5 text-11 font-bold rounded-lg press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${meal === m
-                    ? 'bg-gold/15 text-gold border border-gold/40'
-                    : 'text-fg-muted hover:text-fg border border-transparent'
-                    }`}
-                >
-                  {m === 'Late Night' ? 'Late' : m}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Results */}
-        <div className="pt-4 border-t border-white/10">
-          {!items && !error ? (
-            <div className="space-y-1" role="status" aria-label="Loading items">
-              <div className="flex justify-center pt-2 pb-1">
-                <Sammy mood="loading" size={2} />
-              </div>
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="py-4 flex items-center justify-between gap-4 animate-pulse motion-reduce:animate-none" style={{ animationDelay: `${i * 120}ms` }}>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-2/3 max-w-[180px] rounded bg-white/10" />
-                    <div className="h-3 w-1/3 max-w-[90px] rounded bg-white/5" />
-                  </div>
-                  <div className="h-8 w-20 rounded-lg bg-white/5 shrink-0" />
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div role="alert" className="py-10 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-              <Sammy mood="oops" size={3} />
-              <p>Couldn&apos;t load the item list. {error}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null)
-                  clearCatalogue()
-                  setItems(null)
-                  setAttempt((n) => n + 1)
-                }}
-                className="px-4 py-2 rounded-xl bg-gold text-on-gold text-sm font-bold press active:scale-95"
-              >
-                Try again
+                Log to {meal}
+                <ChevronDown size={16} className="text-fg-muted" aria-hidden="true" />
               </button>
             </div>
-          ) : list.length === 0 ? (
-            <div className="py-12 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
-              <Sammy mood="idle" size={3} />
-              <p>
+
+            {list.length === 0 ? (
+              <p className="py-12 text-center text-fg-subtle font-medium">
                 {favoritesOnly
                   ? 'No favorites match. Tap the heart on an item to add one.'
                   : dietHidden > 0 && !dietFilterOff
                     ? 'No items match your search or dietary filters.'
                     : 'No items match your search.'}
               </p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs text-fg-muted mb-2 tabular-nums" aria-live="polite">
-                {list.length} item{list.length !== 1 ? 's' : ''}
-              </p>
-              <div className="divide-y divide-white/10">
+            ) : (
+              <div className="divide-y divide-line">
                 {list.slice(0, visible).map((it, index) => {
                   const food = it.food
                   const rowServings = servings[food.recipe_id] ?? 1
                   return (
-                    <article
+                    <FoodRow
                       key={food.recipe_id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl px-3 -mx-3 hover:bg-white/5 transition-colors animate-row-in"
-                      style={{ animationDelay: `${Math.min(index % PAGE_SIZE, 8) * 35}ms` }}
-                    >
-                      <div className="flex items-start gap-1 min-w-0 sm:flex-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onOpenDetail(food, rowServings, ctxFor(it))
-                          Haptics.selectionChanged().catch(() => {})
-                        }}
-                        aria-label={`${food.name}, details`}
-                        className="group min-w-0 flex-1 text-left rounded-lg active:opacity-70"
-                      >
-                        <span className="flex items-start gap-1 font-semibold text-fg">
-                          <span className="min-w-0">{food.name}</span>
-                          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted group-hover:text-fg transition-colors" aria-hidden="true" />
+                      food={food}
+                      servings={rowServings}
+                      stepperOpen={openStepperId === food.recipe_id}
+                      logged={!!justLogged[food.recipe_id]}
+                      index={index % PAGE_SIZE}
+                      logSuffix={` to ${meal}`}
+                      note={
+                        <span className="block text-11 font-medium text-fg-muted mt-0.5">
+                          {it.onToday ? 'On today’s menu' : 'Not on today’s menu'} · {it.halls.map(shortHall).join(', ')}
                         </span>
-                        <span className="block text-xs text-fg-muted mt-0.5">
-                          {food.portion || '1 serving'}
-                          {rowServings !== 1 && ` × ${rowServings}`}
-                        </span>
-                        <span className="flex flex-wrap gap-1.5 mt-1.5 text-11 font-semibold tabular-nums">
-                          <span className="rounded-md px-1.5 bg-macro-cal/15 text-macro-cal">{Math.round(food.calories * rowServings)} cal</span>
-                          <span className="rounded-md px-1.5 bg-macro-protein/15 text-macro-protein">P {Math.round(food.protein * rowServings)}g</span>
-                          <span className="rounded-md px-1.5 bg-macro-carbs/15 text-macro-carbs">C {Math.round(food.carbs * rowServings)}g</span>
-                          <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(food.fat * rowServings)}g</span>
-                        </span>
-                        <span className="block text-11 text-fg-muted mt-1.5">
-                          {it.onToday ? (
-                            <span className="font-semibold text-macro-protein">On today&apos;s menu · </span>
-                          ) : (
-                            <span className="font-semibold">Not on today&apos;s menu · </span>
-                          )}
-                          {it.halls.map(shortHall).join(', ')}
-                        </span>
-                      </button>
-                      <FavoriteButton name={food.name} className="-mt-1" />
-                      </div>
-
-                      <div className="flex items-center justify-between w-full gap-3 sm:w-auto sm:justify-start">
-                        <div role="radiogroup" aria-label={`Servings of ${food.name}`} className="flex bg-surface-2 p-1.5 rounded-xl gap-1">
-                          {SERVING_OPTIONS.map((value) => {
-                            const isSelected = rowServings === value
-                            return (
-                              <button
-                                key={value}
-                                type="button"
-                                role="radio"
-                                aria-checked={isSelected}
-                                onClick={() => {
-                                  setServings((prev) => ({ ...prev, [food.recipe_id]: value }))
-                                  onServingPreview(food, value)
-                                }}
-                                className={`px-2.5 py-1 text-xs font-bold rounded-lg press active:scale-90 ${isSelected ? 'bg-gold/15 text-gold' : 'text-fg-muted hover:text-fg'}`}
-                              >
-                                {value}x
-                              </button>
-                            )
-                          })}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onLog(food, rowServings, ctxFor(it))}
-                          disabled={!!justLogged[food.recipe_id]}
-                          aria-label={justLogged[food.recipe_id] ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name} to ${meal}`}
-                          className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] flex min-h-btn min-w-tap items-center justify-center rounded-lg px-3.5 text-xs font-bold shadow-md transition-colors duration-300 active:scale-95 ${justLogged[food.recipe_id]
-                            ? 'bg-macro-protein text-on-gold'
-                            : 'bg-gold text-on-gold hover:brightness-105'
-                            }`}
-                        >
-                          {justLogged[food.recipe_id] ? <Check size={14} strokeWidth={3} className="animate-check-pop" /> : 'Log'}
-                        </button>
-                      </div>
-                    </article>
+                      }
+                      onOpen={() => {
+                        onOpenDetail(food, rowServings, ctxFor(it))
+                        Haptics.selectionChanged().catch(() => {})
+                      }}
+                      onToggleStepper={() => {
+                        setOpenStepperId((id) => (id === food.recipe_id ? null : food.recipe_id))
+                        Haptics.selectionChanged().catch(() => {})
+                      }}
+                      onStep={(dir) => {
+                        const at = SERVING_OPTIONS.indexOf(rowServings)
+                        const next = SERVING_OPTIONS[Math.min(SERVING_OPTIONS.length - 1, Math.max(0, (at === -1 ? SERVING_OPTIONS.indexOf(1) : at) + dir))]
+                        if (next === rowServings) return
+                        setServings((prev) => ({ ...prev, [food.recipe_id]: next }))
+                        onServingPreview(food, next)
+                        Haptics.selectionChanged().catch(() => {})
+                      }}
+                      onLog={() => onLog(food, rowServings, ctxFor(it))}
+                    />
                   )
                 })}
               </div>
-              {visible < list.length && (
-                <button
-                  type="button"
-                  onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                  className="mt-4 w-full min-h-btn py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-sm font-bold text-fg press active:scale-[0.98]"
-                >
-                  Show more ({list.length - visible} left)
-                </button>
-              )}
-            </>
-          )}
-        </div>
+            )}
+            {visible < list.length && (
+              <button
+                type="button"
+                onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                className="mt-2 w-full min-h-btn text-sm font-semibold text-fg-muted hover:text-fg press active:opacity-70"
+              >
+                Show more ({list.length - visible} left)
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Station picker -- same wrapping multi-select chips as the Menu tab */}
-      {isStationSheetOpen && (
-        <BottomSheet onClose={() => setIsStationSheetOpen(false)} labelledBy="browse-station-sheet-title">
-          <h2 id="browse-station-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-3">
-            Stations
+      {/* Filters: the same sheet as Menu, plus hall and sort */}
+      {isFiltersOpen && (
+        <FiltersSheet
+          onClose={() => setIsFiltersOpen(false)}
+          diet={dietaryPreferences.length > 0 ? {
+            label: dietChipLabel,
+            hiddenCount: dietHidden,
+            showing: dietFilterOff,
+            onToggle: () => setDietFilterOff((off) => !off),
+          } : undefined}
+          favoritesOnly={favoritesOnly}
+          onToggleFavorites={() => setFavoritesOnly((on) => !on)}
+          stations={availableStations}
+          activeStations={activeStations}
+          onToggleStation={toggleStation}
+          onClearStations={() => setActiveStations([])}
+          stationLabel={cleanStation}
+          halls={{
+            title: 'Dining hall',
+            options: [{ value: '', label: 'All halls' }, ...diningHalls.map((h) => ({ value: h, label: shortHall(h) }))],
+            value: hallFilter ?? '',
+            onChange: (v) => setHallFilter(v || null),
+          }}
+          sort={{
+            title: 'Sort',
+            options: (Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({ value: k, label: SORT_LABELS[k] })),
+            value: sort,
+            onChange: (v) => setSort(v as SortKey),
+          }}
+        />
+      )}
+
+      {/* Meal choice: where every log from this tab goes */}
+      {isMealSheetOpen && (
+        <BottomSheet onClose={() => setIsMealSheetOpen(false)} labelledBy="browse-meal-sheet-title">
+          <h2 id="browse-meal-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-1">
+            Log to
           </h2>
-          <div className="flex flex-wrap gap-2">
-            {availableStations.map((station) => {
-              const isActive = activeStations.includes(station)
-              const [parentLabel, subLabel] = station.includes(' - ') ? station.split(' - ') : [null, station]
-              return (
-                <button
-                  key={station}
-                  type="button"
-                  onClick={() => toggleStation(station)}
-                  aria-pressed={isActive}
-                  className={`px-3 py-1.5 rounded-full border press active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
-                    ? 'bg-gold/15 text-gold border-gold/40'
-                    : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                    }`}
-                >
-                  {parentLabel && (
-                    <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
-                      {parentLabel}
-                    </span>
-                  )}
-                  <span className="text-xs font-bold">{subLabel}</span>
-                </button>
-              )
-            })}
+          <div role="radiogroup" aria-label="Meal to log to" className="divide-y divide-line">
+            {MEALS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={meal === m}
+                onClick={() => {
+                  setMeal(m)
+                  Haptics.selectionChanged().catch(() => {})
+                }}
+                className={`w-full min-h-tap flex items-center justify-between gap-3 text-left text-sm press active:opacity-70 ${meal === m ? 'font-semibold text-fg' : 'font-medium text-fg-muted'}`}
+              >
+                {m}
+                {meal === m && <Check size={16} strokeWidth={3} className="text-gold" aria-hidden="true" />}
+              </button>
+            ))}
           </div>
-          <div className="flex gap-3 mt-5">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveStations([])
-                Haptics.selectionChanged().catch(() => {})
-              }}
-              disabled={activeStations.length === 0}
-              className="flex-1 min-h-tap rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
-            >
-              Clear
-            </button>
-            <SheetCloseButton
-              className="flex-1 min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
-            >
-              Done
-            </SheetCloseButton>
-          </div>
+          <SheetCloseButton className="mt-4 w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100">
+            Done
+          </SheetCloseButton>
         </BottomSheet>
       )}
     </div>

@@ -28,6 +28,7 @@ import Sammy, { type SammyMood } from '../components/Sammy'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
 import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
+import FoodRow from '../components/FoodRow'
 import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
 import {
@@ -2831,102 +2832,26 @@ export default function DashboardPage() {
                                   const stepperOpen = openStepperId === food.recipe_id
                                   const logged = !!justLogged[food.recipe_id]
                                   return (
-                                    <article
+                                    <FoodRow
                                       key={food.recipe_id}
-                                      className="py-3 flex flex-wrap items-center gap-x-1 gap-y-1 animate-row-in"
-                                      style={{ animationDelay: `${Math.min(entryIndex, 8) * 35}ms` }}
-                                    >
-                                      {/* Name and its one-line summary are one tap target that opens the food sheet */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDetailLogContext(null)
-                                          setDetailFood(food)
-                                          setDetailServings(rowServings)
-                                          Haptics.selectionChanged().catch(() => {})
-                                        }}
-                                        aria-label={`${food.name}, details`}
-                                        className="group min-w-0 flex-1 self-stretch text-left rounded-lg active:opacity-70"
-                                      >
-                                        <span className="flex items-start gap-1 text-base font-semibold text-fg">
-                                          <span className="min-w-0">{food.name}</span>
-                                          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted" aria-hidden="true" />
-                                        </span>
-                                        {/* Two muted lines: portion and calories, then the three
-                                            macros spaced apart with the numbers a step brighter
-                                            than their letters. Both scale with the stepper, so
-                                            they show what Log will add. */}
-                                        <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
-                                          {food.portion || '1 serving'}
-                                          {rowServings !== 1 && ` × ${rowServings}`}
-                                          {' · '}
-                                          {Math.round(food.calories * rowServings)} cal
-                                        </span>
-                                        <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
-                                          P <span className="text-fg-subtle">{Math.round(food.protein * rowServings)}g</span>
-                                          <span aria-hidden="true" className="mx-1.5">·</span>
-                                          C <span className="text-fg-subtle">{Math.round(food.carbs * rowServings)}g</span>
-                                          <span aria-hidden="true" className="mx-1.5">·</span>
-                                          F <span className="text-fg-subtle">{Math.round(food.fat * rowServings)}g</span>
-                                        </span>
-                                      </button>
-                                      <FavoriteButton name={food.name} />
-                                      {/* Servings: quiet until tapped, then a - / + stepper opens under the row */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenStepperId(stepperOpen ? null : food.recipe_id)
-                                          Haptics.selectionChanged().catch(() => {})
-                                        }}
-                                        aria-expanded={stepperOpen}
-                                        aria-label={`${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}. Change servings`}
-                                        className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] shrink-0 flex min-h-btn min-w-12 items-center justify-center rounded-lg text-sm font-semibold tabular-nums press active:scale-95 motion-reduce:active:scale-100 ${stepperOpen || rowServings !== 1 ? 'text-fg' : 'text-fg-muted'}`}
-                                      >
-                                        {rowServings}×
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleLogFood(food.recipe_id, rowServings)}
-                                        disabled={logged}
-                                        aria-label={logged ? `Logged ${food.name}` : `Log ${rowServings} serving${rowServings !== 1 ? 's' : ''} of ${food.name}`}
-                                        className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] shrink-0 flex min-h-btn min-w-12 items-center justify-center rounded-lg px-3.5 text-sm font-bold transition-colors duration-300 active:scale-95 motion-reduce:active:scale-100 ${logged
-                                          ? 'bg-macro-protein/15 text-macro-protein'
-                                          : 'bg-gold/15 text-gold'
-                                          }`}
-                                      >
-                                        {logged ? (
-                                          <Check size={16} strokeWidth={3} className="animate-check-pop" />
-                                        ) : (
-                                          'Log'
-                                        )}
-                                      </button>
-                                      {stepperOpen && (
-                                        <div role="group" aria-label={`Servings of ${food.name}`} className="basis-full flex items-center justify-end gap-1 pb-1">
-                                          <span className="mr-auto text-xs font-medium text-fg-muted">Servings</span>
-                                          <button
-                                            type="button"
-                                            onClick={() => stepServings(food, -1)}
-                                            disabled={rowServings <= SERVING_OPTIONS[0]}
-                                            aria-label="Fewer servings"
-                                            className="size-12 flex items-center justify-center rounded-lg bg-surface-2 text-fg press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
-                                          >
-                                            <Minus size={18} aria-hidden="true" />
-                                          </button>
-                                          <span aria-live="polite" className="min-w-14 text-center text-base font-semibold tabular-nums text-fg">
-                                            {rowServings}×
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => stepServings(food, 1)}
-                                            disabled={rowServings >= SERVING_OPTIONS[SERVING_OPTIONS.length - 1]}
-                                            aria-label="More servings"
-                                            className="size-12 flex items-center justify-center rounded-lg bg-surface-2 text-fg press active:scale-95 motion-reduce:active:scale-100 disabled:opacity-40"
-                                          >
-                                            <Plus size={18} aria-hidden="true" />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </article>
+                                      food={food}
+                                      servings={rowServings}
+                                      stepperOpen={stepperOpen}
+                                      logged={logged}
+                                      index={entryIndex}
+                                      onOpen={() => {
+                                        setDetailLogContext(null)
+                                        setDetailFood(food)
+                                        setDetailServings(rowServings)
+                                        Haptics.selectionChanged().catch(() => {})
+                                      }}
+                                      onToggleStepper={() => {
+                                        setOpenStepperId(stepperOpen ? null : food.recipe_id)
+                                        Haptics.selectionChanged().catch(() => {})
+                                      }}
+                                      onStep={(dir) => stepServings(food, dir)}
+                                      onLog={() => handleLogFood(food.recipe_id, rowServings)}
+                                    />
                                   )
                                 })}
                               </div>
