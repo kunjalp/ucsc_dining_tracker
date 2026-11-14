@@ -260,7 +260,7 @@ export default function RecipesTab({
           )}
         </div>
 
-        <div className="flex justify-end border-t border-line">
+        <div className="flex justify-end pt-1 pb-3">
           <button
             type="button"
             onClick={() => {
@@ -269,14 +269,14 @@ export default function RecipesTab({
             }}
             aria-haspopup="dialog"
             aria-label={`Log to ${meal}. Change meal`}
-            className="min-h-tap pl-3 flex items-center gap-0.5 text-sm font-semibold text-fg press active:opacity-70"
+            className="relative after:absolute after:-inset-y-3.5 after:-inset-x-2 after:content-[''] flex items-center gap-0.5 text-sm font-semibold text-fg press active:opacity-70"
           >
             Log to {meal}
             <ChevronDown size={16} className="text-fg-muted" aria-hidden="true" />
           </button>
         </div>
 
-        <div>
+        <div className="border-t border-line">
           {setupNeeded ? (
             <div role="status" className="py-8 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
               <Sammy mood="think" size={3} />
