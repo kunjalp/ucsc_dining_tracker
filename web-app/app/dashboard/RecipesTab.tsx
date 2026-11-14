@@ -328,7 +328,7 @@ export default function RecipesTab({
                           type="button"
                           onClick={() => handleShare(recipe)}
                           aria-label={`Share ${recipe.name}`}
-                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
+                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-surface-2 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
                         >
                           <Share2 size={16} aria-hidden="true" />
                         </button>
@@ -339,7 +339,7 @@ export default function RecipesTab({
                             Haptics.selectionChanged().catch(() => {})
                           }}
                           aria-label={`Edit ${recipe.name}`}
-                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
+                          className="relative size-8 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-surface-2 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
                         >
                           <Pencil size={16} aria-hidden="true" />
                         </button>
@@ -471,7 +471,7 @@ function PasteCodeSheet({ onClose, onCode }: { onClose: () => void; onCode: (cod
         </h2>
         <SheetCloseButton
           aria-label="Close"
-          className="shrink-0 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+          className="shrink-0 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-surface hover:text-fg press active:scale-90"
         >
           <X size={20} />
         </SheetCloseButton>
@@ -572,7 +572,7 @@ function ImportRecipeSheet({
           </button>
           <SheetCloseButton
             aria-label="Close"
-            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-surface hover:text-fg press active:scale-90"
           >
             <X size={20} />
           </SheetCloseButton>
@@ -765,7 +765,7 @@ function RecipeBuilder({
           </button>
           <SheetCloseButton
             aria-label="Close"
-            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90"
+            className="size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-surface hover:text-fg press active:scale-90"
           >
             <X size={20} />
           </SheetCloseButton>
@@ -805,7 +805,7 @@ function RecipeBuilder({
                     type="button"
                     onClick={() => bump(item, -1)}
                     aria-label={`Fewer servings of ${item.name}`}
-                    className="relative size-8 flex items-center justify-center rounded-full bg-white/5 text-fg press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
+                    className="relative size-8 flex items-center justify-center rounded-full bg-surface text-fg press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
                   >
                     <Minus size={14} aria-hidden="true" />
                   </button>
@@ -814,7 +814,7 @@ function RecipeBuilder({
                     type="button"
                     onClick={() => bump(item, 1)}
                     aria-label={`More servings of ${item.name}`}
-                    className="relative size-8 flex items-center justify-center rounded-full bg-white/5 text-fg press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
+                    className="relative size-8 flex items-center justify-center rounded-full bg-surface text-fg press active:scale-90 after:absolute after:-inset-1.5 after:content-['']"
                   >
                     <Plus size={14} aria-hidden="true" />
                   </button>
@@ -891,7 +891,7 @@ function RecipeBuilder({
             type="button"
             onClick={remove_}
             disabled={saving}
-            className={`w-full flex items-center justify-center gap-1.5 min-h-tap px-4 rounded-xl border text-sm font-semibold press active:scale-95 disabled:opacity-40 ${confirmDelete ? 'border-danger bg-danger/15 text-danger' : 'border-white/15 bg-white/5 text-fg hover:bg-white/10'}`}
+            className={`w-full flex items-center justify-center gap-1.5 min-h-tap px-4 rounded-xl border text-sm font-semibold press active:scale-95 disabled:opacity-40 ${confirmDelete ? 'border-danger bg-danger/15 text-danger' : 'border-line bg-surface text-fg hover:brightness-125'}`}
           >
             <Trash2 size={15} aria-hidden="true" />
             {confirmDelete ? 'Tap again to delete' : 'Delete recipe'}
@@ -990,7 +990,7 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
             type="button"
             onClick={toggle}
             aria-label="Close favorites"
-            className="relative shrink-0 size-9 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-white/10 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
+            className="relative shrink-0 size-9 flex items-center justify-center rounded-full text-fg-muted hover:text-fg hover:bg-surface-2 press active:scale-90 after:absolute after:-inset-1 after:content-['']"
           >
             <X size={20} aria-hidden="true" />
           </button>
