@@ -25,6 +25,7 @@ import { favoriteKey, loadFavoritesFromAccount, useFavorites } from '@/lib/favor
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
+import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
 import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
@@ -2317,7 +2318,7 @@ export default function DashboardPage() {
             its safe-area inset) so the "+N" serving preview stays visible while
             scrolled down the menu. Desktop divides by the 1.3 zoom below. */}
         {(activeTab === 'log' || activeTab === 'browse' || activeTab === 'recipes') && (
-          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-3 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
+          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3.75rem+1px)] lg:top-[calc((3.75rem+1px)/1.3)] rounded-2xl px-4 py-2 mb-3 flex items-stretch gap-4 bg-surface border border-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.7)]">
             {[
               { label: 'Calories', value: displayTotals.calories, goal: goalCalories, color: 'var(--color-macro-cal)', unit: '', key: 'calories' as const },
               { label: 'Protein', value: displayTotals.protein, goal: goalProtein, color: 'var(--color-macro-protein)', unit: 'g', key: 'protein' as const },
@@ -2740,7 +2741,8 @@ export default function DashboardPage() {
                         placeholder="Search today's items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+                        onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
+                        className="scroll-mt-[calc(env(safe-area-inset-top)+10rem)] w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
                       />
                       {searchQuery && (
                         <button

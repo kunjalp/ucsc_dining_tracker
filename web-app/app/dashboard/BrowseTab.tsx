@@ -6,6 +6,7 @@ import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
 import { classifyByName } from '@/lib/stationClassifier'
 import Sammy from '../components/Sammy'
+import { revealBelowStickyBar } from '@/lib/stickyClear'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import FavoriteButton from '../components/FavoriteButton'
 import { favoriteKey, useFavorites } from '@/lib/favorites'
@@ -417,7 +418,8 @@ export default function BrowseTab({
             placeholder="Search all items..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+            onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
+            className="scroll-mt-[calc(env(safe-area-inset-top)+10rem)] w-full rounded-xl border border-white/10 bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button
