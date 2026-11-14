@@ -2805,8 +2805,15 @@ export default function DashboardPage() {
                               rows don't show through; 1px tucked under the bar so no
                               sliver of a row shows between the two. z-30 keeps it
                               above the rows and below the bar (z-40). */}
-                          <h3 className="sticky z-30 top-[calc(env(safe-area-inset-top)+6rem-1px)] lg:top-[calc(3rem/1.3+3rem-1px)] -mx-5 px-5 lg:-mx-7 lg:px-7 py-2 bg-app border-b border-line text-xs font-semibold uppercase tracking-wider text-fg-muted">
-                            {cleanStationName(parent)}
+                          <h3 className="sticky z-30 top-[calc(env(safe-area-inset-top)+6rem-1px)] lg:top-[calc(3rem/1.3+3rem-1px)] -mx-5 px-5 lg:-mx-7 lg:px-7 py-2.5 bg-surface-2 border-b border-line text-base font-semibold text-fg flex items-baseline justify-between gap-3">
+                            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-gold" />
+                            <span className="min-w-0">{cleanStationName(parent)}</span>
+                            <span className="shrink-0 text-sm font-normal text-fg-muted">
+                              {(() => {
+                                const n = subgroups.reduce((sum, g) => sum + g.entries.length, 0)
+                                return `${n} ${n === 1 ? 'item' : 'items'}`
+                              })()}
+                            </span>
                           </h3>
 
                           {subgroups.map(({ sub, entries }) => (
