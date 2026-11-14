@@ -440,7 +440,7 @@ export default function BrowseTab({
       </div>
 
       {/* Results */}
-      <div className="border-t border-line">
+      <div className="border-t border-line px-2">
         {!items && !error ? (
           <div className="space-y-1 pt-3" role="status" aria-label="Loading items">
             <div className="flex justify-center pt-2 pb-1">
