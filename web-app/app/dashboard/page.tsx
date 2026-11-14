@@ -2293,7 +2293,11 @@ export default function DashboardPage() {
       </ToastStack>
 
       {/* Main Content */}
-      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+124px)] lg:max-w-[1100px] lg:px-5">
+      {/* Bottom padding, shared by every tab, so the last item scrolls fully
+          clear of the floating tab bar: home-indicator inset + the bar's 12px
+          lift + its height (3.5rem covers it) + 5rem of open space. rem, so
+          it grows with the Text size setting like the bar does. */}
+      <main className="app-main-top px-3 max-w-2xl mx-auto pb-[calc(env(safe-area-inset-bottom)+12px+3.5rem+5rem)] lg:max-w-[1100px] lg:px-5">
       <div className="lg:[zoom:1.3]">
 
         {/* What's left today, in one sticky line: Menu and Browse only (Recipes
