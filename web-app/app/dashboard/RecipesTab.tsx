@@ -252,7 +252,7 @@ export default function RecipesTab({
                 setBuilder({ id: null, name: '', items: [] })
                 Haptics.selectionChanged().catch(() => {})
               }}
-              className="flex items-center gap-1.5 min-h-btn px-3.5 rounded-xl bg-gold text-on-gold text-sm font-bold shadow-md hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+              className="flex items-center gap-1.5 min-h-btn px-3.5 rounded-lg bg-gold/15 text-gold text-sm font-bold hover:bg-gold/25 press active:scale-95 motion-reduce:active:scale-100"
             >
               <Plus size={16} strokeWidth={2.75} aria-hidden="true" />
               New
@@ -350,7 +350,7 @@ export default function RecipesTab({
                       onClick={() => handleLog(recipe)}
                       disabled={!!loggingId}
                       aria-label={`Log ${recipe.name} to ${meal}`}
-                      className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold shadow-md transition-colors duration-300 active:scale-[0.98] press disabled:opacity-70 ${isLogged ? 'bg-macro-protein text-on-gold' : 'bg-gold text-on-gold hover:brightness-105'}`}
+                      className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors duration-300 motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 press disabled:opacity-70 ${isLogged ? 'bg-macro-protein text-on-gold' : 'bg-gold/15 text-gold hover:bg-gold/25'}`}
                     >
                       {isLogged ? (
                         <>
