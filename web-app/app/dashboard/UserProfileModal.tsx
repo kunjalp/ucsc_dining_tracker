@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, User, Camera, LogOut, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react'
+import { Haptics } from '@capacitor/haptics'
 import { createClient } from '@/lib/supabase'
 import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
 import { setLocalMascotAnimations } from '@/lib/mascotPrefs'
@@ -22,6 +23,8 @@ interface UserProfileModalProps {
   currentProfile: UserProfile
   onClose: () => void
   onSave: (profile: UserProfile) => void
+  // Fired when the photo is removed so the header drops it right away
+  onAvatarChange?: (avatarUrl: string | null) => void
 }
 
 // Only options UCSC's own nutrition site actually publishes data for.
@@ -52,7 +55,7 @@ const ALLERGEN_OPTIONS = [
 
 const DIETARY_OPTIONS = [...DIET_TYPE_OPTIONS, ...ALLERGEN_OPTIONS]
 
-export default function UserProfileModal({ currentProfile, onClose, onSave }: UserProfileModalProps) {
+export default function UserProfileModal({ currentProfile, onClose, onSave, onAvatarChange }: UserProfileModalProps) {
   const supabase = createClient()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -67,6 +70,8 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
   const [mascotAnimations, setMascotAnimations] = useState(currentProfile.mascotAnimations)
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [confirmRemoveAvatar, setConfirmRemoveAvatar] = useState(false)
+  const [removingAvatar, setRemovingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -194,6 +199,50 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
     }
 
     setAvatarUrl(freshUrl)
+  }
+
+  // ---- Avatar remove: tap once to arm, tap again to clear ----
+  const handleRemoveAvatar = async () => {
+    if (!confirmRemoveAvatar) {
+      setConfirmRemoveAvatar(true)
+      Haptics.selectionChanged().catch(() => {})
+      return
+    }
+
+    setError(null)
+    setRemovingAvatar(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setRemovingAvatar(false)
+      setConfirmRemoveAvatar(false)
+      setError('You must be signed in to remove your photo.')
+      return
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ user_id: user.id, avatar_url: null }, { onConflict: 'user_id' })
+
+    if (profileError) {
+      setRemovingAvatar(false)
+      setConfirmRemoveAvatar(false)
+      setError(`Could not remove photo: ${profileError.message}`)
+      return
+    }
+
+    // The header falls back to user_metadata.avatar_url, so clear that too or
+    // the photo would come back. The stored file is cleaned up best-effort.
+    if (user.user_metadata?.avatar_url) {
+      await supabase.auth.updateUser({ data: { avatar_url: null } })
+    }
+    await supabase.storage.from('avatars').remove([`${user.id}/avatar.jpg`])
+
+    setRemovingAvatar(false)
+    setConfirmRemoveAvatar(false)
+    setAvatarUrl(null)
+    onAvatarChange?.(null)
+    Haptics.selectionChanged().catch(() => {})
   }
   // ---- Sign out ----
   const handleSignOut = async () => {
@@ -393,7 +442,21 @@ export default function UserProfileModal({ currentProfile, onClose, onSave }: Us
             >
               {uploadingAvatar ? 'Uploading...' : 'Change photo'}
             </button>
-            {memberSinceLabel && ` · Since ${memberSinceLabel}`}
+            {avatarUrl && (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  onBlur={() => setConfirmRemoveAvatar(false)}
+                  disabled={uploadingAvatar || removingAvatar}
+                  className={`relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-[''] font-semibold hover:text-fg press disabled:opacity-60 ${confirmRemoveAvatar ? 'text-danger' : 'text-fg-muted'}`}
+                >
+                  {removingAvatar ? 'Removing...' : confirmRemoveAvatar ? 'Tap again to remove' : 'Remove photo'}
+                </button>
+              </>
+            )}
+            {memberSinceLabel && !confirmRemoveAvatar && ` · Since ${memberSinceLabel}`}
           </p>
         </div>
       </div>

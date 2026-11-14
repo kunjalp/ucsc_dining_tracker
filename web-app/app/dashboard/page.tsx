@@ -3310,6 +3310,7 @@ export default function DashboardPage() {
             }
           }}
           onSave={handleSaveProfile}
+          onAvatarChange={(avatarUrl) => setUserProfile((prev) => ({ ...prev, avatarUrl }))}
         />
       )}
 
