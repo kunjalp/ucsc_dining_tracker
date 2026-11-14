@@ -127,7 +127,7 @@ const DAY_OFFSETS = [0, 1, 2]
 // else logged (Brunch, a cafe's "Menu"/"ALL") sorts after these.
 const LOG_MEAL_ORDER = ['Breakfast', 'Brunch', 'Lunch', 'Dinner', 'Late Night']
 
-// Corner Sammy's one-shot moods: a higher number can't be interrupted by a lower one
+// Header Sammy's one-shot moods: a higher number can't be interrupted by a lower one
 const CORNER_PRIORITY: Partial<Record<SammyMood, number>> = { celebrate: 3, flex: 3, oops: 2, munch: 1, happy: 1 }
 // A streak milestone celebration waits this long after it's detected, so it
 // never lands on top of the once-a-session greeting wave
@@ -629,7 +629,7 @@ export default function DashboardPage() {
   // In-app toasts (ring closed, errors) -- replaces alert(); see ToastStack
   const { toasts, showToast, dismissToast, removeToast, holdToast } = useToasts()
 
-  // Sammy perched on the bottom nav. One-shot moods play through a single
+  // Sammy in the header. One-shot moods play through a single
   // queue: a new request replaces what's playing unless something more
   // important is mid-way (celebrate > oops > munch/happy), so animations
   // never stack. When the queue empties he goes back to resting (asleep
@@ -790,7 +790,7 @@ export default function DashboardPage() {
     [streakDates, now]
   )
 
-  // Corner Sammy's speech bubble from the dashboard (streak milestones)
+  // Header Sammy's speech bubble from the dashboard (streak milestones)
   const [cornerSay, setCornerSay] = useState<{ text: string; key: number } | null>(null)
 
   // First time a run of days reaches 3, then 7: a short celebration. Each
@@ -2244,6 +2244,9 @@ export default function DashboardPage() {
     return daysList
   }
 
+  // Header profile button: first letter of the nickname, else of the email
+  const profileInitial = (userProfile.nickname.trim() || userProfile.email.trim()).charAt(0).toUpperCase()
+
   return (
     <div
       className="min-h-dvh bg-app text-fg relative overflow-x-clip"
@@ -2254,12 +2257,29 @@ export default function DashboardPage() {
         {/* Soft edge instead of a 1px divider: the header's tint and blur
             fade out over 12px where content scrolls under (globals.css) */}
         <div aria-hidden="true" className="app-header-fade" />
-        <div className="flex items-center gap-4">
-          <img
-            src="/sammy-logo-transparent.png"
-            alt="Sammy's Palate"
-            className="h-9 w-9 object-contain shrink-0"
+        <div className="flex items-center gap-3">
+          {/* The one live Sammy. He reacts to logs, ring closes and errors
+              from here, so he never sits on top of the menu rows. The h-9
+              wrapper keeps the header at its old height (the sticky bar's
+              offset depends on it); his 44px tap box overflows it evenly. */}
+          <span className="h-9 flex items-center">
+          <Sammy
+            mood={cornerPlay?.mood ?? (isClosedNow ? 'sleep' : 'idle')}
+            moodKey={cornerPlay?.key ?? 0}
+            sparkleColors={cornerPlay?.colors}
+            size={2}
+            variety
+            onTapMessage={sammyTapMessage}
+            bubbleAlign="left"
+            bubbleSide="below"
+            greet
+            watchTouches
+            dressUp
+            streak={streak.count}
+            message={cornerSay}
+            className="-translate-y-1.5"
           />
+          </span>
 
           {/* Stacked container */}
           <div className="flex flex-col">
@@ -2276,13 +2296,16 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="w-9 h-9 rounded-full bg-white/10 border border-white/20 ml-1 flex items-center justify-center hover:bg-white/20 press active:scale-95 overflow-hidden"
+            className="relative after:absolute after:-inset-1 after:content-[''] w-9 h-9 rounded-full bg-surface-2 ml-1 flex items-center justify-center hover:brightness-125 press active:scale-95"
             aria-label="Edit user profile"
           >
+            {/* A photo or the student's initial, so this can't be read as a logo */}
             {userProfile.avatarUrl ? (
-              <img src={userProfile.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              <img src={userProfile.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+            ) : profileInitial ? (
+              <span aria-hidden="true" className="text-base font-bold leading-none text-fg">{profileInitial}</span>
             ) : (
-              <User size={18} className="text-fg-subtle" />
+              <User size={18} className="text-fg-muted" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -2401,8 +2424,7 @@ export default function DashboardPage() {
         {/* "Close my rings" -- what's left today, and a way to get combos
             from the current menu that fill it */}
         {activeTab === 'log' && (
-          <div className="rounded-2xl pl-3 pr-2 py-2 mb-6 min-h-tap flex items-center gap-3 bg-surface border border-white/10">
-            <Sammy mood="idle" size={2} onTapMessage={sammyTapMessage} bubbleAlign="left" className="-my-2.5 -mx-0.5" />
+          <div className="rounded-2xl pl-4 pr-2 py-2 mb-6 min-h-tap flex items-center gap-3 bg-surface border border-white/10">
             {!totalsLoaded ? (
               <p className="text-sm text-fg-muted">Checking what&apos;s left…</p>
             ) : !targetsSaved ? (
@@ -3341,26 +3363,6 @@ export default function DashboardPage() {
           aria-label="Main"
           className="glass-bar pointer-events-auto relative grid grid-cols-4 w-full max-w-[420px] p-1 rounded-full bg-app/75 backdrop-blur-2xl border border-white/15 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.65)]"
         >
-          {/* Sammy perched on top of the pill's right end -- above the nav,
-              never over its buttons. Tappable (44px target) for a progress
-              bubble; the menu's bottom padding lets every row scroll clear
-              of him, like the nav itself. */}
-          <span className="absolute bottom-full right-4">
-            <Sammy
-              mood={cornerPlay?.mood ?? (isClosedNow ? 'sleep' : 'idle')}
-              moodKey={cornerPlay?.key ?? 0}
-              sparkleColors={cornerPlay?.colors}
-              size={2}
-              variety
-              onTapMessage={sammyTapMessage}
-              bubbleAlign="right"
-              greet
-              watchTouches
-              dressUp
-              streak={streak.count}
-              message={cornerSay}
-            />
-          </span>
           <span
             aria-hidden="true"
             className="absolute inset-y-1 left-1 w-[calc(25%-0.125rem)] rounded-full bg-gold/15 border border-gold/30 transition-transform duration-300 ease-out motion-reduce:transition-none"

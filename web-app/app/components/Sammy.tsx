@@ -337,6 +337,9 @@ interface SammyProps {
   onTapMessage?: () => string
   // Which edge the speech bubble lines up with
   bubbleAlign?: 'left' | 'right'
+  // Where the speech bubble opens. 'below' is for Sammy in the header,
+  // where a bubble above him would be off the top of the screen.
+  bubbleSide?: 'above' | 'below'
   // Waves hello (with a time-of-day bubble) once per session on mount
   greet?: boolean
   // Eyes follow a finger held down nearby
@@ -359,6 +362,7 @@ export default function Sammy({
   variety = false,
   onTapMessage,
   bubbleAlign = 'left',
+  bubbleSide = 'above',
   greet = false,
   watchTouches = false,
   dressUp = false,
@@ -796,7 +800,7 @@ export default function Sammy({
     <span
       role="status"
       aria-live="polite"
-      className={`absolute bottom-full mb-3 z-50 w-max max-w-[min(14rem,70vw)] px-2 py-1 text-xs font-bold leading-snug text-app text-left pointer-events-none ${
+      className={`absolute ${bubbleSide === 'below' ? 'top-full mt-3' : 'bottom-full mb-3'} z-50 w-max max-w-[min(14rem,70vw)] px-2 py-1 text-xs font-bold leading-snug text-app text-left pointer-events-none ${
         bubbleAlign === 'right' ? 'right-0' : 'left-0'
       } ${bubbleLeaving ? 'sammy-bubble-out' : 'sammy-bubble-in'}`}
       // Side-only box-shadows leave the corners empty: pixel-rounded corners
@@ -806,15 +810,15 @@ export default function Sammy({
       }}
     >
       {bubble}
-      {/* Stepped pixel tail pointing down at Sammy */}
+      {/* Stepped pixel tail pointing at Sammy */}
       <span
         aria-hidden="true"
-        className={`absolute top-full mt-0.5 size-1.5 ${bubbleAlign === 'right' ? 'right-4' : 'left-4'}`}
+        className={`absolute size-1.5 ${bubbleSide === 'below' ? 'bottom-full mb-0.5' : 'top-full mt-0.5'} ${bubbleAlign === 'right' ? 'right-4' : 'left-4'}`}
         style={{ background: BUBBLE_BG }}
       />
       <span
         aria-hidden="true"
-        className={`absolute top-full mt-2 size-1 ${bubbleAlign === 'right' ? 'right-5' : 'left-5'}`}
+        className={`absolute size-1 ${bubbleSide === 'below' ? 'bottom-full mb-2' : 'top-full mt-2'} ${bubbleAlign === 'right' ? 'right-5' : 'left-5'}`}
         style={{ background: BUBBLE_BG }}
       />
     </span>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import Sammy, { type SammyMood } from '../components/Sammy'
 import {
   CAL_HIT_MAX,
   CAL_HIT_MIN,
@@ -19,13 +18,13 @@ interface WeeklySummaryCardProps {
   loaded: boolean
 }
 
-function reaction(hitDays: number, loggedDays: number): { mood: SammyMood; headline: string } {
-  if (loggedDays === 0) return { mood: 'sleep', headline: 'No logs yet. Log a few days and your week shows up here.' }
-  if (hitDays >= 6) return { mood: 'celebrate', headline: `${hitDays} of 7 days on target. Incredible week!` }
-  if (hitDays >= 4) return { mood: 'happy', headline: `${hitDays} of 7 days on target. Strong week!` }
-  if (hitDays >= 2) return { mood: 'flex', headline: `${hitDays} of 7 days on target. Nice, keep building.` }
-  if (hitDays === 1) return { mood: 'idle', headline: '1 of 7 days on target. A fresh week is a fresh start.' }
-  return { mood: 'think', headline: `You logged ${loggedDays} of 7 days. Let's aim for a target day this week.` }
+function weekHeadline(hitDays: number, loggedDays: number): string {
+  if (loggedDays === 0) return 'No logs yet. Log a few days and your week shows up here.'
+  if (hitDays >= 6) return `${hitDays} of 7 days on target. Incredible week!`
+  if (hitDays >= 4) return `${hitDays} of 7 days on target. Strong week!`
+  if (hitDays >= 2) return `${hitDays} of 7 days on target. Nice, keep building.`
+  if (hitDays === 1) return '1 of 7 days on target. A fresh week is a fresh start.'
+  return `You logged ${loggedDays} of 7 days. Let's aim for a target day this week.`
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US')
@@ -35,20 +34,15 @@ export default function WeeklySummaryCard({ logs, goalCalories, goalProtein, tar
     () => computeWeeklySummary(logs, { calories: goalCalories, protein: goalProtein }, todayStr),
     [logs, goalCalories, goalProtein, todayStr]
   )
-  const { mood, headline } = reaction(summary.hitDays, summary.loggedDays)
+  const headline = weekHeadline(summary.hitDays, summary.loggedDays)
   const best = summary.bestDay
 
   return (
     <section aria-label="Last 7 days" className="rounded-2xl p-4 bg-surface border border-white/10">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight">Last 7 days</h2>
-          <p className="text-sm font-semibold text-fg-subtle mt-0.5" aria-live="polite">
-            {!loaded ? 'Loading your week…' : !targetsSaved ? 'Set your targets to see how your week went.' : headline}
-          </p>
-        </div>
-        <Sammy mood={loaded && targetsSaved ? mood : 'idle'} size={3} className="shrink-0 -mt-1" />
-      </div>
+      <h2 className="text-lg font-bold tracking-tight">Last 7 days</h2>
+      <p className="text-sm font-semibold text-fg-subtle mt-0.5" aria-live="polite">
+        {!loaded ? 'Loading your week…' : !targetsSaved ? 'Set your targets to see how your week went.' : headline}
+      </p>
 
       {loaded && targetsSaved && summary.loggedDays > 0 && (
         <>
