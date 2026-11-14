@@ -3195,6 +3195,21 @@ export default function DashboardPage() {
       </div>
       </main>
 
+      {/* Behind the tab bar: a solid page-colored strip from the screen bottom
+          up through the pill's height (home-indicator inset + 12px + 3.5rem),
+          full width, plus a 3rem fade above it, so rows never show under or
+          beside the pill. Non-interactive; below the bar (z-50) and sheets. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 bg-app"
+        style={{ height: 'calc(env(safe-area-inset-bottom) + 12px + 3.5rem)' }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 z-40 h-12 bg-linear-to-t from-app to-transparent"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px + 3.5rem)' }}
+      />
+
       {/* Floating tab bar -- an iOS-style pill that floats above the content,
           lifted off the bottom edge by the home-indicator inset + 12px. The
           gold capsule behind the active tab slides between the two halves. */}
