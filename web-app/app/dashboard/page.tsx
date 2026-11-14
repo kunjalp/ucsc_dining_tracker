@@ -358,9 +358,9 @@ interface ProgressRingProps {
 }
 
 function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loaded }: ProgressRingProps) {
-  const radius = 42
+  const radius = 38
   const stroke = 9
-  const normalizedRadius = radius - stroke * 2
+  const normalizedRadius = radius - stroke / 2 - 1
   const circumference = normalizedRadius * 2 * Math.PI
 
   const percentage = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
@@ -371,7 +371,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loade
   const animatedValue = useCountUp(value)
 
   return (
-    <div className="flex flex-col items-center justify-center py-3">
+    <div className="flex flex-col items-center justify-center py-1">
       <div className="relative flex items-center justify-center">
         <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
           <circle
@@ -404,7 +404,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loade
         </div>
       </div>
 
-      <div className="text-center mt-2">
+      <div className="text-center mt-1">
         <p className="text-sm font-black" style={{ color: labelColor }}>{label}</p>
         <p className="text-xs text-fg-subtle font-semibold mt-0.5">
           {loaded ? Math.round(animatedValue) : '–'} / {goal} {unit}
@@ -2938,8 +2938,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-5">
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 min-h-tap text-xs font-bold press active:opacity-70 ${showCalendar
-                      ? 'text-gold'
+                    className={`relative after:absolute after:-inset-y-4 after:-inset-x-1 after:content-[''] flex items-center gap-1.5 text-xs font-bold press active:opacity-70 ${showCalendar
+                      ? 'text-fg'
                       : 'text-fg-muted hover:text-fg'
                       }`}
                   >
@@ -2950,7 +2950,7 @@ export default function DashboardPage() {
                   {/* Set Targets button now opens the SetTargetsModal */}
                   <button
                     onClick={() => setIsTargetsModalOpen(true)}
-                    className="min-h-tap text-xs font-bold text-gold press active:opacity-70"
+                    className="relative after:absolute after:-inset-y-4 after:-inset-x-1 after:content-[''] text-xs font-bold text-gold press active:opacity-70"
                   >
                     Set Targets
                   </button>
@@ -2958,7 +2958,7 @@ export default function DashboardPage() {
               </div>
 
               {!showCalendar ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-1">
                   <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" labelColor="var(--color-macro-cal)" label="Calories" unit="kcal" loaded={totalsLoaded} />
                   <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" labelColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={totalsLoaded} />
                   <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" labelColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={totalsLoaded} />
@@ -3102,9 +3102,9 @@ export default function DashboardPage() {
                         .reduce((sum, log) => sum + (Number(log.food_items?.calories) || 0) * (Number(log.servings) || 1), 0)
                       return (
                         <section key={meal} aria-label={`${meal}, ${Math.round(groupCalories)} calories`}>
-                          <h3 className="flex items-baseline justify-between gap-3 text-xs font-bold uppercase tracking-wider text-sky">
+                          <h3 className="flex items-baseline justify-between gap-3 text-xs font-bold uppercase tracking-wider text-fg">
                             <span className="capitalize">{meal}</span>
-                            <span className="text-macro-cal tabular-nums normal-case tracking-normal">{Math.round(groupCalories)} cal</span>
+                            <span className="text-fg-muted tabular-nums normal-case tracking-normal">{Math.round(groupCalories)} cal</span>
                           </h3>
                           <div className="divide-y divide-line">
                             {logs.map((log) => {
@@ -3113,12 +3113,13 @@ export default function DashboardPage() {
                                 : (isSwipeDragging === log.id ? swipeDragOffset : 0)
                               const s = log.servings
                               return (
-                              <div key={log.id} className="relative overflow-hidden rounded-xl">
+                              <div key={log.id} className="relative overflow-hidden">
                                 {/* Red surface revealed as the row is swiped left (decorative --
                                     the trash button on the row is the accessible way to delete) */}
                                 <div
                                   aria-hidden="true"
                                   className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
+                                  style={{ visibility: swipeOffset < 0 ? 'visible' : 'hidden' }}
                                 >
                                   <Trash2 size={18} />
                                 </div>
@@ -3134,15 +3135,18 @@ export default function DashboardPage() {
                                 >
                                   <div className="flex-1 min-w-0">
                                     <p className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</p>
-                                    <p className="text-xs text-fg-muted mt-0.5">
-                                      {log.dining_hall} • {s} serving{s !== 1 ? 's' : ''}
+                                    <p className="text-xs font-medium text-fg-muted mt-0.5">
+                                      {log.dining_hall} · {s} serving{s !== 1 ? 's' : ''}
                                     </p>
-                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs font-semibold tabular-nums">
-                                      <span className="text-macro-cal">{Math.round((log.food_items?.calories || 0) * s)} cal</span>
-                                      <span className="text-macro-protein">P {Math.round((log.food_items?.protein || 0) * s)}g</span>
-                                      <span className="text-macro-carbs">C {Math.round((log.food_items?.carbs || 0) * s)}g</span>
-                                      <span className="text-macro-fat">F {Math.round((log.food_items?.fat || 0) * s)}g</span>
-                                    </div>
+                                    <p className="text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
+                                      <span className="text-fg-subtle">{Math.round((log.food_items?.calories || 0) * s)}</span> cal
+                                      <span aria-hidden="true" className="mx-1.5">·</span>
+                                      P <span className="text-fg-subtle">{Math.round((log.food_items?.protein || 0) * s)}g</span>
+                                      <span aria-hidden="true" className="mx-1.5">·</span>
+                                      C <span className="text-fg-subtle">{Math.round((log.food_items?.carbs || 0) * s)}g</span>
+                                      <span aria-hidden="true" className="mx-1.5">·</span>
+                                      F <span className="text-fg-subtle">{Math.round((log.food_items?.fat || 0) * s)}g</span>
+                                    </p>
                                   </div>
                                   {/* Visible delete -- swipe is a shortcut, not the only way */}
                                   <button
