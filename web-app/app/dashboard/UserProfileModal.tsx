@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, User, Camera, LogOut, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { Haptics } from '@capacitor/haptics'
+import ConfirmTapButton from '../components/ConfirmTapButton'
 import { createClient } from '@/lib/supabase'
 import { TEXT_SIZE_OPTIONS, applyTextSize, setLocalTextSize, type TextSize } from '@/lib/textSize'
 import { setLocalMascotAnimations } from '@/lib/mascotPrefs'
@@ -70,7 +71,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
   const [mascotAnimations, setMascotAnimations] = useState(currentProfile.mascotAnimations)
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [confirmRemoveAvatar, setConfirmRemoveAvatar] = useState(false)
   const [removingAvatar, setRemovingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -201,21 +201,14 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
     setAvatarUrl(freshUrl)
   }
 
-  // ---- Avatar remove: tap once to arm, tap again to clear ----
+  // ---- Avatar remove: runs on the second tap (ConfirmTapButton arms it) ----
   const handleRemoveAvatar = async () => {
-    if (!confirmRemoveAvatar) {
-      setConfirmRemoveAvatar(true)
-      Haptics.selectionChanged().catch(() => {})
-      return
-    }
-
     setError(null)
     setRemovingAvatar(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       setRemovingAvatar(false)
-      setConfirmRemoveAvatar(false)
       setError('You must be signed in to remove your photo.')
       return
     }
@@ -226,7 +219,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
 
     if (profileError) {
       setRemovingAvatar(false)
-      setConfirmRemoveAvatar(false)
       setError(`Could not remove photo: ${profileError.message}`)
       return
     }
@@ -239,7 +231,6 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
     await supabase.storage.from('avatars').remove([`${user.id}/avatar.jpg`])
 
     setRemovingAvatar(false)
-    setConfirmRemoveAvatar(false)
     setAvatarUrl(null)
     onAvatarChange?.(null)
     Haptics.selectionChanged().catch(() => {})
@@ -445,18 +436,16 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
             {avatarUrl && (
               <>
                 {' · '}
-                <button
-                  type="button"
-                  onClick={handleRemoveAvatar}
-                  onBlur={() => setConfirmRemoveAvatar(false)}
+                <ConfirmTapButton
+                  onConfirm={handleRemoveAvatar}
                   disabled={uploadingAvatar || removingAvatar}
-                  className={`relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-[''] font-semibold hover:text-fg press disabled:opacity-60 ${confirmRemoveAvatar ? 'text-danger' : 'text-fg-muted'}`}
+                  className="relative after:absolute after:-inset-y-3 after:-inset-x-1 after:content-['']"
                 >
-                  {removingAvatar ? 'Removing...' : confirmRemoveAvatar ? 'Tap again to remove' : 'Remove photo'}
-                </button>
+                  {removingAvatar ? 'Removing...' : 'Remove photo'}
+                </ConfirmTapButton>
               </>
             )}
-            {memberSinceLabel && !confirmRemoveAvatar && ` · Since ${memberSinceLabel}`}
+            {memberSinceLabel && ` · Since ${memberSinceLabel}`}
           </p>
         </div>
       </div>
@@ -718,7 +707,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
                       setDeleteConfirmText('')
                       setDeleteError(null)
                     }}
-                    className="flex-1 min-h-tap rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95"
+                    className="flex-1 min-h-tap rounded-lg border border-line bg-surface text-sm font-semibold text-fg hover:brightness-125 press active:scale-95"
                   >
                     Cancel
                   </button>
@@ -726,7 +715,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
                     type="button"
                     onClick={handleDeleteAccount}
                     disabled={deleteConfirmText !== 'DELETE' || deleting}
-                    className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-[#3b0a0a] hover:brightness-105 press active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 min-h-tap rounded-lg bg-danger text-sm font-semibold text-on-danger hover:brightness-105 press active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {deleting ? 'Deleting...' : 'Delete permanently'}
                   </button>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChefHat, ChevronDown, Heart, Link2, Minus, Pencil, Plus, Search, Share2, Trash2, X } from 'lucide-react'
 import { Haptics, NotificationType } from '@capacitor/haptics'
+import ConfirmTapButton from '../components/ConfirmTapButton'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import EmptyState, { LoadingRows } from '../components/EmptyState'
 import FavoriteButton from '../components/FavoriteButton'
@@ -638,7 +639,6 @@ function RecipeBuilder({
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const q = query.trim().toLowerCase()
   const results = useMemo(() => {
@@ -720,11 +720,6 @@ function RecipeBuilder({
 
   const remove_ = async () => {
     if (!state.id) return
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      Haptics.selectionChanged().catch(() => {})
-      return
-    }
     setSaving(true)
     try {
       await deleteRecipe(state.id)
@@ -877,15 +872,14 @@ function RecipeBuilder({
 
       {state.id && (
         <div className="mt-5">
-          <button
-            type="button"
-            onClick={remove_}
+          <ConfirmTapButton
+            onConfirm={remove_}
             disabled={saving}
-            className={`w-full flex items-center justify-center gap-1.5 min-h-tap px-4 rounded-xl border text-sm font-semibold press active:scale-95 disabled:opacity-40 ${confirmDelete ? 'border-danger bg-danger/15 text-danger' : 'border-line bg-surface text-fg hover:brightness-125'}`}
+            className="w-full flex items-center justify-center gap-1.5 min-h-tap text-sm"
           >
             <Trash2 size={15} aria-hidden="true" />
-            {confirmDelete ? 'Tap again to delete' : 'Delete recipe'}
-          </button>
+            Delete recipe
+          </ConfirmTapButton>
         </div>
       )}
     </BottomSheet>
