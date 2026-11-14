@@ -62,11 +62,11 @@ interface BuilderState {
 
 function MacroChips({ t }: { t: { calories: number; protein: number; carbs: number; fat: number } }) {
   return (
-    <span className="flex flex-wrap gap-1.5 text-11 font-semibold tabular-nums">
-      <span className="rounded-md px-1.5 bg-macro-cal/15 text-macro-cal">{Math.round(t.calories)} cal</span>
-      <span className="rounded-md px-1.5 bg-macro-protein/15 text-macro-protein">P {Math.round(t.protein)}g</span>
-      <span className="rounded-md px-1.5 bg-macro-carbs/15 text-macro-carbs">C {Math.round(t.carbs)}g</span>
-      <span className="rounded-md px-1.5 bg-macro-fat/15 text-macro-fat">F {Math.round(t.fat)}g</span>
+    <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs font-semibold tabular-nums">
+      <span className="text-macro-cal">{Math.round(t.calories)} cal</span>
+      <span className="text-macro-protein">P {Math.round(t.protein)}g</span>
+      <span className="text-macro-carbs">C {Math.round(t.carbs)}g</span>
+      <span className="text-macro-fat">F {Math.round(t.fat)}g</span>
     </span>
   )
 }
@@ -94,6 +94,7 @@ export default function RecipesTab({
   const [attempt, setAttempt] = useState(0)
   const [importCode, setImportCode] = useState<string | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
+  const [mealSheetOpen, setMealSheetOpen] = useState(false)
 
   useEffect(() => {
     if (!prefill) return
@@ -220,10 +221,10 @@ export default function RecipesTab({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-2 space-y-6">
       <FavoritesSection catalogue={catalogue} diningHalls={diningHalls} defaultMeal={defaultMeal} />
 
-      <div className="rounded-2xl p-5 space-y-4 bg-surface border border-white/10">
+      <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold tracking-tight">My recipes</h2>
@@ -238,7 +239,7 @@ export default function RecipesTab({
                 Haptics.selectionChanged().catch(() => {})
               }}
               aria-label="Add a recipe from a link or code"
-              className="flex items-center gap-1.5 min-h-btn px-3 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-fg hover:bg-white/10 press active:scale-95 motion-reduce:active:scale-100"
+              className="flex items-center gap-1.5 min-h-btn px-3 text-sm font-semibold text-fg-muted hover:text-fg press active:opacity-70"
             >
               <Link2 size={15} aria-hidden="true" />
               Code
@@ -259,31 +260,23 @@ export default function RecipesTab({
           )}
         </div>
 
-        <div>
-          <p className="text-xs font-semibold text-fg-muted">Log to</p>
-          <div role="radiogroup" aria-label="Meal to log to" className="mt-1 flex bg-surface-2 p-1 rounded-xl gap-1">
-            {MEALS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={meal === m}
-                onClick={() => {
-                  setMeal(m)
-                  Haptics.selectionChanged().catch(() => {})
-                }}
-                className={`relative flex-1 px-1 py-1.5 text-11 font-bold rounded-lg press active:scale-95 whitespace-nowrap after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 ${meal === m
-                  ? 'bg-gold/15 text-gold border border-gold/40'
-                  : 'text-fg-muted hover:text-fg border border-transparent'
-                  }`}
-              >
-                {m === 'Late Night' ? 'Late' : m}
-              </button>
-            ))}
-          </div>
+        <div className="flex justify-end border-t border-line">
+          <button
+            type="button"
+            onClick={() => {
+              setMealSheetOpen(true)
+              Haptics.selectionChanged().catch(() => {})
+            }}
+            aria-haspopup="dialog"
+            aria-label={`Log to ${meal}. Change meal`}
+            className="min-h-tap pl-3 flex items-center gap-0.5 text-sm font-semibold text-fg press active:opacity-70"
+          >
+            Log to {meal}
+            <ChevronDown size={16} className="text-fg-muted" aria-hidden="true" />
+          </button>
         </div>
 
-        <div className="pt-4 border-t border-white/10">
+        <div>
           {setupNeeded ? (
             <div role="status" className="py-8 flex flex-col items-center gap-3 text-center text-fg-subtle font-medium">
               <Sammy mood="think" size={3} />
@@ -315,7 +308,7 @@ export default function RecipesTab({
               <p>No recipes yet. Tap New to save your go-to meal, like a sandwich you always make.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-white/10">
+            <ul className="divide-y divide-line">
               {recipes.map((recipe) => {
                 const totals = recipeTotals(recipe.items)
                 const a = analyse(recipe)
@@ -387,6 +380,35 @@ export default function RecipesTab({
           )}
         </div>
       </div>
+
+      {mealSheetOpen && (
+        <BottomSheet onClose={() => setMealSheetOpen(false)} labelledBy="recipes-meal-sheet-title">
+          <h2 id="recipes-meal-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-1">
+            Log to
+          </h2>
+          <div role="radiogroup" aria-label="Meal to log to" className="divide-y divide-line">
+            {MEALS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={meal === m}
+                onClick={() => {
+                  setMeal(m)
+                  Haptics.selectionChanged().catch(() => {})
+                }}
+                className={`w-full min-h-tap flex items-center justify-between gap-3 text-left text-sm press active:opacity-70 ${meal === m ? 'font-semibold text-fg' : 'font-medium text-fg-muted'}`}
+              >
+                {m}
+                {meal === m && <Check size={16} strokeWidth={3} className="text-gold" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+          <SheetCloseButton className="mt-4 w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100">
+            Done
+          </SheetCloseButton>
+        </BottomSheet>
+      )}
 
       {builder && (
         <RecipeBuilder
@@ -464,7 +486,7 @@ function PasteCodeSheet({ onClose, onCode }: { onClose: () => void; onCode: (cod
         rows={3}
         aria-label="Recipe link or code"
         placeholder="Paste here"
-        className="mt-3 w-full rounded-xl border border-white/10 bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
+        className="mt-3 w-full rounded-xl border border-line bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
       />
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">
@@ -565,7 +587,7 @@ function ImportRecipeSheet({
             value={name}
             maxLength={MAX_RECIPE_NAME}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-white/10 bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
+            className="mt-1 w-full rounded-xl border border-line bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40"
           />
         </label>
       )}
@@ -579,7 +601,7 @@ function ImportRecipeSheet({
       {items && items.length > 0 && (
         <div className="mt-4">
           <p className="text-xs font-semibold text-fg-muted">Ingredients</p>
-          <ul className="mt-1 divide-y divide-white/10">
+          <ul className="mt-1 divide-y divide-line">
             {items.map((i) => (
               <li key={i.recipe_id} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="min-w-0 break-words font-semibold text-fg">{i.name}</span>
@@ -758,7 +780,7 @@ function RecipeBuilder({
           maxLength={MAX_RECIPE_NAME}
           onChange={(e) => setState({ ...state, name: e.target.value })}
           placeholder="e.g. My turkey sandwich"
-          className="mt-1 w-full rounded-xl border border-white/10 bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
+          className="mt-1 w-full rounded-xl border border-line bg-surface p-3 text-input text-fg font-medium focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted"
         />
       </label>
 
@@ -769,7 +791,7 @@ function RecipeBuilder({
         {state.items.length === 0 ? (
           <p className="text-sm text-fg-muted mt-1">Search below and tap + to add dining hall items.</p>
         ) : (
-          <ul className="mt-1 divide-y divide-white/10">
+          <ul className="mt-1 divide-y divide-line">
             {state.items.map((item) => (
               <li key={item.recipe_id} className="py-2.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -826,7 +848,7 @@ function RecipeBuilder({
             placeholder="Search items to add..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-surface pl-10 pr-3 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+            className="w-full rounded-xl border border-line bg-surface pl-10 pr-3 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
           />
         </div>
         {!catalogue ? (
@@ -834,7 +856,7 @@ function RecipeBuilder({
         ) : q && results.length === 0 ? (
           <p className="text-sm text-fg-muted mt-3">No items match.</p>
         ) : (
-          <ul className="mt-1 divide-y divide-white/10">
+          <ul className="mt-1 divide-y divide-line">
             {results.map((it) => (
               <li key={it.food.recipe_id} className="py-2.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -949,14 +971,14 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
   }
 
   return (
-    <section aria-label="Favorites" className="rounded-2xl bg-surface border border-white/10">
+    <section aria-label="Favorites" className="border-y border-line">
       <div className="flex items-center pr-2">
         <button
           type="button"
           onClick={toggle}
           aria-expanded={open}
           aria-controls="favorites-list"
-          className="flex-1 min-w-0 flex items-center gap-2 pl-5 pr-2 min-h-[3.5rem] text-left press active:opacity-70"
+          className="flex-1 min-w-0 flex items-center gap-2 pl-0 pr-2 min-h-[3.5rem] text-left press active:opacity-70"
         >
           <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
           <h2 className="text-lg font-bold tracking-tight text-fg">Favorites</h2>
@@ -976,13 +998,13 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
       </div>
 
       {open && (
-        <div id="favorites-list" className="px-5 pb-4 animate-row-in">
+        <div id="favorites-list" className="pb-4 animate-row-in">
           {allEntries.length === 0 ? (
             <p className="text-sm text-fg-muted text-balance">Tap the heart on any item to save it here.</p>
           ) : (
             <>
               {/* Plain text tabs: the picked meal is gold with an underline */}
-              <div role="radiogroup" aria-label="Show favorites served at" className="flex flex-wrap gap-x-5 gap-y-1 border-b border-white/10">
+              <div role="radiogroup" aria-label="Show favorites served at" className="flex flex-wrap gap-x-5 gap-y-1 border-b border-line">
                 {['All', ...MEALS].map((m) => (
                   <button
                     key={m}
@@ -1010,7 +1032,7 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
                   None of your favorites are served at {mealFilter.toLowerCase()} today.
                 </p>
               ) : (
-                <ul className="divide-y divide-white/10">
+                <ul className="divide-y divide-line">
                   {entries.map(({ key, name, item }) => {
                     const spots = (spotsByKey.get(key) ?? []).filter((spot) => mealFilter === 'All' || spot.meal === mealFilter)
                     return (
