@@ -2876,8 +2876,14 @@ export default function DashboardPage() {
                     <div className="space-y-6">
                       {parentGroupedMenu.map(({ parent, subgroups }) => (
                         <div key={parent} className="space-y-1">
-                          {/* Station names are plain labels; the hairlines between rows do the dividing */}
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+                          {/* The current station's name sticks just under the sticky
+                              totals bar (fixed header 3rem + bar 3rem; desktop divides
+                              the header by the 1.3 zoom) until the next section's
+                              header pushes it away. Edge to edge on the page color so
+                              rows don't show through; 1px tucked under the bar so no
+                              sliver of a row shows between the two. z-30 keeps it
+                              above the rows and below the bar (z-40). */}
+                          <h3 className="sticky z-30 top-[calc(env(safe-area-inset-top)+6rem-1px)] lg:top-[calc(3rem/1.3+3rem-1px)] -mx-5 px-5 lg:-mx-7 lg:px-7 py-2 bg-app border-b border-line text-xs font-semibold uppercase tracking-wider text-fg-muted">
                             {cleanStationName(parent)}
                           </h3>
 
