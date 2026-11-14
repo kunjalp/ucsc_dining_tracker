@@ -38,7 +38,7 @@ export default function WeeklySummaryCard({ logs, goalCalories, goalProtein, tar
   const best = summary.bestDay
 
   return (
-    <section aria-label="Last 7 days" className="rounded-2xl p-4 bg-surface border border-white/10">
+    <section aria-label="Last 7 days" className="border-t border-line pt-4">
       <h2 className="text-lg font-bold tracking-tight">Last 7 days</h2>
       <p className="text-sm font-semibold text-fg-subtle mt-0.5" aria-live="polite">
         {!loaded ? 'Loading your week…' : !targetsSaved ? 'Set your targets to see how your week went.' : headline}
@@ -46,20 +46,20 @@ export default function WeeklySummaryCard({ logs, goalCalories, goalProtein, tar
 
       {loaded && targetsSaved && summary.loggedDays > 0 && (
         <>
-          <dl className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-xl bg-surface-2 p-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 mt-4">
+            <div>
               <dt className="text-xs font-semibold text-fg-muted">Avg calories</dt>
               <dd className="text-lg font-bold tabular-nums text-macro-cal">{fmt(summary.avgCalories)}</dd>
             </div>
-            <div className="rounded-xl bg-surface-2 p-3">
+            <div>
               <dt className="text-xs font-semibold text-fg-muted">Avg protein</dt>
               <dd className="text-lg font-bold tabular-nums text-macro-protein">{fmt(summary.avgProtein)}g</dd>
             </div>
-            <div className="rounded-xl bg-surface-2 p-3">
+            <div>
               <dt className="text-xs font-semibold text-fg-muted">Days on target</dt>
               <dd className="text-lg font-bold tabular-nums text-gold">{summary.hitDays} of 7</dd>
             </div>
-            <div className="rounded-xl bg-surface-2 p-3">
+            <div>
               <dt className="text-xs font-semibold text-fg-muted">Best day</dt>
               <dd className="text-lg font-bold text-fg">{best ? best.label : '–'}</dd>
               {best && (

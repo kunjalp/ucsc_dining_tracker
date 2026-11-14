@@ -371,7 +371,7 @@ function ProgressRing({ value, goal, strokeColor, labelColor, label, unit, loade
   const animatedValue = useCountUp(value)
 
   return (
-    <div className="flex flex-col items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10">
+    <div className="flex flex-col items-center justify-center py-3">
       <div className="relative flex items-center justify-center">
         <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
           <circle
@@ -2913,8 +2913,8 @@ export default function DashboardPage() {
           />
         ) : (
           /* PROGRESS TAB */
-          <div className="space-y-6">
-            <div className="rounded-2xl p-4 bg-surface border border-white/10">
+          <div className="px-2 space-y-6">
+            <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
@@ -2935,12 +2935,12 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-5">
                   <button
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl press active:scale-95 border ${showCalendar
-                      ? 'bg-gold/15 text-gold border-gold/40'
-                      : 'bg-white/5 text-fg-subtle hover:bg-white/10 border-white/15'
+                    className={`flex items-center gap-1.5 min-h-tap text-xs font-bold press active:opacity-70 ${showCalendar
+                      ? 'text-gold'
+                      : 'text-fg-muted hover:text-fg'
                       }`}
                   >
                     <Calendar size={14} />
@@ -2950,7 +2950,7 @@ export default function DashboardPage() {
                   {/* Set Targets button now opens the SetTargetsModal */}
                   <button
                     onClick={() => setIsTargetsModalOpen(true)}
-                    className="bg-gray-800 text-xs font-bold text-fg-subtle hover:bg-gray-700 px-3 py-2 rounded-xl press active:scale-95 border border-gray-700"
+                    className="min-h-tap text-xs font-bold text-gold press active:opacity-70"
                   >
                     Set Targets
                   </button>
@@ -3062,7 +3062,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Meal history */}
-            <div className="rounded-2xl p-5 bg-surface border border-white/10">
+            <div className="border-t border-line pt-4">
               <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
 
               {/* Grouped by meal (only meals with items). Rows mid-undo stay
@@ -3106,7 +3106,7 @@ export default function DashboardPage() {
                             <span className="capitalize">{meal}</span>
                             <span className="text-macro-cal tabular-nums normal-case tracking-normal">{Math.round(groupCalories)} cal</span>
                           </h3>
-                          <div className="divide-y divide-white/10">
+                          <div className="divide-y divide-line">
                             {logs.map((log) => {
                               const swipeOffset = justDeleted[log.id]
                                 ? -400
@@ -3130,7 +3130,7 @@ export default function DashboardPage() {
                                     opacity: justDeleted[log.id] ? 0 : 1,
                                     transition: isSwipeDragging === log.id || reduceMotion ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
                                   }}
-                                  className="relative bg-surface py-3 flex items-center gap-3 touch-pan-y"
+                                  className="relative bg-app py-3 flex items-center gap-3 touch-pan-y"
                                 >
                                   <div className="flex-1 min-w-0">
                                     <p className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</p>
