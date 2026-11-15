@@ -18,7 +18,7 @@ export default function FavoriteButton({ name, className = '' }: { name: string;
       }}
       aria-pressed={isFavorite}
       aria-label={isFavorite ? `Remove ${name} from favorites` : `Add ${name} to favorites`}
-      className={`relative shrink-0 flex items-center justify-center size-8 rounded-full press active:scale-90 motion-reduce:active:scale-100 after:absolute after:-inset-1.5 after:content-[''] ${isFavorite ? 'text-macro-fat' : 'text-fg-muted hover:text-fg'} ${className}`}
+      className={`relative shrink-0 flex items-center justify-center size-8 rounded-full press active:scale-90 motion-reduce:active:scale-100 after:absolute after:-inset-1.5 after:content-[''] ${isFavorite ? 'text-danger' : 'text-fg-muted hover:text-fg'} ${className}`}
     >
       <Heart size={18} strokeWidth={2.25} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true" />
     </button>

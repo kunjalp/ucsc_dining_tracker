@@ -2382,7 +2382,7 @@ export default function DashboardPage() {
         {/* A favorite is being served today */}
         {showFavAlert && (
           <div className="rounded-2xl pl-4 pr-2 py-2 mb-3 min-h-tap flex items-center gap-2 bg-surface">
-            <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
+            <Heart size={18} className="shrink-0 text-danger" fill="currentColor" aria-hidden="true" />
             <button
               type="button"
               onClick={() => {
@@ -2501,7 +2501,7 @@ export default function DashboardPage() {
                   before today's first period, "Closing at X" during the
                   day's last period — dining halls only, today only. */}
               {mounted && mealCountdown && (
-                <p className="text-left text-sm font-semibold text-macro-fat">
+                <p className="text-left text-sm font-semibold text-sky">
                   {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
                   {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
                   {mealCountdown.mode === 'closes' && `Closing at ${mealCountdown.time}`}
@@ -2976,10 +2976,10 @@ export default function DashboardPage() {
                 <div className="space-y-6">
                   <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
                     {[
-                      { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: '#00325b' },
-                      { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: '#102e10' },
-                      { key: 'carbs', label: 'Carbs', color: 'var(--color-macro-carbs)', text: '#612f5e' },
-                      { key: 'fat', label: 'Fat', color: 'var(--color-macro-fat)', text: '#4c0519' }
+                      { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: 'var(--color-on-gold)' },
+                      { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: 'var(--color-on-gold)' },
+                      { key: 'carbs', label: 'Carbs', color: 'var(--color-macro-carbs)', text: 'var(--color-on-gold)' },
+                      { key: 'fat', label: 'Fat', color: 'var(--color-macro-fat)', text: 'var(--color-on-gold)' }
                     ].map((macro) => (
                       <button
                         key={macro.key}

@@ -338,7 +338,7 @@ export default function RecipesTab({
                     </div>
                     <MacroChips t={totals} />
                     {a.line && (
-                      <p className={`text-11 font-semibold ${a.tone === 'good' ? 'text-macro-protein' : 'text-macro-fat'}`}>{a.line}</p>
+                      <p className={`text-11 font-semibold ${a.tone === 'good' ? 'text-veg' : 'text-danger'}`}>{a.line}</p>
                     )}
                     {a.flagged.length > 0 && (
                       <p className="text-11 font-semibold text-danger">
@@ -350,7 +350,7 @@ export default function RecipesTab({
                       onClick={() => handleLog(recipe)}
                       disabled={!!loggingId}
                       aria-label={`Log ${recipe.name} to ${meal}`}
-                      className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors duration-300 motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 press disabled:opacity-70 ${isLogged ? 'bg-macro-protein text-on-gold' : 'bg-gold/15 text-gold hover:bg-gold/25'}`}
+                      className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] w-full min-h-btn py-2 flex items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors duration-300 motion-reduce:transition-none active:scale-[0.98] motion-reduce:active:scale-100 press disabled:opacity-70 ${isLogged ? 'bg-veg text-on-gold' : 'bg-gold/15 text-gold hover:bg-gold/25'}`}
                     >
                       {isLogged ? (
                         <>
@@ -603,7 +603,7 @@ function ImportRecipeSheet({
             <MacroChips t={recipeTotals(items)} />
           </div>
           {missing > 0 && (
-            <p className="mt-2 text-11 font-semibold text-macro-fat">
+            <p className="mt-2 text-11 font-semibold text-danger">
               {missing} ingredient{missing !== 1 ? 's are' : ' is'} no longer available and left out.
             </p>
           )}
@@ -964,7 +964,7 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
           aria-controls="favorites-list"
           className="flex-1 min-w-0 flex items-center gap-2 pl-0 pr-2 min-h-[3.5rem] text-left press active:opacity-70"
         >
-          <Heart size={18} className="shrink-0 text-macro-fat" fill="currentColor" aria-hidden="true" />
+          <Heart size={18} className="shrink-0 text-danger" fill="currentColor" aria-hidden="true" />
           <h2 className="text-lg font-bold tracking-tight text-fg">Favorites</h2>
           <span className="text-sm font-semibold tabular-nums text-fg-muted">{allEntries.length}</span>
           {!open && <ChevronDown size={18} className="ml-auto shrink-0 text-fg-muted" aria-hidden="true" />}

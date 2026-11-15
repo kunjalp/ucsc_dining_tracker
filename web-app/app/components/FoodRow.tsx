@@ -97,7 +97,7 @@ export default function FoodRow({
         disabled={logged}
         aria-label={logged ? `Logged ${food.name}` : `Log ${servings} serving${servings !== 1 ? 's' : ''} of ${food.name}${logSuffix}`}
         className={`relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] shrink-0 flex min-h-btn min-w-12 items-center justify-center rounded-lg px-3.5 text-sm font-bold transition-colors duration-300 active:scale-95 motion-reduce:active:scale-100 ${logged
-          ? 'bg-macro-protein/15 text-macro-protein'
+          ? 'bg-veg/15 text-veg'
           : 'bg-gold/15 text-gold'
           }`}
       >

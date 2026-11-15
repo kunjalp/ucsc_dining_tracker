@@ -32,11 +32,11 @@
   --color-on-danger: #0b1326;    /* text on a solid danger fill */
   --color-line: rgb(255 255 255 / 0.08); /* the one hairline: row dividers, unlit tracks */
   --color-track: #3f7fb0;        /* day track outline and tick dots */
-  --color-macro-cal: #d8b61c;
-  --color-macro-protein: #5bb448;
-  --color-macro-carbs: #d17ccd;  /* was #bd5db8 (4.4:1) */
-  --color-macro-fat: #fb7185;
-  --color-veg: #86d9a5;          /* Vegetarian tag -- lighter than Vegan's macro-protein green */
+  --color-macro-cal: #d6b93a;
+  --color-macro-protein: #5fa8a0;
+  --color-macro-carbs: #c3d0f5;
+  --color-macro-fat: #d5805f;
+  --color-veg: #86d9a5;          /* Vegetarian tag -- lighter than Vegan's teal */
 
   /* Small text sizes, named for their px size at the Default text size
      (html 93.75% = 15px). rem, so the Text size setting scales them too:

@@ -643,7 +643,7 @@ export default function UserProfileModal({ currentProfile, onClose, onSave, onAv
               className={inputClass}
             />
             {passwordMessage && (
-              <p role="status" className={`text-xs font-medium ${passwordMessage.includes('successfully') ? 'text-macro-protein' : 'text-danger'}`}>
+              <p role="status" className={`text-xs font-medium ${passwordMessage.includes('successfully') ? 'text-veg' : 'text-danger'}`}>
                 {passwordMessage}
               </p>
             )}
