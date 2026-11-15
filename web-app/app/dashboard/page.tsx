@@ -420,9 +420,24 @@ function ProgressRing({ value, goal, strokeColor, label, unit, loaded }: Progres
         {label}
         {over && <span className="sr-only"> (over goal)</span>}
       </p>
-      <p className="mt-0.5 text-11 font-medium text-fg-muted tabular-nums whitespace-nowrap">
-        {loaded ? Math.round(animatedValue) : '–'} / {goal}{unit ? ` ${unit}` : ''}
-      </p>
+      {goal > 0 ? (
+        <>
+          <p className="mt-0.5 text-11 font-semibold text-fg tabular-nums whitespace-nowrap">
+            {!loaded
+              ? '–'
+              : Math.round(animatedValue) > goal
+                ? `${Math.round(animatedValue) - goal}${unit} over`
+                : `${goal - Math.round(animatedValue)}${unit} left`}
+          </p>
+          <p className="text-10 font-medium text-fg-muted tabular-nums whitespace-nowrap">
+            of {goal}
+          </p>
+        </>
+      ) : (
+        <p className="mt-0.5 text-11 font-medium text-fg-muted tabular-nums whitespace-nowrap">
+          {loaded ? Math.round(animatedValue) : '–'} / {goal}{unit ? ` ${unit}` : ''}
+        </p>
+      )}
     </div>
   )
 }
