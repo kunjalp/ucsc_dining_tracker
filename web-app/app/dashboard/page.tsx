@@ -2381,7 +2381,7 @@ export default function DashboardPage() {
 
         {/* A favorite is being served today */}
         {showFavAlert && (
-          <div className="rounded-2xl pl-4 pr-2 py-2 mb-3 min-h-tap flex items-center gap-2 bg-surface">
+          <div className="border-y border-line px-4 py-2 mb-3 min-h-tap flex items-center gap-2">
             <Heart size={18} className="shrink-0 text-danger" fill="currentColor" aria-hidden="true" />
             <button
               type="button"
@@ -2408,12 +2408,12 @@ export default function DashboardPage() {
 
         {/* Offer to save what was just logged as a recipe */}
         {recipeOffer && (activeTab === 'log' || activeTab === 'browse') && (
-          <div className="rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 bg-surface">
-            <ChefHat size={20} className="shrink-0 text-gold" aria-hidden="true" />
-            <p className="flex-1 min-w-0 text-sm font-semibold text-fg">
+          <div className="border-y border-line px-4 py-3 mb-3 flex items-center gap-3">
+            <ChefHat size={20} className="shrink-0 text-fg-muted" aria-hidden="true" />
+            <p className="flex-1 min-w-0 text-sm font-semibold text-fg text-balance">
               You logged {recipeOffer.items.length} items for {recipeOffer.meal.toLowerCase()}. Save this as a recipe?
             </p>
-            <div className="shrink-0 flex flex-col gap-1">
+            <div className="shrink-0 flex flex-col items-center gap-1">
               <button
                 type="button"
                 onClick={() => {
@@ -2429,7 +2429,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => dismissRecipeOffer(recipeOffer.meal)}
-                className="text-11 font-semibold text-fg-muted hover:text-fg press active:scale-95"
+                className="relative text-11 font-semibold text-fg-muted hover:text-fg press active:scale-95 motion-reduce:active:scale-100 after:absolute after:-inset-x-2 after:-inset-y-1.5 after:content-['']"
               >
                 Not now
               </button>
