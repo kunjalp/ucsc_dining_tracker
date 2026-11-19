@@ -75,6 +75,7 @@ The look: dark navy (`bg-app`) with gold. Content is plain text rows straight on
 - Delete: meal history rows on Progress swipe left past `SWIPE_DELETE_THRESHOLD` and always have a visible trash button. Deleting shows an undo toast (`handleDeleteLog`). Swipe is a shortcut, never the only way. Inline deletes (recipe delete, Remove photo) use `ConfirmTapButton` (`app/components/ConfirmTapButton.tsx`): first tap turns the label red "Tap again to delete" for 3 seconds, second tap deletes. Do not hand-roll this.
 - Empty, loading and error states: `EmptyState` and `LoadingRows` in `app/components/EmptyState.tsx`. One short muted line (red only for errors) plus at most one quiet text action. No card, no pill button, no Sammy.
 - Sheets: always `BottomSheet` (`app/components/BottomSheet.tsx`) with `SheetCloseButton`. It locks background scroll (`lockScroll` in `lib/scrollLock.ts`, counted so stacked sheets work). Never a hand-rolled modal for new work.
+- Expandable sheet: `BottomSheet expandable` adds a full-height snap (swipe up or tap the handle; swipe down from the top of the content to come back; `SheetExpanded` tells content which snap it is at). Only the Analytics sheet uses it; every other sheet stays single-height.
 
 ### Sammy
 One live Sammy, in the header (`dashboard/page.tsx`, "The one live Sammy"). He reacts to logs, ring closes and errors from there. No inline Sammy in lists, rows, or empty, loading and error states. None on Progress.

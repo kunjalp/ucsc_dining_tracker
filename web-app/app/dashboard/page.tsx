@@ -24,7 +24,7 @@ import { DEFAULT_TEXT_SIZE, getLocalTextSize, isTextSize, setLocalTextSize } fro
 import { getLocalMascotAnimations, setLocalMascotAnimations } from '@/lib/mascotPrefs'
 import { favoriteKey, loadFavoritesFromAccount, useFavorites } from '@/lib/favorites'
 import { getCoffeeShopMenu, getCoffeeShopMealTypes, isHardcodedCoffeeShop } from '@/lib/coffeeMenuItems'
-import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
+import BottomSheet, { SheetCloseButton, SheetExpanded } from '../components/BottomSheet'
 import Sammy, { type SammyMood } from '../components/Sammy'
 import EmptyState, { LoadingRows } from '../components/EmptyState'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
@@ -3304,7 +3304,7 @@ export default function DashboardPage() {
 
       {/* Analytics: Week (last 7 days) and Month (the ring calendar) */}
       {isAnalyticsOpen && (
-        <BottomSheet onClose={() => setIsAnalyticsOpen(false)} labelledBy="analytics-title">
+        <BottomSheet onClose={() => setIsAnalyticsOpen(false)} labelledBy="analytics-title" expandable>
           <SheetCloseButton
             aria-label="Close"
             className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90 motion-reduce:active:scale-100"
@@ -3401,10 +3401,13 @@ export default function DashboardPage() {
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
+                    {/* Expanded sheet: taller cells, with the day's number under its ring */}
+                    <SheetExpanded>
+                    {(expanded) => (
                     <div className="grid grid-cols-7 gap-2">
                       {getCalendarDays().map((cell, index) => {
                         if (!cell.dayNum || !cell.dateString) {
-                          return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
+                          return <div key={`empty-${index}`} className={`${expanded ? 'aspect-[3/5]' : 'aspect-square'} bg-white/5 rounded-xl`} />
                         }
 
                         const dayStats = getHistoricalSumForDate(cell.dateString)
@@ -3427,10 +3430,15 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={cell.dateString}
-                            className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
+                            className={`${expanded ? 'aspect-[3/5]' : 'aspect-square'} bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group`}
                           >
                             <span className="text-xs font-black text-fg-subtle">{cell.dayNum}</span>
                             <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
+                            {expanded && (
+                              <span className="text-9 font-semibold text-fg-muted tabular-nums leading-none">
+                                {actualVal > 0 ? Math.round(actualVal).toLocaleString('en-US') : '–'}
+                              </span>
+                            )}
                             <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
                               {Math.round(actualVal)} / {targetedGoal} {unit}
                             </div>
@@ -3438,6 +3446,8 @@ export default function DashboardPage() {
                         )
                       })}
                     </div>
+                    )}
+                    </SheetExpanded>
                   </div>
                 </div>
           )}
