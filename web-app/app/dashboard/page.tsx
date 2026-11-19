@@ -3310,20 +3310,6 @@ export default function DashboardPage() {
         </nav>
       </div>
 
-      {/* Set Targets Modal */}
-      {isTargetsModalOpen && (
-        <SetTargetsModal
-          currentTargets={{
-            calories: goalCalories,
-            protein: goalProtein,
-            carbs: goalCarbs,
-            fat: goalFat,
-          }}
-          onClose={() => setIsTargetsModalOpen(false)}
-          onSave={handleSaveGoals}
-        />
-      )}
-
       {/* Edit User Profile Modal */}
       {isProfileModalOpen && (
         <UserProfileModal
@@ -3345,6 +3331,22 @@ export default function DashboardPage() {
           }}
           onSave={handleSaveProfile}
           onAvatarChange={(avatarUrl) => setUserProfile((prev) => ({ ...prev, avatarUrl }))}
+          targets={{ calories: goalCalories, protein: goalProtein, carbs: goalCarbs, fat: goalFat }}
+          onOpenTargets={() => setIsTargetsModalOpen(true)}
+        />
+      )}
+
+      {/* Set Targets Modal -- after the profile sheet so it stacks on top of it */}
+      {isTargetsModalOpen && (
+        <SetTargetsModal
+          currentTargets={{
+            calories: goalCalories,
+            protein: goalProtein,
+            carbs: goalCarbs,
+            fat: goalFat,
+          }}
+          onClose={() => setIsTargetsModalOpen(false)}
+          onSave={handleSaveGoals}
         />
       )}
 
