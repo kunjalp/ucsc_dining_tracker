@@ -261,7 +261,7 @@ type Point = [number, number]
 
 const WAVE_X0 = 10
 const WAVE_X1 = 290
-const WAVE_BASE_Y = 19
+const WAVE_BASE_Y = 8
 const WAVE_AMPLITUDE = 3
 const WAVE_CYCLES = 1 // one gentle, shallow ripple across the track
 
@@ -2455,7 +2455,7 @@ export default function DashboardPage() {
         {activeTab === 'log' ? (
           <div className="px-2">
             {/* Hall, day and meal, then the menu -- straight on the page, no card */}
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* The hall reads as the page's title with a small chevron, not a
                   form field. The real <select> lies invisibly over it, so a tap
                   anywhere on the title opens the same native picker as before.
@@ -2515,7 +2515,7 @@ export default function DashboardPage() {
                   Dinner/Late Night) while service is running, "Opens at X"
                   before today's first period, "Closing at X" during the
                   day's last period — dining halls only, today only. */}
-              {mounted && mealCountdown && (
+              {mounted && mealCountdown && !dayTrack && (
                 <p className="text-left text-sm font-semibold text-sky">
                   {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
                   {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
@@ -2530,7 +2530,7 @@ export default function DashboardPage() {
                   each one elapses; a soft haptic tap marks the moment it
                   crosses into the next period. */}
               {dayTrack && (
-                <div className="space-y-0.5">
+                <div>
                   {/* A rippling wave instead of a straight slider or a single arc —
                       echoes a slug's actual undulating crawl. Elapsed time is a
                       neon gold stroke with a glowing blue outline traced on both
@@ -2541,10 +2541,11 @@ export default function DashboardPage() {
                       the reveal (and the blue outline) stop exactly at "now" and
                       never bleed into the untraveled portion. Sammy's head rides
                       the wave, idling slowly between +65 and -65 degrees. */}
-                  {/* Compact: the viewBox is a 300 x 28 strip and the svg takes
-                      its height from its width (about 33px on a phone), capped
-                      so a wide desktop column doesn't blow it up. */}
-                  <svg ref={dayTrackSvgRef} viewBox="0 0 300 28" className="block w-full h-auto max-h-10" style={{ overflow: 'visible', touchAction: 'none' }}>
+                  {/* Compact: the viewBox is a 300 x 16 strip and the svg takes
+                      its height from its width (about 20px on a phone), capped
+                      so a wide desktop column doesn't blow it up. The head and
+                      the invisible hit paths overflow the strip on purpose. */}
+                  <svg ref={dayTrackSvgRef} viewBox="0 0 300 16" className="block w-full h-auto max-h-6" style={{ overflow: 'visible', touchAction: 'none' }}>
                     <defs>
                       {/* Soft neon fade at the leading edge of the completed
                           portion, where the glowing stroke gives way to the
@@ -2563,7 +2564,7 @@ export default function DashboardPage() {
                       d={DAY_TRACK_PATH}
                       fill="none"
                       stroke="transparent"
-                      strokeWidth={28}
+                      strokeWidth={36}
                       strokeLinecap="round"
                       style={{ cursor: 'pointer', touchAction: 'none', pointerEvents: 'stroke' }}
                       onPointerDown={handleTrackPointerDown}
@@ -2718,7 +2719,7 @@ export default function DashboardPage() {
                         }}
                         aria-label={`Show ${seg.label} menu`}
                         aria-pressed={i === dayTrackSegmentIndexForPct(dayTrack, headPct)}
-                        className={`@container relative text-center py-0.5 text-9 font-bold whitespace-nowrap transition-colors duration-500 active:scale-90 after:absolute after:inset-x-0 after:content-[''] after:-top-1 after:-bottom-3 ${
+                        className={`@container relative text-center pt-1 text-9 leading-none font-bold whitespace-nowrap transition-colors duration-500 active:scale-90 after:absolute after:inset-x-0 after:content-[''] after:-top-1 after:-bottom-6 ${
                           i === dayTrackSegmentIndexForPct(dayTrack, headPct) ? 'text-gold' : 'text-fg-muted'
                         }`}
                       >
@@ -2736,11 +2737,19 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   {/* Open / close times, sky blue to match the logo's accent color */}
-                  <div className="flex justify-between leading-none">
-                    <span className="text-10 font-bold text-sky">
+                  <div className="flex items-baseline justify-between gap-2 leading-none pt-0.5">
+                    <span className="shrink-0 text-10 font-bold text-sky">
                       {dayTrack.opensAt}
                     </span>
-                    <span className="text-10 font-bold text-sky">
+                    {/* The countdown rides the middle of the times line */}
+                    {mounted && mealCountdown && (
+                      <span className="min-w-0 truncate text-11 font-semibold text-fg">
+                        {mealCountdown.mode === 'until' && `${formatCountdown(mealCountdown.minutesUntil!)} until ${mealCountdown.label}`}
+                        {mealCountdown.mode === 'opens' && `Opens at ${mealCountdown.time}`}
+                        {mealCountdown.mode === 'closes' && `Closing at ${mealCountdown.time}`}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-10 font-bold text-sky">
                       {dayTrack.closesAt}
                     </span>
                   </div>
@@ -2750,12 +2759,14 @@ export default function DashboardPage() {
               <div className="flex flex-col md:flex-row gap-3">
                 {/* Search + Filters — hidden when the hall is closed right now */}
                 {showMenuSection && (
-                  <div className="flex-1 min-w-0 pt-4 border-t border-line">
+                  <div className="flex-1 min-w-0 pt-1.5 border-t border-line">
                     {/* Search, with one Filters button beside it. Dietary
                         Show/Hide, favorites only and the station picker all
                         live in the sheet it opens. */}
                     <div className="flex items-stretch gap-2">
-                      <div className="relative min-w-0 flex-1">
+                      {/* A label, so a tap on its 2px of padding above and
+                          below the 40px field still focuses it (44px target). */}
+                      <label className="relative flex min-w-0 flex-1 items-center">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" size={18} aria-hidden="true" />
                         <input
                           type="search"
@@ -2764,7 +2775,7 @@ export default function DashboardPage() {
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onFocus={(e) => revealBelowStickyBar(e.currentTarget)}
-                          className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2.5 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
+                          className="scroll-mt-[calc(env(safe-area-inset-top)+7rem)] w-full rounded-lg bg-surface-2 pl-10 pr-9 py-2 text-fg font-medium text-input focus:outline-none focus:ring-2 focus:ring-gold/40 placeholder:text-fg-muted [&::-webkit-search-cancel-button]:hidden"
                         />
                         {searchQuery && (
                           <button
@@ -2776,7 +2787,7 @@ export default function DashboardPage() {
                             <X size={16} />
                           </button>
                         )}
-                      </div>
+                      </label>
                       <FiltersButton activeCount={activeFilterCount} onClick={() => setIsFiltersOpen(true)} />
                     </div>
                   </div>
@@ -2797,7 +2808,7 @@ export default function DashboardPage() {
                   opening later today (previewing today's already-scraped menu before open) */}
               {showMenuSection && (
                 <div>
-                  <h2 className="text-lg font-bold mb-4 tracking-tight">
+                  <h2 className="text-base leading-snug font-bold mb-1 tracking-tight">
                     {getDayOffsetLabel(selectedDayOffset)}'s Menu
                     {availableMealTypes.length > 1 && ` (${selectedMeal})`}
                   </h2>
