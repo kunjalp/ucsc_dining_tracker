@@ -9,7 +9,7 @@ import UserProfileModal, { UserProfile } from './UserProfileModal'
 import RecipesTab from './RecipesTab'
 import { PENDING_RECIPE_STORAGE_KEY } from '@/lib/recipeShare'
 import { MEAL_ORDER, fetchTodayDishes, type TodayDish } from '@/lib/favoriteAlerts'
-import WeeklySummaryCard from './WeeklySummaryCard'
+import WeekAnalytics from './WeekAnalytics'
 import WeekStrip from './WeekStrip'
 import type { Recipe, RecipeItem } from '@/lib/recipes'
 import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
@@ -38,7 +38,7 @@ import {
   Search,
   UtensilsCrossed,
   LineChart,
-  Calendar,
+  ChartColumnBig,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -709,7 +709,9 @@ export default function DashboardPage() {
   })
 
   // Calendar View State
-  const [showCalendar, setShowCalendar] = useState(false)
+  // Analytics sheet (Progress): Week = last 7 days, Month = the ring calendar
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
+  const [analyticsView, setAnalyticsView] = useState<'week' | 'month'>('week')
   const [calendarMacro, setCalendarMacro] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories')
   const [historicalLogs, setHistoricalLogs] = useState<MealLog[]>([])
   const [calendarViewDate, setCalendarViewDate] = useState(new Date())
@@ -1270,13 +1272,12 @@ export default function DashboardPage() {
     fetchHallStatus(selectedHall)
   }, [selectedHall, selectedDayOffset])
 
-  // Fetch all history whenever the calendar view gets activated
-  // (and when Progress opens, for the week strip)
+  // Fetch all history when Progress opens (week strip, Analytics sheet)
   useEffect(() => {
-    if (showCalendar || activeTab === 'progress') {
+    if (activeTab === 'progress') {
       fetchHistoricalLogs()
     }
-  }, [showCalendar, activeTab])
+  }, [activeTab])
 
   useEffect(() => {
     const savedCals = localStorage.getItem('ucsc_goal_calories')
@@ -3020,50 +3021,25 @@ export default function DashboardPage() {
           /* PROGRESS TAB */
           <div className="px-2 space-y-6">
             <div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">
-                    {showCalendar ? 'Past Rings Calendar' : viewDateLabel}
-                  </h2>
-                  <p
-                    className={
-                      showCalendar
-                        ? 'text-xs text-fg-subtle/70 mt-0.5'
-                        : 'text-sm font-bold mt-0.5 text-fg-subtle'
-                    }
-                  >
-                    {showCalendar
-                      ? 'Toggle metrics to analyze historical streaks'
-                      : goalMode === 'recommended'
-                        ? 'Recommended Target'
-                        : 'Target Amount'}
+                  <h2 className="text-lg font-bold tracking-tight">{viewDateLabel}</h2>
+                  <p className="text-sm font-bold mt-0.5 text-fg-subtle">
+                    {goalMode === 'recommended' ? 'Recommended Target' : 'Target Amount'}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-5">
-                  <button
-                    onClick={() => setShowCalendar(!showCalendar)}
-                    className={`relative after:absolute after:-inset-y-4 after:-inset-x-1 after:content-[''] flex items-center gap-1.5 text-xs font-bold press active:opacity-70 ${showCalendar
-                      ? 'text-fg'
-                      : 'text-fg-muted hover:text-fg'
-                      }`}
-                  >
-                    <Calendar size={14} />
-                    {showCalendar ? "View Today's Rings" : 'History Calendar'}
-                  </button>
-
-                  {/* Set Targets button now opens the SetTargetsModal */}
-                  <button
-                    onClick={() => setIsTargetsModalOpen(true)}
-                    className="relative after:absolute after:-inset-y-4 after:-inset-x-1 after:content-[''] text-xs font-bold text-gold press active:opacity-70"
-                  >
-                    Set Targets
-                  </button>
-                </div>
+                {/* Quiet: View analytics below is this screen's gold control */}
+                <button
+                  type="button"
+                  onClick={() => setIsTargetsModalOpen(true)}
+                  className="relative mt-1 after:absolute after:-inset-y-4 after:-inset-x-1 after:content-[''] text-xs font-bold text-fg-muted hover:text-fg press active:opacity-70"
+                >
+                  Set Targets
+                </button>
               </div>
 
-              {!showCalendar ? (
-                <>
+              <>
                 <WeekStrip
                   todayStr={progressTodayStr}
                   back={Math.min(stripBack, stripMaxBack)}
@@ -3079,118 +3055,34 @@ export default function DashboardPage() {
                   <ProgressRing value={shownTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={shownLoaded} />
                   <ProgressRing value={shownTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={shownLoaded} />
                 </div>
-                </>
-              ) : (
-                <div className="space-y-6">
-                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
-                    {[
-                      { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: 'var(--color-on-gold)' },
-                      { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: 'var(--color-on-gold)' },
-                      { key: 'carbs', label: 'Carbs', color: 'var(--color-macro-carbs)', text: 'var(--color-on-gold)' },
-                      { key: 'fat', label: 'Fat', color: 'var(--color-macro-fat)', text: 'var(--color-on-gold)' }
-                    ].map((macro) => (
-                      <button
-                        key={macro.key}
-                        type="button"
-                        onClick={() => setCalendarMacro(macro.key as any)}
-                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg press active:scale-95 whitespace-nowrap"
-                        style={
-                          calendarMacro === macro.key
-                            ? { backgroundColor: macro.color, color: macro.text }
-                            : { color: 'var(--color-fg-subtle)' }
-                        }
-                      >
-                        {macro.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <button
-                        type="button"
-                        onClick={goToPreviousMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90"
-                        aria-label="Previous month"
-                      >
-                        <ChevronLeft size={16} strokeWidth={2.5} />
-                      </button>
-
-                      <p className="text-sm font-black text-fg">
-                        {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={goToNextMonth}
-                        disabled={isCurrentMonth}
-                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                        aria-label="Next month"
-                      >
-                        <ChevronRight size={16} strokeWidth={2.5} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-fg-subtle/70">
-                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2">
-                      {getCalendarDays().map((cell, index) => {
-                        if (!cell.dayNum || !cell.dateString) {
-                          return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
-                        }
-
-                        const dayStats = getHistoricalSumForDate(cell.dateString)
-
-                        let actualVal = 0
-                        let targetedGoal = 1
-                        let ringColor = 'var(--color-sky)'
-                        let unit = 'kcal'
-
-                        if (calendarMacro === 'calories') {
-                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = 'var(--color-macro-cal)'; unit = 'kcal'
-                        } else if (calendarMacro === 'protein') {
-                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = 'var(--color-macro-protein)'; unit = 'g'
-                        } else if (calendarMacro === 'carbs') {
-                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = 'var(--color-macro-carbs)'; unit = 'g'
-                        } else if (calendarMacro === 'fat') {
-                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = 'var(--color-macro-fat)'; unit = 'g'
-                        }
-
-                        return (
-                          <div
-                            key={cell.dateString}
-                            className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
-                          >
-                            <span className="text-xs font-black text-fg-subtle">{cell.dayNum}</span>
-                            <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
-                              {Math.round(actualVal)} / {targetedGoal} {unit}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAnalyticsOpen(true)
+                    Haptics.selectionChanged().catch(() => {})
+                  }}
+                  className="mt-3 w-full min-h-btn flex items-center justify-center gap-2 rounded-lg bg-gold/15 text-gold text-sm font-bold press active:scale-[0.98] motion-reduce:active:scale-100"
+                >
+                  <ChartColumnBig size={18} aria-hidden="true" />
+                  View analytics
+                </button>
+              </>
             </div>
 
             {/* Meal history */}
-            <div className={showCalendar ? 'border-t border-line pt-4' : ''}>
-              <h2 className="text-lg font-bold tracking-tight mb-4">{isPastView && !showCalendar ? 'Everything Logged' : 'Everything Logged Today'}</h2>
+            <div>
+              <h2 className="text-lg font-bold tracking-tight mb-4">{isPastView ? 'Everything Logged' : 'Everything Logged Today'}</h2>
 
               {/* Grouped by meal (only meals with items). Rows mid-undo stay
                   mounted only while their slide-out plays; group calories
                   leave out pending deletes, same as displayTotals. */}
               {(() => {
-                const listLogs = showCalendar ? loggedMeals : shownLogs
+                const listLogs = shownLogs
                 const visibleLogs = listLogs.filter(
                   (log) => !hiddenLogIds.includes(log.id) || justDeleted[log.id]
                 )
                 if (visibleLogs.length === 0) {
-                  return isPastView && !showCalendar ? (
+                  return isPastView ? (
                     <EmptyState>{historyLoaded ? 'Nothing logged this day.' : 'Loading…'}</EmptyState>
                   ) : (
                     <EmptyState action={{ label: 'Open the menu', onClick: () => setActiveTab('log') }}>
@@ -3290,17 +3182,6 @@ export default function DashboardPage() {
               })()}
             </div>
 
-            {/* Last 7 days: averages, best day, days on target */}
-            {!showCalendar && (
-              <WeeklySummaryCard
-                logs={historicalLogs}
-                goalCalories={goalCalories}
-                goalProtein={goalProtein}
-                targetsSaved={targetsSaved}
-                todayStr={logDateFor(new Date())}
-                loaded={totalsLoaded}
-              />
-            )}
           </div>
         )}
       </div>
@@ -3419,6 +3300,148 @@ export default function DashboardPage() {
           targets={{ calories: goalCalories, protein: goalProtein, carbs: goalCarbs, fat: goalFat }}
           onOpenTargets={() => setIsTargetsModalOpen(true)}
         />
+      )}
+
+      {/* Analytics: Week (last 7 days) and Month (the ring calendar) */}
+      {isAnalyticsOpen && (
+        <BottomSheet onClose={() => setIsAnalyticsOpen(false)} labelledBy="analytics-title">
+          <SheetCloseButton
+            aria-label="Close"
+            className="absolute -top-1 right-1.5 size-tap flex items-center justify-center rounded-full text-fg-muted hover:bg-white/10 hover:text-fg press active:scale-90 motion-reduce:active:scale-100"
+          >
+            <X size={20} />
+          </SheetCloseButton>
+          <h2 id="analytics-title" className="text-lg font-bold tracking-tight text-fg pr-10">
+            Analytics
+          </h2>
+          <div role="radiogroup" aria-label="Range" className="mt-3 mb-5 flex bg-app/60 p-1 rounded-lg gap-1">
+            {(['week', 'month'] as const).map((v) => {
+              const on = analyticsView === v
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => {
+                    if (on) return
+                    setAnalyticsView(v)
+                    Haptics.selectionChanged().catch(() => {})
+                  }}
+                  className={`relative flex-1 py-1.5 text-xs font-bold rounded-md after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 press ${on ? 'bg-fg/10 text-fg' : 'text-fg-muted hover:text-fg'}`}
+                >
+                  {v === 'week' ? 'Week' : 'Month'}
+                </button>
+              )
+            })}
+          </div>
+          {analyticsView === 'week' ? (
+            <WeekAnalytics
+              logs={historicalLogs}
+              goalCalories={goalCalories}
+              goalProtein={goalProtein}
+              targetsSaved={targetsSaved}
+              todayStr={logDateFor(new Date())}
+              loaded={historyLoaded}
+            />
+          ) : (
+                /* overflow-x-clip: the hover tooltips on edge dates would
+                   otherwise widen the sheet and add a sideways scroll */
+                <div className="space-y-6 overflow-x-clip">
+                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+                    {[
+                      { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: 'var(--color-on-gold)' },
+                      { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: 'var(--color-on-gold)' },
+                      { key: 'carbs', label: 'Carbs', color: 'var(--color-macro-carbs)', text: 'var(--color-on-gold)' },
+                      { key: 'fat', label: 'Fat', color: 'var(--color-macro-fat)', text: 'var(--color-on-gold)' }
+                    ].map((macro) => (
+                      <button
+                        key={macro.key}
+                        type="button"
+                        onClick={() => setCalendarMacro(macro.key as any)}
+                        className="flex-1 py-1.5 px-3 text-xs font-black rounded-lg press active:scale-95 whitespace-nowrap"
+                        style={
+                          calendarMacro === macro.key
+                            ? { backgroundColor: macro.color, color: macro.text }
+                            : { color: 'var(--color-fg-subtle)' }
+                        }
+                      >
+                        {macro.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        type="button"
+                        onClick={goToPreviousMonth}
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90"
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft size={16} strokeWidth={2.5} />
+                      </button>
+
+                      <p className="text-sm font-black text-fg">
+                        {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={goToNextMonth}
+                        disabled={isCurrentMonth}
+                        className="p-2 rounded-lg hover:bg-white/10 text-fg-subtle hover:text-fg press active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        aria-label="Next month"
+                      >
+                        <ChevronRight size={16} strokeWidth={2.5} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-extrabold text-fg-subtle/70">
+                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2">
+                      {getCalendarDays().map((cell, index) => {
+                        if (!cell.dayNum || !cell.dateString) {
+                          return <div key={`empty-${index}`} className="aspect-square bg-white/5 rounded-xl" />
+                        }
+
+                        const dayStats = getHistoricalSumForDate(cell.dateString)
+
+                        let actualVal = 0
+                        let targetedGoal = 1
+                        let ringColor = 'var(--color-sky)'
+                        let unit = 'kcal'
+
+                        if (calendarMacro === 'calories') {
+                          actualVal = dayStats.calories; targetedGoal = goalCalories; ringColor = 'var(--color-macro-cal)'; unit = 'kcal'
+                        } else if (calendarMacro === 'protein') {
+                          actualVal = dayStats.protein; targetedGoal = goalProtein; ringColor = 'var(--color-macro-protein)'; unit = 'g'
+                        } else if (calendarMacro === 'carbs') {
+                          actualVal = dayStats.carbs; targetedGoal = goalCarbs; ringColor = 'var(--color-macro-carbs)'; unit = 'g'
+                        } else if (calendarMacro === 'fat') {
+                          actualVal = dayStats.fat; targetedGoal = goalFat; ringColor = 'var(--color-macro-fat)'; unit = 'g'
+                        }
+
+                        return (
+                          <div
+                            key={cell.dateString}
+                            className="aspect-square bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-between p-1.5 hover:bg-white/10 transition relative group"
+                          >
+                            <span className="text-xs font-black text-fg-subtle">{cell.dayNum}</span>
+                            <MiniProgressRing value={actualVal} goal={targetedGoal} strokeColor={ringColor} />
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
+                              {Math.round(actualVal)} / {targetedGoal} {unit}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+          )}
+        </BottomSheet>
       )}
 
       {/* Set Targets Modal -- after the profile sheet so it stacks on top of it */}
