@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 import DeepLinkHandler from './components/DeepLinkHandler'
 import { TEXT_SIZE_BOOT_SCRIPT } from '@/lib/textSize'
 import "./globals.css";
@@ -12,6 +12,15 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+});
+
+// Big numerals only (Progress rings and their "left" amounts), exposed as
+// the font-numeral utility. Self-hosted by next/font like the sans above.
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin"],
+  weight: ["600"],
+  fallback: ["Georgia", "serif"],
 });
 
 export const metadata: Metadata = {
@@ -35,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${sourceSerif.variable} h-full antialiased`}
       // The boot script below may set an inline font-size before hydration
       suppressHydrationWarning
     >

@@ -11,6 +11,12 @@
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
 
+/* Big numerals only: ring percents and "left" amounts. Lining, tabular. */
+@utility font-numeral {
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
 /* Sammy's Palate design tokens. Every text/background pair below clears
    WCAG AA (4.5:1) on `surface` -- use these instead of raw hex or opacity
    tricks like text-[#c2c6d0]/50, which drop muted text under 3.5:1.

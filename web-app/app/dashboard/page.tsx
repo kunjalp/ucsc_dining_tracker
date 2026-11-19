@@ -411,7 +411,7 @@ function ProgressRing({ value, goal, strokeColor, label, unit, loaded }: Progres
         </svg>
 
         <div className="absolute text-center">
-          <span className="text-xs font-black tracking-tight tabular-nums text-fg">
+          <span className="font-numeral text-base font-semibold leading-none text-fg">
             {!loaded ? '–' : `${goal > 0 ? Math.round((animatedValue / goal) * 100) : 0}%`}
           </span>
         </div>
@@ -423,15 +423,22 @@ function ProgressRing({ value, goal, strokeColor, label, unit, loaded }: Progres
       </p>
       {goal > 0 ? (
         <>
-          <p className="mt-0.5 text-11 font-semibold text-fg tabular-nums whitespace-nowrap">
-            {!loaded
-              ? '–'
-              : Math.round(animatedValue) > goal
-                ? `${Math.round(animatedValue) - goal}${unit} over`
-                : `${goal - Math.round(animatedValue)}${unit} left`}
+          <p className="mt-0.5 whitespace-nowrap leading-none text-fg">
+            {!loaded ? (
+              <span className="font-numeral text-lg font-semibold">–</span>
+            ) : (
+              <>
+                <span className="font-numeral text-lg font-semibold">
+                  {Math.abs(goal - Math.round(animatedValue))}
+                </span>
+                <span className="text-10 font-medium text-fg-muted">
+                  {unit} {Math.round(animatedValue) > goal ? 'over' : 'left'}
+                </span>
+              </>
+            )}
           </p>
-          <p className="text-10 font-medium text-fg-muted tabular-nums whitespace-nowrap">
-            of {goal}
+          <p className="mt-0.5 text-10 font-medium text-fg-muted tabular-nums whitespace-nowrap">
+            /{goal}{unit}
           </p>
         </>
       ) : (
