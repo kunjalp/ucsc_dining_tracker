@@ -1,7 +1,7 @@
 export default function PrivacyPolicyPage() {
   return (
     <div
-      className="min-h-screen bg-[#0b1326] text-[#dae2fd] px-5 py-10"
+      className="min-h-screen bg-app text-fg px-5 py-10"
     >
       <div className="max-w-2xl mx-auto space-y-6">
         <div>

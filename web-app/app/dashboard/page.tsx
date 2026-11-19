@@ -2307,11 +2307,13 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-dvh bg-app text-fg relative overflow-x-clip"
+      className="min-h-dvh text-fg relative overflow-x-clip"
     >
+      {/* Page background: one fixed gradient layer behind everything (globals.css) */}
+      <div aria-hidden="true" className="page-gradient" />
 
       {/* TopAppBar */}
-      <header className="glass-bar app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 bg-app/60 backdrop-blur-xl">
+      <header className="glass-bar app-header fixed top-0 w-full z-50 flex justify-between items-center px-5 py-3 backdrop-blur-xl">
         {/* Soft edge instead of a 1px divider: the header's tint and blur
             fade out over 12px where content scrolls under (globals.css) */}
         <div aria-hidden="true" className="app-header-fade" />
@@ -2401,10 +2403,13 @@ export default function DashboardPage() {
             background, edge to edge, so rows scroll cleanly under it. The thin
             gold bar is calories against the goal; while a servings stepper was
             just used, the line shows what logging that row would add. Desktop
-            divides by the 1.3 zoom below. -mt-6 takes back most of the gap
-            <main> leaves under the header for the card-topped tabs. */}
+            divides by the 1.3 zoom below. The negative top margin takes back
+            the gap <main> leaves under the header for the card-topped tabs,
+            so the bar starts exactly where it sticks: it never shifts, and
+            the page gradient it paints (page-match-bar) always lines up.
+            Desktop keeps -mt-6. */}
         {(activeTab === 'log' || activeTab === 'browse') && (
-          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3rem)] lg:top-[calc(3rem/1.3)] -mx-3 px-5 lg:-mx-5 lg:px-7 -mt-6 pt-2.5 mb-4 bg-app">
+          <div className="sticky z-40 top-[calc(env(safe-area-inset-top)+3rem)] lg:top-[calc(3rem/1.3)] -mx-3 px-5 lg:-mx-5 lg:px-7 mt-[calc(3rem-76px)] lg:-mt-6 pt-2.5 mb-4 page-match-bar">
             <div className="flex items-center gap-3 h-9">
               {servingPreview ? (
                 <p className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums text-gold">
@@ -3128,8 +3133,8 @@ export default function DashboardPage() {
                                     the trash button on the row is the accessible way to delete) */}
                                 <div
                                   aria-hidden="true"
-                                  className="absolute inset-0 flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
-                                  style={{ visibility: swipeOffset < -4 ? 'visible' : 'hidden' }}
+                                  className="absolute inset-y-0 right-0 overflow-hidden flex items-center justify-end pr-6 bg-danger text-[#3b0a0a]"
+                                  style={{ visibility: swipeOffset < -4 ? 'visible' : 'hidden', width: Math.max(0, -swipeOffset) }}
                                 >
                                   <Trash2 size={18} />
                                 </div>
@@ -3141,7 +3146,7 @@ export default function DashboardPage() {
                                     opacity: justDeleted[log.id] ? 0 : 1,
                                     transition: isSwipeDragging === log.id || reduceMotion ? 'none' : 'transform 0.25s ease-out, opacity 0.2s ease-out',
                                   }}
-                                  className="relative bg-app py-3 flex items-center gap-3 touch-pan-y"
+                                  className="relative py-3 flex items-center gap-3 touch-pan-y"
                                 >
                                   <div className="flex-1 min-w-0">
                                     <p className="text-base font-semibold text-fg leading-snug">{log.food_items?.name}</p>
@@ -3193,13 +3198,8 @@ export default function DashboardPage() {
           beside the pill. Non-interactive; below the bar (z-50) and sheets. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 bg-app"
-        style={{ height: 'calc(env(safe-area-inset-bottom) + 12px + 3.5rem)' }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 z-40 h-12 bg-linear-to-t from-app to-transparent"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px + 3.5rem)' }}
+        className="page-floor pointer-events-none fixed inset-x-0 bottom-0 z-40"
+        style={{ height: 'calc(env(safe-area-inset-bottom) + 12px + 3.5rem + 3rem)' }}
       />
 
       {/* Floating tab bar -- an iOS-style pill that floats above the content,
@@ -3348,7 +3348,7 @@ export default function DashboardPage() {
                 /* overflow-x-clip: the hover tooltips on edge dates would
                    otherwise widen the sheet and add a sideways scroll */
                 <div className="space-y-6 overflow-x-clip">
-                  <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+                  <div className="flex bg-surface p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
                     {[
                       { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: 'var(--color-on-gold)' },
                       { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: 'var(--color-on-gold)' },
@@ -3439,7 +3439,7 @@ export default function DashboardPage() {
                                 {actualVal > 0 ? Math.round(actualVal).toLocaleString('en-US') : '–'}
                               </span>
                             )}
-                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[#060e20] text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-app-deep text-fg text-10 font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-md border border-white/10">
                               {Math.round(actualVal)} / {targetedGoal} {unit}
                             </div>
                           </div>

@@ -404,7 +404,7 @@ export default function BottomSheet({
       <div className="absolute inset-0 animate-sheet-backdrop">
         <div
           ref={scrimRef}
-          className="glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm"
+          className="glass-scrim absolute inset-0 bg-app-deep/70 backdrop-blur-sm"
           onClick={() => dismiss()}
         />
       </div>

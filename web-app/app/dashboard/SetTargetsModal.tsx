@@ -126,14 +126,14 @@ export default function SetTargetsModal({ currentTargets, onClose, onSave }: Set
     >
       {/* Backdrop */}
       <div
-        className={`glass-scrim absolute inset-0 bg-[#060e20]/70 backdrop-blur-sm ${closing ? 'animate-backdrop-out' : 'animate-sheet-backdrop'}`}
+        className={`glass-scrim absolute inset-0 bg-app-deep/70 backdrop-blur-sm ${closing ? 'animate-backdrop-out' : 'animate-sheet-backdrop'}`}
         onClick={requestClose}
       />
 
       {/* Modal panel */}
       <div
         onAnimationEnd={onAnimationEnd}
-        className={`relative w-full max-w-md rounded-2xl p-6 bg-[#171f33] border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto ${closing ? 'animate-modal-out' : 'animate-modal-in'}`}
+        className={`relative w-full max-w-md rounded-2xl p-6 bg-surface border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-fg max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] overflow-y-auto ${closing ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         <div className="flex items-center justify-between mb-5">
           <h2 id="set-targets-title" className="text-lg font-bold tracking-tight text-fg">

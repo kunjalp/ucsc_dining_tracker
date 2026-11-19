@@ -26,6 +26,7 @@
    vars always exist for inline styles (SVG strokes, var(--color-gold)). */
 @theme static {
   --color-app: #0b1326;          /* page background */
+  --color-app-deep: #060e20;     /* deepest navy: scrims, tooltips */
   --color-surface: #141b2e;      /* cards */
   --color-surface-2: #1c2640;    /* inputs, segmented controls, sheets */
   --color-fg: #dae2fd;           /* primary text */
@@ -109,20 +110,99 @@
   padding-top: env(safe-area-inset-top);
 }
 
-/* Scroll edge under the header: its 60% app tint and blur fade to nothing
-   over 12px, instead of a hard 1px divider */
+/* The header's 60% tint is the page gradient itself (lined up with the
+   fixed layer), so the top-left glow shows through instead of a flat patch.
+   ::before sits under the header's content (the header is its own
+   stacking context). */
+.app-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.6;
+  background-image: var(--page-gradient, none);
+  background-size: 100vw 100dvh;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+
+/* Scroll edge under the header: its 60% tint and blur fade to nothing
+   over 12px, instead of a hard 1px divider. The tint is the page gradient
+   at this spot (--header-h: safe area + the 3rem header row). */
 .app-header-fade {
+  --header-h: calc(env(safe-area-inset-top) + 3rem);
   position: absolute;
   left: 0;
   right: 0;
   top: 100%;
   height: 12px;
   pointer-events: none;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-app) 60%, transparent), transparent);
+  background-image: var(--page-gradient, none);
+  background-size: 100vw 100dvh;
+  background-position: 0 calc(-1 * var(--header-h));
+  background-repeat: no-repeat;
   -webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
-  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
-  mask-image: linear-gradient(to bottom, black, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.6), transparent);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.6), transparent);
+}
+
+/* Page background: one fixed, full-screen gradient layer (.page-gradient)
+   behind everything. Plain gradients only: no blur, no
+   background-attachment: fixed (janky in the iOS WebView). Top to bottom:
+   blue-black, app navy mid-screen, a deeper tide blue low; plus a soft
+   glow behind Sammy (top left) and a faint teal tint on the right.
+   Top and bottom stay near the native WebView color (#0b1326).
+   Anything opaque that sits on it paints the same image lined up with the
+   viewport (.page-floor, .page-match-bar, the header) instead of a flat
+   color. Reduce Transparency: flat --color-app, no gradient (below). */
+:root {
+  --page-gradient:
+    radial-gradient(circle 60vw at 0 0,
+      #14305c 0, rgb(20 48 92 / 0.55) 40%, rgb(20 48 92 / 0.2) 70%, rgb(20 48 92 / 0) 100%),
+    radial-gradient(ellipse 85% 40% at 100% 60%, rgb(12 37 64 / 0.75), rgb(12 37 64 / 0) 100%),
+    linear-gradient(to bottom,
+      #050914 0, #050914 calc(env(safe-area-inset-top) + 7rem),
+      #0b1326 45%, #112444 74%, #142b52 88%, #11264a 100%);
+}
+.page-gradient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-app);
+  background-image: var(--page-gradient, none);
+  background-size: 100vw 100dvh;
+  background-repeat: no-repeat;
+}
+/* Solid strip + fade behind the tab bar. Paints the same gradient, sized
+   to the viewport and pinned to the bottom, so its pixels line up exactly
+   with .page-gradient underneath: no band, no seam. The top 3rem fades
+   out with a mask instead of fading to a fixed color. */
+.page-floor {
+  background-color: var(--color-app);
+  background-image: var(--page-gradient, none);
+  background-size: 100vw 100dvh;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(to top, black calc(100% - 3rem), transparent);
+  mask-image: linear-gradient(to top, black calc(100% - 3rem), transparent);
+}
+/* The sticky "cal left" bar (Menu, Browse): opaque so rows hide under it,
+   painting the gradient as it is at the bar's stuck position (its sticky
+   top), so the top-left glow carries through. Centered to match the
+   page on wide screens. */
+.page-match-bar {
+  background-image: var(--page-gradient, none);
+  background-size: 100vw 100dvh;
+  background-position: 50% calc(-1 * (env(safe-area-inset-top) + 3rem));
+  background-repeat: no-repeat;
+}
+@media (min-width: 1024px) {
+  .page-match-bar {
+    background-position: 50% calc(-3rem / 1.3);
+  }
 }
 
 .app-bottom-nav {
@@ -449,11 +529,20 @@ body.hide-scrollbar::-webkit-scrollbar {
    the same elements. Only kick in under the accessibility settings --
    the default look is unchanged. */
 @media (prefers-reduced-transparency: reduce) {
+  /* Flat page: the gradient goes, so every solid bar matches again */
+  :root {
+    --page-gradient: none;
+  }
+  .page-match-bar {
+    background-color: var(--color-app);
+  }
   /* Solid header: the edge fades from solid app color, no blur */
   .app-header-fade {
     background: linear-gradient(to bottom, var(--color-app), transparent);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+    mask-image: linear-gradient(to bottom, black, transparent);
   }
   .glass-bar {
     background-color: var(--color-app);
@@ -461,7 +550,7 @@ body.hide-scrollbar::-webkit-scrollbar {
     backdrop-filter: none;
   }
   .glass-scrim {
-    background-color: rgb(6 14 32 / 0.85);
+    background-color: color-mix(in srgb, var(--color-app-deep) 85%, transparent);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
