@@ -10,6 +10,7 @@ import RecipesTab from './RecipesTab'
 import { PENDING_RECIPE_STORAGE_KEY } from '@/lib/recipeShare'
 import { MEAL_ORDER, fetchTodayDishes, type TodayDish } from '@/lib/favoriteAlerts'
 import WeeklySummaryCard from './WeeklySummaryCard'
+import WeekStrip from './WeekStrip'
 import type { Recipe, RecipeItem } from '@/lib/recipes'
 import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
@@ -705,6 +706,11 @@ export default function DashboardPage() {
   const [calendarMacro, setCalendarMacro] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories')
   const [historicalLogs, setHistoricalLogs] = useState<MealLog[]>([])
   const [calendarViewDate, setCalendarViewDate] = useState(new Date())
+  // Progress week strip: null = today. A past day reads from historicalLogs,
+  // the same rows the History Calendar plots.
+  const [progressDate, setProgressDate] = useState<string | null>(null)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
   // Daily logs and totals tracking state
   const [loggedMeals, setLoggedMeals] = useState<MealLog[]>([])
@@ -1257,11 +1263,12 @@ export default function DashboardPage() {
   }, [selectedHall, selectedDayOffset])
 
   // Fetch all history whenever the calendar view gets activated
+  // (and when Progress opens, for the week strip)
   useEffect(() => {
-    if (showCalendar) {
+    if (showCalendar || activeTab === 'progress') {
       fetchHistoricalLogs()
     }
-  }, [showCalendar])
+  }, [showCalendar, activeTab])
 
   useEffect(() => {
     const savedCals = localStorage.getItem('ucsc_goal_calories')
@@ -1730,22 +1737,31 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data, error } = await supabase
-      .from('meal_logs')
-      .select(`
-        id,
-        servings,
-        dining_hall,
-        meal_type,
-        log_date,
-        food_items:food_item_id (name, calories, protein, carbs, fat)
-      `)
-      .eq('user_id', user.id)
-      .order('log_date', { ascending: true })
-
-    if (!error && data) {
-      setHistoricalLogs(data as unknown as MealLog[])
+    // PostgREST caps a read at 1000 rows, and this list is oldest-first, so
+    // page it or the newest days (the ones the week strip shows) drop off.
+    const PAGE = 1000
+    const rows: MealLog[] = []
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('meal_logs')
+        .select(`
+          id,
+          servings,
+          dining_hall,
+          meal_type,
+          log_date,
+          food_items:food_item_id (name, calories, protein, carbs, fat)
+        `)
+        .eq('user_id', user.id)
+        .order('log_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1)
+      if (error || !data) return
+      rows.push(...(data as unknown as MealLog[]))
+      if (data.length < PAGE) break
     }
+    setHistoricalLogs(rows)
+    setHistoryLoaded(true)
   }
 
   // 7. Log an item to Supabase meal_logs table
@@ -1859,7 +1875,8 @@ export default function DashboardPage() {
   // UNDO_WINDOW_MS so an accidental swipe/tap can be taken back.
   const handleDeleteLog = (logId: string) => {
     if (pendingDeleteTimersRef.current.has(logId)) return
-    const log = loggedMeals.find((l) => l.id === logId)
+    // Past days live in historicalLogs; the delete path is the same
+    const log = loggedMeals.find((l) => l.id === logId) ?? historicalLogs.find((l) => l.id === logId)
 
     // Firmer tap than logging — deleting is the more deliberate, less
     // frequent action, so it gets a touch more weight.
@@ -1967,6 +1984,43 @@ export default function DashboardPage() {
         return acc
       }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
   }, [totals, loggedMeals, hiddenLogIds])
+
+  // Progress week strip: which day the rings and "Everything Logged" show.
+  // Today keeps using loggedMeals/displayTotals untouched; a past day uses the
+  // History Calendar's rows (historicalLogs) with the same pending-delete hiding.
+  const progressTodayStr = logDateFor(now)
+  const viewDate = progressDate ?? progressTodayStr
+  const isPastView = viewDate !== progressTodayStr
+  const shownLogs = useMemo(
+    () => (isPastView ? historicalLogs.filter((log) => log.log_date === viewDate) : loggedMeals),
+    [isPastView, historicalLogs, viewDate, loggedMeals]
+  )
+  const shownTotals = useMemo(() => {
+    if (!isPastView) return displayTotals
+    return shownLogs
+      .filter((log) => !hiddenLogIds.includes(log.id))
+      .reduce((acc, log) => {
+        const item = log.food_items
+        const s = Number(log.servings) || 1
+        if (item) {
+          acc.calories += (Number(item.calories) || 0) * s
+          acc.protein += (Number(item.protein) || 0) * s
+          acc.carbs += (Number(item.carbs) || 0) * s
+          acc.fat += (Number(item.fat) || 0) * s
+        }
+        return acc
+      }, { calories: 0, protein: 0, carbs: 0, fat: 0 })
+  }, [isPastView, displayTotals, shownLogs, hiddenLogIds])
+  const shownLoaded = isPastView ? historyLoaded : totalsLoaded
+  const loggedDates = useMemo(() => {
+    const dates = new Set<string>()
+    for (const log of historicalLogs) if (!hiddenLogIds.includes(log.id)) dates.add(log.log_date)
+    if (loggedMeals.some((log) => !hiddenLogIds.includes(log.id))) dates.add(progressTodayStr)
+    return dates
+  }, [historicalLogs, loggedMeals, hiddenLogIds, progressTodayStr])
+  const viewDateLabel = isPastView
+    ? new Date(`${viewDate}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : 'Today'
 
   // "Close my rings": targets minus the same totals the strip/rings show
   // (pending undo-able deletes already subtracted)
@@ -2952,7 +3006,7 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
-                    {showCalendar ? 'Past Rings Calendar' : 'Today'}
+                    {showCalendar ? 'Past Rings Calendar' : viewDateLabel}
                   </h2>
                   <p
                     className={
@@ -2992,12 +3046,28 @@ export default function DashboardPage() {
               </div>
 
               {!showCalendar ? (
+                <>
+                <WeekStrip
+                  todayStr={progressTodayStr}
+                  weekOffset={weekOffset}
+                  selected={viewDate}
+                  loggedDates={loggedDates}
+                  onSelect={(date) => {
+                    Haptics.selectionChanged().catch(() => {})
+                    setProgressDate(date === progressTodayStr ? null : date)
+                  }}
+                  onWeekChange={(offset) => {
+                    Haptics.selectionChanged().catch(() => {})
+                    setWeekOffset(Math.min(0, offset))
+                  }}
+                />
                 <div className="grid grid-cols-4 border-y border-line py-3">
-                  <ProgressRing value={displayTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" label="Calories" unit="" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={totalsLoaded} />
-                  <ProgressRing value={displayTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={totalsLoaded} />
+                  <ProgressRing value={shownTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" label="Calories" unit="" loaded={shownLoaded} />
+                  <ProgressRing value={shownTotals.protein} goal={goalProtein} strokeColor="var(--color-macro-protein)" label="Protein" unit="g" loaded={shownLoaded} />
+                  <ProgressRing value={shownTotals.carbs} goal={goalCarbs} strokeColor="var(--color-macro-carbs)" label="Carbs" unit="g" loaded={shownLoaded} />
+                  <ProgressRing value={shownTotals.fat} goal={goalFat} strokeColor="var(--color-macro-fat)" label="Fat" unit="g" loaded={shownLoaded} />
                 </div>
+                </>
               ) : (
                 <div className="space-y-6">
                   <div className="flex bg-[#171f33] p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
@@ -3097,17 +3167,20 @@ export default function DashboardPage() {
 
             {/* Meal history */}
             <div className={showCalendar ? 'border-t border-line pt-4' : ''}>
-              <h2 className="text-lg font-bold tracking-tight mb-4">Everything Logged Today</h2>
+              <h2 className="text-lg font-bold tracking-tight mb-4">{isPastView && !showCalendar ? 'Everything Logged' : 'Everything Logged Today'}</h2>
 
               {/* Grouped by meal (only meals with items). Rows mid-undo stay
                   mounted only while their slide-out plays; group calories
                   leave out pending deletes, same as displayTotals. */}
               {(() => {
-                const visibleLogs = loggedMeals.filter(
+                const listLogs = showCalendar ? loggedMeals : shownLogs
+                const visibleLogs = listLogs.filter(
                   (log) => !hiddenLogIds.includes(log.id) || justDeleted[log.id]
                 )
                 if (visibleLogs.length === 0) {
-                  return (
+                  return isPastView && !showCalendar ? (
+                    <EmptyState>{historyLoaded ? 'Nothing logged this day.' : 'Loading…'}</EmptyState>
+                  ) : (
                     <EmptyState action={{ label: 'Open the menu', onClick: () => setActiveTab('log') }}>
                       Nothing logged today yet.
                     </EmptyState>
