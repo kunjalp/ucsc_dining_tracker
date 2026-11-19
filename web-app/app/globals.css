@@ -151,8 +151,8 @@
 /* Page background: one fixed, full-screen gradient layer (.page-gradient)
    behind everything. Plain gradients only: no blur, no
    background-attachment: fixed (janky in the iOS WebView). Top to bottom:
-   blue-black, app navy mid-screen, a deeper tide blue low; plus a soft
-   glow behind Sammy (top left) and a faint teal tint on the right.
+   blue-black, then app navy; plus a soft glow behind Sammy (top left)
+   and a tight tide-blue glow in the bottom-right corner.
    Top and bottom stay near the native WebView color (#0b1326).
    Anything opaque that sits on it paints the same image lined up with the
    viewport (.page-floor, .page-match-bar, the header) instead of a flat
@@ -161,10 +161,11 @@
   --page-gradient:
     radial-gradient(circle 60vw at 0 0,
       #14305c 0, rgb(20 48 92 / 0.55) 40%, rgb(20 48 92 / 0.2) 70%, rgb(20 48 92 / 0) 100%),
-    radial-gradient(ellipse 85% 40% at 100% 60%, rgb(12 37 64 / 0.75), rgb(12 37 64 / 0) 100%),
+    radial-gradient(ellipse 55% 30% at 100% 100%,
+      #142b52 0, rgb(20 43 82 / 0.45) 40%, rgb(20 43 82 / 0) 100%),
     linear-gradient(to bottom,
       #050914 0, #050914 calc(env(safe-area-inset-top) + 7rem),
-      #0b1326 45%, #112444 74%, #142b52 88%, #11264a 100%);
+      #0b1326 45%, #0b1326 100%);
 }
 .page-gradient {
   position: fixed;
