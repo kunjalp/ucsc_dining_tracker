@@ -709,7 +709,8 @@ export default function DashboardPage() {
   // Progress week strip: null = today. A past day reads from historicalLogs,
   // the same rows the History Calendar plots.
   const [progressDate, setProgressDate] = useState<string | null>(null)
-  const [weekOffset, setWeekOffset] = useState(0)
+  // Days the 7-day strip is slid back from today (0 = today is the rightmost day)
+  const [stripBack, setStripBack] = useState(0)
   const [historyLoaded, setHistoryLoaded] = useState(false)
 
   // Daily logs and totals tracking state
@@ -2018,6 +2019,15 @@ export default function DashboardPage() {
     if (loggedMeals.some((log) => !hiddenLogIds.includes(log.id))) dates.add(progressTodayStr)
     return dates
   }, [historicalLogs, loggedMeals, hiddenLogIds, progressTodayStr])
+  // The strip stops once its leftmost day is the earliest logged day (8 weeks back with no logs)
+  const stripMaxBack = useMemo(() => {
+    let earliest = ''
+    for (const log of historicalLogs) if (!earliest || log.log_date < earliest) earliest = log.log_date
+    const days = earliest
+      ? Math.round((Date.parse(`${progressTodayStr}T12:00:00Z`) - Date.parse(`${earliest}T12:00:00Z`)) / 86400000)
+      : 56
+    return Math.max(0, days - 6)
+  }, [historicalLogs, progressTodayStr])
   const viewDateLabel = isPastView
     ? new Date(`${viewDate}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
     : 'Today'
@@ -3049,17 +3059,12 @@ export default function DashboardPage() {
                 <>
                 <WeekStrip
                   todayStr={progressTodayStr}
-                  weekOffset={weekOffset}
+                  back={Math.min(stripBack, stripMaxBack)}
+                  maxBack={stripMaxBack}
                   selected={viewDate}
                   loggedDates={loggedDates}
-                  onSelect={(date) => {
-                    Haptics.selectionChanged().catch(() => {})
-                    setProgressDate(date === progressTodayStr ? null : date)
-                  }}
-                  onWeekChange={(offset) => {
-                    Haptics.selectionChanged().catch(() => {})
-                    setWeekOffset(Math.min(0, offset))
-                  }}
+                  onSelect={(date) => setProgressDate(date === progressTodayStr ? null : date)}
+                  onBackChange={setStripBack}
                 />
                 <div className="grid grid-cols-4 border-y border-line py-3">
                   <ProgressRing value={shownTotals.calories} goal={goalCalories} strokeColor="var(--color-macro-cal)" label="Calories" unit="" loaded={shownLoaded} />
