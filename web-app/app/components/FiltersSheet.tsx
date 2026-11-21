@@ -66,6 +66,66 @@ function ChoiceSection({ title, options, value, onChange }: ChoiceFilter) {
   )
 }
 
+// Multi-select station rows. Nested stations ("Parent - Sub") sit under a
+// small uppercase section label for their parent.
+function StationList({
+  stations,
+  activeStations,
+  onToggleStation,
+  stationLabel,
+}: {
+  stations: string[]
+  activeStations: string[]
+  onToggleStation: (station: string) => void
+  stationLabel: (name: string) => string
+}) {
+  const groups: { parent: string | null; items: { station: string; label: string }[] }[] = []
+  for (const station of stations) {
+    const [parent, sub] = station.includes(' - ') ? station.split(' - ') : [null, station]
+    let group = groups.find((g) => g.parent === parent)
+    if (!group) {
+      group = { parent, items: [] }
+      groups.push(group)
+    }
+    group.items.push({ station, label: stationLabel(sub) })
+  }
+  // Loose stations first, then each parent's group
+  groups.sort((x, y) => Number(x.parent !== null) - Number(y.parent !== null))
+
+  return (
+    <div>
+      {groups.map((g) => (
+        <div key={g.parent ?? 'loose'}>
+          {g.parent && (
+            <h4 className="pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-fg-muted">{g.parent}</h4>
+          )}
+          <div className="divide-y divide-line">
+            {g.items.map(({ station, label }) => {
+              const isActive = activeStations.includes(station)
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={isActive}
+                  onClick={() => {
+                    onToggleStation(station)
+                    tick()
+                  }}
+                  className={`w-full min-h-tap py-2 flex items-center justify-between gap-3 text-left text-sm press active:opacity-70 ${isActive ? 'font-semibold text-fg' : 'font-medium text-fg-muted'}`}
+                >
+                  <span className="min-w-0">{label}</span>
+                  {isActive && <Check size={16} strokeWidth={3} className="shrink-0 text-gold" aria-hidden="true" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const tick = () => {
   Haptics.selectionChanged().catch(() => {})
 }
@@ -163,44 +223,23 @@ export default function FiltersSheet({
                 Clear
               </button>
             </div>
-            {/* Wrapping multi-select chips; ::after pads each tap area to 44px */}
-            <div className="flex flex-wrap gap-x-2 gap-y-3 pt-1">
-              {stations.map((station) => {
-                const isActive = activeStations.includes(station)
-                const [parentLabel, subLabel] = station.includes(' - ') ? station.split(' - ') : [null, station]
-                return (
-                  <button
-                    key={station}
-                    type="button"
-                    onClick={() => {
-                      onToggleStation(station)
-                      tick()
-                    }}
-                    aria-pressed={isActive}
-                    className={`relative after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] px-3 py-2 rounded-full border press active:scale-95 motion-reduce:active:scale-100 flex flex-col items-center leading-tight ${isActive
-                      ? 'bg-gold/15 text-gold border-gold/40'
-                      : 'bg-white/5 text-fg-muted hover:bg-white/10 border-white/15'
-                      }`}
-                  >
-                    {parentLabel && (
-                      <span className={`text-9 font-semibold uppercase tracking-wide ${isActive ? 'text-gold/70' : 'text-sky'}`}>
-                        {parentLabel}
-                      </span>
-                    )}
-                    <span className="text-xs font-bold">{stationLabel(subLabel)}</span>
-                  </button>
-                )
-              })}
-            </div>
+            <StationList
+              stations={stations}
+              activeStations={activeStations}
+              onToggleStation={onToggleStation}
+              stationLabel={stationLabel}
+            />
           </div>
         )}
       </div>
 
-      <SheetCloseButton
-        className="mt-4 w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
-      >
-        Done
-      </SheetCloseButton>
+      <div className="sticky bottom-0 -mb-[calc(env(safe-area-inset-bottom)+1.25rem)] bg-surface-2 pt-3 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+        <SheetCloseButton
+          className="w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
+        >
+          Done
+        </SheetCloseButton>
+      </div>
     </BottomSheet>
   )
 }
