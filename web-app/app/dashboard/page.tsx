@@ -11,6 +11,7 @@ import { PENDING_RECIPE_STORAGE_KEY } from '@/lib/recipeShare'
 import { MEAL_ORDER, fetchTodayDishes, type TodayDish } from '@/lib/favoriteAlerts'
 import WeekAnalytics from './WeekAnalytics'
 import WeekStrip from './WeekStrip'
+import ScrollFade from '../components/ScrollFade'
 import type { Recipe, RecipeItem } from '@/lib/recipes'
 import BrowseTab, { prefetchCatalogue, type BrowseFood, type BrowseLogContext } from './BrowseTab'
 import { getHallOpenStatus, getHallStatusForDate, getMealCountdown, formatCountdown, getDayTrack, getNextOpening, type DayTrack } from '@/lib/diningHours'
@@ -3348,7 +3349,7 @@ export default function DashboardPage() {
                 /* overflow-x-clip: the hover tooltips on edge dates would
                    otherwise widen the sheet and add a sideways scroll */
                 <div className="space-y-6 overflow-x-clip">
-                  <div className="flex bg-surface p-1.5 rounded-xl gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+                  <ScrollFade className="flex bg-surface p-1.5 rounded-xl gap-1 overflow-y-hidden">
                     {[
                       { key: 'calories', label: 'Calories', color: 'var(--color-macro-cal)', text: 'var(--color-on-gold)' },
                       { key: 'protein', label: 'Protein', color: 'var(--color-macro-protein)', text: 'var(--color-on-gold)' },
@@ -3369,7 +3370,7 @@ export default function DashboardPage() {
                         {macro.label}
                       </button>
                     ))}
-                  </div>
+                  </ScrollFade>
 
                   <div>
                     <div className="flex items-center justify-between mb-4">

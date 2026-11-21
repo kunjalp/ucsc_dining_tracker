@@ -99,6 +99,17 @@
   }
 }
 
+/* Edge fades for ScrollFade rows: a 24px mask on whichever side has more to
+   scroll. Mask only changes alpha, so the page gradient shows through. */
+.scroll-fade {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--fade-start), black calc(100% - var(--fade-end)), transparent);
+  mask-image: linear-gradient(to right, transparent, black var(--fade-start), black calc(100% - var(--fade-end)), transparent);
+}
+.scroll-fade[data-fade-start='true'] { --fade-start: 24px; }
+.scroll-fade[data-fade-end='true'] { --fade-end: 24px; }
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
