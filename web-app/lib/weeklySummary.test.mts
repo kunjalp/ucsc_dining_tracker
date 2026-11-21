@@ -101,3 +101,27 @@ test('macroSplit: no macros gives zero shares', () => {
   assert.deepEqual(parts.map((p) => p.pct), [0, 0, 0])
   assert.deepEqual(parts.map((p) => p.share), [0, 0, 0])
 })
+
+test('avg carbs and fat: only logged days count, unlogged days are skipped', () => {
+  // 3 of 7 days logged; the other 4 must not drag the averages down
+  const s = computeWeeklySummary(
+    [
+      log('2026-11-17', 2000, 100, 200, 60),
+      log('2026-11-15', 1800, 90, 100, 30, 2), // 200 carbs, 60 fat
+      log('2026-11-13', 1500, 80, 320, 90),
+      log('2026-11-14', 0, 0, 500, 500), // 0 calories: not a logged day
+      log(TODAY, 5000, 300, 900, 900), // today: ignored
+    ],
+    goals,
+    TODAY
+  )
+  assert.equal(s.loggedDays, 3)
+  assert.equal(s.avgCarbs, (200 + 200 + 320) / 3)
+  assert.equal(s.avgFat, (60 + 60 + 90) / 3)
+})
+
+test('avg carbs and fat are 0 with no logged days', () => {
+  const s = computeWeeklySummary([], goals, TODAY)
+  assert.equal(s.avgCarbs, 0)
+  assert.equal(s.avgFat, 0)
+})

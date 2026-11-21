@@ -36,6 +36,8 @@ export interface WeeklySummary {
   loggedDays: number
   avgCalories: number
   avgProtein: number
+  avgCarbs: number
+  avgFat: number
   hitDays: number
   bestDay: DayStat | null
 }
@@ -98,6 +100,8 @@ export function computeWeeklySummary(
     loggedDays: loggedDays.length,
     avgCalories: avg((d) => d.calories),
     avgProtein: avg((d) => d.protein),
+    avgCarbs: avg((d) => d.carbs),
+    avgFat: avg((d) => d.fat),
     hitDays: days.filter((d) => d.hit).length,
     bestDay,
   }

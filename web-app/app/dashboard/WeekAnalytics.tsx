@@ -388,6 +388,20 @@ export default function WeekAnalytics({ logs, goalCalories, goalProtein, targets
               </dd>
             </div>
             <div>
+              <dt className="text-xs font-semibold text-fg-muted">Avg carbs</dt>
+              <dd className="mt-0.5 whitespace-nowrap leading-none">
+                <span className="font-numeral text-xl font-semibold text-fg">{fmt(summary.avgCarbs)}</span>
+                <span className="text-xs font-medium text-fg-muted">g</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold text-fg-muted">Avg fat</dt>
+              <dd className="mt-0.5 whitespace-nowrap leading-none">
+                <span className="font-numeral text-xl font-semibold text-fg">{fmt(summary.avgFat)}</span>
+                <span className="text-xs font-medium text-fg-muted">g</span>
+              </dd>
+            </div>
+            <div>
               <dt className="text-xs font-semibold text-fg-muted">Days on target</dt>
               <dd className="mt-0.5 whitespace-nowrap leading-none">
                 <span className="font-numeral text-xl font-semibold text-fg">{summary.hitDays}</span>
