@@ -148,7 +148,15 @@ export default function FiltersSheet({
   sort,
 }: FiltersSheetProps) {
   return (
-    <BottomSheet onClose={onClose} labelledBy="filters-sheet-title">
+    <BottomSheet
+      onClose={onClose}
+      labelledBy="filters-sheet-title"
+      footer={
+        <SheetCloseButton className="w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100">
+          Done
+        </SheetCloseButton>
+      }
+    >
       <h2 id="filters-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-1">
         Filters
       </h2>
@@ -233,13 +241,6 @@ export default function FiltersSheet({
         )}
       </div>
 
-      <div className="sticky bottom-0 -mb-[calc(env(safe-area-inset-bottom)+1.25rem)] bg-surface-2 pt-3 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
-        <SheetCloseButton
-          className="w-full min-h-tap rounded-xl bg-gold text-sm font-semibold text-on-gold hover:brightness-105 press active:scale-95 motion-reduce:active:scale-100"
-        >
-          Done
-        </SheetCloseButton>
-      </div>
     </BottomSheet>
   )
 }

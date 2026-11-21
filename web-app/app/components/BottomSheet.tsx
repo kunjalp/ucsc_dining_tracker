@@ -15,6 +15,10 @@ interface BottomSheetProps {
   // Opt-in second snap point: swipe up (or tap the handle) to grow the sheet
   // to nearly full screen, swipe down to come back. Off for every other sheet.
   expandable?: boolean
+  // A pinned footer (the Done / main action button). Lives outside the
+  // scrolling content, on a solid sheet-colored surface with a hairline on
+  // top, and clears the home indicator. Assumes the default bg-surface-2.
+  footer?: ReactNode
 }
 
 // Letting go closes the sheet if where it's heading (position + momentum)
@@ -70,6 +74,7 @@ export default function BottomSheet({
   children,
   className = 'bg-surface-2 max-h-[85dvh]',
   expandable = false,
+  footer,
 }: BottomSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const scrimRef = useRef<HTMLDivElement>(null)
@@ -452,12 +457,19 @@ export default function BottomSheet({
           </div>
           <div
             ref={contentRef}
-            className="relative min-h-0 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]"
+            className={`relative min-h-0 overflow-y-auto overscroll-contain px-5 ${footer ? 'pb-6' : 'pb-[calc(env(safe-area-inset-bottom)+1.25rem)]'}`}
           >
             <SheetDismissContext.Provider value={dismissFromButton}>
               <SheetExpandedContext.Provider value={expanded}>{children}</SheetExpandedContext.Provider>
             </SheetDismissContext.Provider>
           </div>
+          {footer && (
+            <div className="relative shrink-0 border-t border-line bg-surface-2 px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+              {/* Soft fade so rows slide under the footer instead of being cut */}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-full h-6 bg-linear-to-t from-surface-2 to-transparent" />
+              <SheetDismissContext.Provider value={dismissFromButton}>{footer}</SheetDismissContext.Provider>
+            </div>
+          )}
         </div>
       </div>
     </div>
