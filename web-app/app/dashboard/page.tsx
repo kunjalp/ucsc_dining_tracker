@@ -3626,7 +3626,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <ul className="mt-1 divide-y divide-white/10">
+                    <ul className="mt-1 divide-y divide-line">
                       {items.map((item, itemIndex) => (
                         <li key={item.food.recipe_id} className="py-2 flex items-center gap-2">
                           <div className="min-w-0 flex-1">
@@ -3763,7 +3763,7 @@ export default function DashboardPage() {
             Your favorites today
           </h2>
           <p className="text-sm text-fg-muted mb-3">Tap one to open that menu.</p>
-          <ul className="divide-y divide-white/10">
+          <ul className="divide-y divide-line">
             {favoriteAlerts.map((d) => (
               <li key={`${d.name}|${d.hall}|${d.meal}`}>
                 <button
