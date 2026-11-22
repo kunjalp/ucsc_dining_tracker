@@ -85,13 +85,18 @@ export default function FavoriteSpotsRow({
           ) : halls.length === 0 ? (
             <p className="text-xs font-medium text-fg-muted">Not on today&apos;s menu</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="pl-3 space-y-3">
               {halls.map(({ hall, meals }) => {
                 const line = (
                   <>
-                    <span className="min-w-0 text-sm text-fg break-words">{cleanHall(hall)}</span>
-                    <span className="shrink-0 max-w-[50%] text-xs font-medium text-fg-muted text-right break-words">
-                      {meals.join(', ')}
+                    <span className="block text-sm text-fg break-words">{cleanHall(hall)}</span>
+                    <span className="block mt-0.5 text-xs font-medium text-fg-muted">
+                      {meals.map((meal, i) => (
+                        <span key={meal}>
+                          <span className="whitespace-nowrap">{meal.replace(/ /g, ' ')}</span>
+                          {i < meals.length - 1 && ' · '}
+                        </span>
+                      ))}
                     </span>
                   </>
                 )
@@ -101,12 +106,12 @@ export default function FavoriteSpotsRow({
                       <button
                         type="button"
                         onClick={() => onPickSpot(hall, meals[0])}
-                        className="w-full min-h-tap flex items-center justify-between gap-3 text-left press active:opacity-70"
+                        className="relative block w-full text-left press active:opacity-70 after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']"
                       >
                         {line}
                       </button>
                     ) : (
-                      <div className="flex items-baseline justify-between gap-3">{line}</div>
+                      <div>{line}</div>
                     )}
                   </li>
                 )
