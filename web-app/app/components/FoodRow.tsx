@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Check, ChevronRight, Minus, Plus } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Minus, Plus } from 'lucide-react'
 import FavoriteButton from './FavoriteButton'
 
 export const SERVING_OPTIONS = [0.25, 0.5, 1, 1.5, 2]
@@ -27,6 +27,10 @@ interface FoodRowProps {
   logSuffix?: string
   /** Muted line under the macros, inside the tap target that opens the sheet */
   note?: ReactNode
+  /** How many serving sizes this food has. Above 1, the portion becomes a
+   *  "6 oz ▾" control that calls onOpenSizes. */
+  sizeCount?: number
+  onOpenSizes?: () => void
   onOpen: () => void
   onToggleStepper: () => void
   onStep: (dir: -1 | 1) => void
@@ -45,6 +49,8 @@ export default function FoodRow({
   index,
   logSuffix = '',
   note,
+  sizeCount = 1,
+  onOpenSizes,
   onOpen,
   onToggleStepper,
   onStep,
@@ -55,18 +61,36 @@ export default function FoodRow({
       className="py-3 flex flex-wrap items-center gap-x-1 gap-y-1 animate-row-in"
       style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`${food.name}, details`}
-        className="group min-w-0 flex-1 self-stretch text-left rounded-lg active:opacity-70"
-      >
-        <span className="flex items-start gap-1 text-base font-semibold text-fg">
-          <span className="min-w-0">{food.name}</span>
-          <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted" aria-hidden="true" />
-        </span>
+      {/* The name's button stretches over the whole text block (after:inset-0),
+          so the block opens the food sheet; the size control sits above it. */}
+      <div className="relative min-w-0 flex-1 self-stretch rounded-lg has-[[data-open]:active]:opacity-70">
+        <button
+          type="button"
+          data-open=""
+          onClick={onOpen}
+          aria-label={`${food.name}, details`}
+          className="w-full text-left rounded-lg after:absolute after:inset-0 after:content-['']"
+        >
+          <span className="flex items-start gap-1 text-base font-semibold text-fg">
+            <span className="min-w-0">{food.name}</span>
+            <ChevronRight size={16} className="shrink-0 mt-[0.2em] text-fg-muted" aria-hidden="true" />
+          </span>
+        </button>
         <span className="block text-xs font-medium text-fg-muted mt-0.5 tabular-nums">
-          {food.portion || '1 serving'}
+          {sizeCount > 1 && onOpenSizes ? (
+            <button
+              type="button"
+              onClick={onOpenSizes}
+              aria-haspopup="dialog"
+              aria-label={`${food.portion || '1 serving'}, one of ${sizeCount} sizes of ${food.name}. Change size`}
+              className="relative z-10 inline-flex items-center gap-0.5 font-semibold text-fg press active:opacity-70 after:absolute after:-inset-x-2 after:-inset-y-4 after:content-['']"
+            >
+              {food.portion || '1 serving'}
+              <ChevronDown size={12} strokeWidth={2.5} className="text-fg-muted" aria-hidden="true" />
+            </button>
+          ) : (
+            food.portion || '1 serving'
+          )}
           {servings !== 1 && ` × ${servings}`}
           {' · '}
           {Math.round(food.calories * servings)} cal
@@ -79,7 +103,7 @@ export default function FoodRow({
           F <span className="text-fg-subtle">{Math.round(food.fat * servings)}g</span>
         </span>
         {note}
-      </button>
+      </div>
       <FavoriteButton name={food.name} />
       {/* Servings: quiet until tapped, then a - / + stepper opens under the row */}
       <button

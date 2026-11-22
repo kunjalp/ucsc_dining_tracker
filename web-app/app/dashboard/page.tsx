@@ -32,6 +32,8 @@ import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
 import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
 import FoodRow from '../components/FoodRow'
+import SizeSheet from '../components/SizeSheet'
+import { groupSizes } from '@/lib/sizeGroups'
 import { Toast, ToastStack, useToastPresence, useToasts } from '../components/Toast'
 
 import {
@@ -534,13 +536,21 @@ export default function DashboardPage() {
   // The one menu row whose servings stepper is open (null = all closed).
   // Log always logs the row's current servings, which start at 1x.
   const [openStepperId, setOpenStepperId] = useState<string | null>(null)
+  // Menu rows with several serving sizes: the size picked per row (keyed by
+  // the row's smallest size's recipe_id) and the row whose size sheet is open
+  const [menuSizeChoice, setMenuSizeChoice] = useState<Record<string, string>>({})
+  const [sizeSheetKey, setSizeSheetKey] = useState<string | null>(null)
+  // The menu row the detail sheet was opened from, so its servings picker
+  // updates that row (null: the food's own recipe_id)
+  const [detailServingsKey, setDetailServingsKey] = useState<string | null>(null)
   // - / + walk through SERVING_OPTIONS, so the allowed amounts stay the same
-  const stepServings = (food: FoodItem, dir: -1 | 1) => {
-    const current = servings[food.recipe_id] ?? 1
+  // `key` is the row's (a menu row of several sizes keeps one multiplier)
+  const stepServings = (food: FoodItem, dir: -1 | 1, key: string = food.recipe_id) => {
+    const current = servings[key] ?? 1
     const at = SERVING_OPTIONS.indexOf(current)
     const next = SERVING_OPTIONS[Math.min(SERVING_OPTIONS.length - 1, Math.max(0, (at === -1 ? SERVING_OPTIONS.indexOf(1) : at) + dir))]
     if (next === current) return
-    setServings((prev) => ({ ...prev, [food.recipe_id]: next }))
+    setServings((prev) => ({ ...prev, [key]: next }))
     showServingPreview(food, next)
     Haptics.selectionChanged().catch(() => {})
   }
@@ -1639,16 +1649,33 @@ export default function DashboardPage() {
     Haptics.selectionChanged().catch(() => {})
   }
 
+  // 3b. Serving-size variants (Whole Milk 6 ozl / 8 ozl) become one row. The
+  // menu is one hall and meal already; a row's sizes are keyed by its
+  // smallest size's recipe_id, which is also the entry shown in the list.
+  const menuSizes = useMemo(() => {
+    const bySmallest = new Map<string, MenuEntry[]>()
+    for (const group of groupSizes(filteredMenu, (entry) => entry.food_items, { contextOf: (entry) => entry.dining_hall })) {
+      bySmallest.set(group[0].food_items.recipe_id, group)
+    }
+    return bySmallest
+  }, [filteredMenu])
+
+  const chosenMenuSize = (key: string): FoodItem | null => {
+    const sizes = menuSizes.get(key)
+    if (!sizes) return null
+    return (sizes.find((e) => e.food_items.recipe_id === menuSizeChoice[key]) ?? sizes[0]).food_items
+  }
+
   // 4. Group filtered results into station headers (UCSC Style)
   const groupedMenu = useMemo(() => {
     const groups: { [station: string]: MenuEntry[] } = {}
-    filteredMenu.forEach((entry) => {
+    Array.from(menuSizes.values(), (sizes) => sizes[0]).forEach((entry) => {
       const stationKey = getEffectiveStation(entry)
       if (!groups[stationKey]) groups[stationKey] = []
       groups[stationKey].push(entry)
     })
     return groups
-  }, [filteredMenu])
+  }, [menuSizes])
 
   const parentGroupedMenu = useMemo((): ParentGroup[] => {
     const parents: Record<string, Record<string, MenuEntry[]>> = {}
@@ -2938,30 +2965,39 @@ export default function DashboardPage() {
                               )}
                               <div className="divide-y divide-line">
                                 {entries.map((entry, entryIndex) => {
-                                  const food = entry.food_items
-                                  if (!food) return null
-                                  const rowServings = servings[food.recipe_id] ?? 1
-                                  const stepperOpen = openStepperId === food.recipe_id
+                                  if (!entry.food_items) return null
+                                  // One row per food; `food` is the size picked for it
+                                  const rowKey = entry.food_items.recipe_id
+                                  const food = chosenMenuSize(rowKey) ?? entry.food_items
+                                  const sizeCount = menuSizes.get(rowKey)?.length ?? 1
+                                  const rowServings = servings[rowKey] ?? 1
+                                  const stepperOpen = openStepperId === rowKey
                                   const logged = !!justLogged[food.recipe_id]
                                   return (
                                     <FoodRow
-                                      key={food.recipe_id}
+                                      key={rowKey}
                                       food={food}
                                       servings={rowServings}
                                       stepperOpen={stepperOpen}
                                       logged={logged}
                                       index={entryIndex}
+                                      sizeCount={sizeCount}
+                                      onOpenSizes={() => {
+                                        setSizeSheetKey(rowKey)
+                                        Haptics.selectionChanged().catch(() => {})
+                                      }}
                                       onOpen={() => {
                                         setDetailLogContext(null)
                                         setDetailFood(food)
                                         setDetailServings(rowServings)
+                                        setDetailServingsKey(rowKey)
                                         Haptics.selectionChanged().catch(() => {})
                                       }}
                                       onToggleStepper={() => {
-                                        setOpenStepperId(stepperOpen ? null : food.recipe_id)
+                                        setOpenStepperId(stepperOpen ? null : rowKey)
                                         Haptics.selectionChanged().catch(() => {})
                                       }}
-                                      onStep={(dir) => stepServings(food, dir)}
+                                      onStep={(dir) => stepServings(food, dir, rowKey)}
                                       onLog={() => handleLogFood(food.recipe_id, rowServings)}
                                     />
                                   )
@@ -3003,6 +3039,7 @@ export default function DashboardPage() {
             onLog={(food: BrowseFood, count: number, ctx: BrowseLogContext) => handleLogFood(food.recipe_id, count, ctx)}
             onOpenDetail={(food: BrowseFood, count: number, ctx: BrowseLogContext) => {
               setDetailLogContext(ctx)
+              setDetailServingsKey(null)
               setDetailFood(food as FoodItem)
               setDetailServings(count)
               // The Browse list leaves out the long ingredients text to load
@@ -3699,6 +3736,26 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* Serving sizes of one Menu row */}
+      {sizeSheetKey && menuSizes.has(sizeSheetKey) && (
+        <SizeSheet
+          name={menuSizes.get(sizeSheetKey)![0].food_items.name}
+          sizes={menuSizes.get(sizeSheetKey)!.map((e) => ({
+            recipe_id: e.food_items.recipe_id,
+            portion: e.food_items.portion,
+            calories: e.food_items.calories,
+          }))}
+          selectedId={chosenMenuSize(sizeSheetKey)?.recipe_id ?? sizeSheetKey}
+          onSelect={(id) => {
+            const key = sizeSheetKey
+            setMenuSizeChoice((prev) => ({ ...prev, [key]: id }))
+            const picked = menuSizes.get(key)?.find((e) => e.food_items.recipe_id === id)
+            if (picked) showServingPreview(picked.food_items, servings[key] ?? 1)
+          }}
+          onClose={() => setSizeSheetKey(null)}
+        />
+      )}
+
       {/* Favorites being served today -- tap one to jump to that hall and meal */}
       {isFavSheetOpen && (
         <BottomSheet onClose={() => setIsFavSheetOpen(false)} labelledBy="fav-sheet-title">
@@ -3840,7 +3897,7 @@ export default function DashboardPage() {
                       aria-checked={isSelected}
                       onClick={() => {
                         setDetailServings(value)
-                        setServings((prev) => ({ ...prev, [detailFood.recipe_id]: value }))
+                        setServings((prev) => ({ ...prev, [detailServingsKey ?? detailFood.recipe_id]: value }))
                         Haptics.selectionChanged().catch(() => {})
                       }}
                       className={`relative flex-1 py-1.5 text-xs font-bold rounded-lg after:absolute after:inset-x-0 after:content-[''] after:-inset-y-2 press active:scale-95 tabular-nums ${isSelected

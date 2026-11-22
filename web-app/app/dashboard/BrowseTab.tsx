@@ -11,6 +11,8 @@ import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import FoodRow, { SERVING_OPTIONS } from '../components/FoodRow'
 import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
 import { favoriteKey, useFavorites } from '@/lib/favorites'
+import { groupSizes } from '@/lib/sizeGroups'
+import SizeSheet from '../components/SizeSheet'
 
 // Everything the Browse tab needs to show, filter and log an item. Matches
 // the FoodItem shape on the dashboard page (the page passes its own through).
@@ -34,6 +36,15 @@ export interface BrowseItem {
   stations: string[] // stations it has been served at, e.g. "Grill"
   onToday: boolean
   todayHalls: string[]
+  /** recipe_ids of exact copies merged into this item (same name and nutrition) */
+  altIds?: string[]
+}
+
+// One Browse row: every serving size of a food (smallest first) that passes
+// the hall filter. sizes[0] is the default size.
+interface BrowseRow {
+  key: string
+  sizes: BrowseItem[]
 }
 
 export interface BrowseLogContext {
@@ -248,6 +259,7 @@ function mergeRaw(raw: RawItem[], diningHalls: string[]): BrowseItem[] {
       existing.todayHalls = byOrder([...existing.todayHalls, ...todayHalls])
       existing.onToday = existing.todayHalls.length > 0
       existing.stations = Array.from(new Set([...existing.stations, ...stations]))
+      if (food.recipe_id !== existing.food.recipe_id) existing.altIds = [...(existing.altIds ?? []), food.recipe_id]
     } else {
       merged.set(key, {
         food,
@@ -318,7 +330,10 @@ export default function BrowseTab({
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const [isMealSheetOpen, setIsMealSheetOpen] = useState(false)
   const [openStepperId, setOpenStepperId] = useState<string | null>(null)
+  // Keyed by row (its smallest size's recipe_id): servings carry over when the size changes
   const [servings, setServings] = useState<Record<string, number>>({})
+  const [sizeChoice, setSizeChoice] = useState<Record<string, string>>({})
+  const [sizeSheetKey, setSizeSheetKey] = useState<string | null>(null)
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [debounced, setDebounced] = useState('')
 
@@ -368,27 +383,44 @@ export default function BrowseTab({
     setActiveStations((prev) => (prev.includes(station) ? prev.filter((st) => st !== station) : [...prev, station]))
   }
 
+  // Serving-size variants of the same food become one row
+  const groups = useMemo(
+    () => (items ? groupSizes(items, (it) => it.food, { aliasesOf: (it) => it.altIds }) : []),
+    [items]
+  )
+
   const { list, dietHidden } = useMemo(() => {
-    if (!items) return { list: [] as BrowseItem[], dietHidden: 0 }
     let hidden = 0
-    const out = items.filter((it) => {
-      if (hallFilter && !it.halls.includes(hallFilter)) return false
-      if (debounced && !it.food.name.toLowerCase().includes(debounced)) return false
-      if (favoritesOnly && !favorites.has(favoriteKey(it.food.name))) return false
-      if (activeStations.length > 0 && !it.stations.some((st) => activeStations.includes(st))) return false
-      const matchesDiet = dietaryPreferences.every((pref) => foodMatchesDietaryPreference(it.food, pref))
+    const out: BrowseRow[] = []
+    for (const group of groups) {
+      // A hall filter keeps only the sizes that hall serves
+      const sizes = hallFilter ? group.filter((it) => it.halls.includes(hallFilter)) : group
+      if (sizes.length === 0) continue
+      const name = sizes[0].food.name
+      if (debounced && !name.toLowerCase().includes(debounced)) continue
+      if (favoritesOnly && !favorites.has(favoriteKey(name))) continue
+      if (activeStations.length > 0 && !sizes.some((it) => it.stations.some((st) => activeStations.includes(st)))) continue
+      const matchesDiet = sizes.some((it) => dietaryPreferences.every((pref) => foodMatchesDietaryPreference(it.food, pref)))
       if (!matchesDiet) {
         hidden++
-        return dietFilterOff
+        if (!dietFilterOff) continue
       }
-      return true
-    })
-    const sorted = [...out]
-    if (sort === 'protein') sorted.sort((a, b) => b.food.protein - a.food.protein || a.food.name.localeCompare(b.food.name))
-    else if (sort === 'calories') sorted.sort((a, b) => a.food.calories - b.food.calories || a.food.name.localeCompare(b.food.name))
-    else if (sort === 'today') sorted.sort((a, b) => Number(b.onToday) - Number(a.onToday) || a.food.name.localeCompare(b.food.name))
-    return { list: sorted, dietHidden: hidden }
-  }, [items, hallFilter, debounced, sort, activeStations, favoritesOnly, favorites, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
+      out.push({ key: group[0].food.recipe_id, sizes })
+    }
+    // Sorts use the default (smallest) size's numbers
+    const first = (r: BrowseRow) => r.sizes[0]
+    const byName = (a: BrowseRow, b: BrowseRow) => first(a).food.name.localeCompare(first(b).food.name)
+    const onToday = (r: BrowseRow) => r.sizes.some((it) => it.onToday)
+    if (sort === 'protein') out.sort((a, b) => first(b).food.protein - first(a).food.protein || byName(a, b))
+    else if (sort === 'calories') out.sort((a, b) => first(a).food.calories - first(b).food.calories || byName(a, b))
+    else if (sort === 'today') out.sort((a, b) => Number(onToday(b)) - Number(onToday(a)) || byName(a, b))
+    else out.sort(byName)
+    return { list: out, dietHidden: hidden }
+  }, [groups, hallFilter, debounced, sort, activeStations, favoritesOnly, favorites, dietaryPreferences, foodMatchesDietaryPreference, dietFilterOff])
+
+  const chosenSize = (row: BrowseRow): BrowseItem =>
+    row.sizes.find((it) => it.food.recipe_id === sizeChoice[row.key]) ?? row.sizes[0]
+  const sizeSheetRow = sizeSheetKey ? list.find((r) => r.key === sizeSheetKey) ?? null : null
 
   // Back to the top of the list whenever the filters change
   useEffect(() => {
@@ -505,18 +537,24 @@ export default function BrowseTab({
               )
             ) : (
               <div className="divide-y divide-line">
-                {list.slice(0, visible).map((it, index) => {
+                {list.slice(0, visible).map((row, index) => {
+                  const it = chosenSize(row)
                   const food = it.food
-                  const rowServings = servings[food.recipe_id] ?? 1
+                  const rowServings = servings[row.key] ?? 1
                   return (
                     <FoodRow
-                      key={food.recipe_id}
+                      key={row.key}
                       food={food}
                       servings={rowServings}
-                      stepperOpen={openStepperId === food.recipe_id}
+                      stepperOpen={openStepperId === row.key}
                       logged={!!justLogged[food.recipe_id]}
                       index={index % PAGE_SIZE}
                       logSuffix={` to ${meal}`}
+                      sizeCount={row.sizes.length}
+                      onOpenSizes={() => {
+                        setSizeSheetKey(row.key)
+                        Haptics.selectionChanged().catch(() => {})
+                      }}
                       note={
                         <span className="block text-11 font-medium text-fg-muted mt-0.5">
                           {it.onToday ? 'On today’s menu' : 'Not on today’s menu'} · {it.halls.map(shortHall).join(', ')}
@@ -527,14 +565,14 @@ export default function BrowseTab({
                         Haptics.selectionChanged().catch(() => {})
                       }}
                       onToggleStepper={() => {
-                        setOpenStepperId((id) => (id === food.recipe_id ? null : food.recipe_id))
+                        setOpenStepperId((id) => (id === row.key ? null : row.key))
                         Haptics.selectionChanged().catch(() => {})
                       }}
                       onStep={(dir) => {
                         const at = SERVING_OPTIONS.indexOf(rowServings)
                         const next = SERVING_OPTIONS[Math.min(SERVING_OPTIONS.length - 1, Math.max(0, (at === -1 ? SERVING_OPTIONS.indexOf(1) : at) + dir))]
                         if (next === rowServings) return
-                        setServings((prev) => ({ ...prev, [food.recipe_id]: next }))
+                        setServings((prev) => ({ ...prev, [row.key]: next }))
                         onServingPreview(food, next)
                         Haptics.selectionChanged().catch(() => {})
                       }}
@@ -586,6 +624,26 @@ export default function BrowseTab({
             value: sort,
             onChange: (v) => setSort(v as SortKey),
           }}
+        />
+      )}
+
+      {/* Serving sizes of one row */}
+      {sizeSheetRow && (
+        <SizeSheet
+          name={sizeSheetRow.sizes[0].food.name}
+          sizes={sizeSheetRow.sizes.map((it) => ({
+            recipe_id: it.food.recipe_id,
+            portion: it.food.portion,
+            calories: it.food.calories,
+          }))}
+          selectedId={chosenSize(sizeSheetRow).food.recipe_id}
+          onSelect={(id) => {
+            const row = sizeSheetRow
+            setSizeChoice((prev) => ({ ...prev, [row.key]: id }))
+            const picked = row.sizes.find((it) => it.food.recipe_id === id)
+            if (picked) onServingPreview(picked.food, servings[row.key] ?? 1)
+          }}
+          onClose={() => setSizeSheetKey(null)}
         />
       )}
 
