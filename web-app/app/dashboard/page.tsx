@@ -30,6 +30,7 @@ import Sammy, { type SammyMood } from '../components/Sammy'
 import EmptyState, { LoadingRows } from '../components/EmptyState'
 import { revealBelowStickyBar } from '@/lib/stickyClear'
 import FavoriteButton from '../components/FavoriteButton'
+import FavoriteSpotsRow from '../components/FavoriteSpotsRow'
 import FiltersSheet, { FiltersButton } from '../components/FiltersSheet'
 import FoodRow from '../components/FoodRow'
 import SizeSheet from '../components/SizeSheet'
@@ -3762,32 +3763,34 @@ export default function DashboardPage() {
           <h2 id="fav-sheet-title" className="text-lg font-bold tracking-tight text-fg mb-1">
             Your favorites today
           </h2>
-          <p className="text-sm text-fg-muted mb-3">Tap one to open that menu.</p>
+          <p className="text-sm text-fg-muted mb-3">Tap one to see where. Tap a hall to open its menu.</p>
           <ul className="divide-y divide-line">
-            {favoriteAlerts.map((d) => (
-              <li key={`${d.name}|${d.hall}|${d.meal}`}>
-                <button
-                  type="button"
-                  onClick={() => {
+            {Array.from(
+              favoriteAlerts.reduce((m, d) => {
+                const k = favoriteKey(d.name)
+                const g = m.get(k) ?? { name: d.name, spots: [] as { hall: string; meal: string }[] }
+                g.spots.push({ hall: d.hall, meal: d.meal })
+                return m.set(k, g)
+              }, new Map<string, { name: string; spots: { hall: string; meal: string }[] }>()),
+            )
+              .sort((a, b) => a[1].name.localeCompare(b[1].name))
+              .map(([k, g]) => (
+                <FavoriteSpotsRow
+                  key={k}
+                  name={g.name}
+                  spots={g.spots}
+                  onPickSpot={(hall, meal) => {
                     setSelectedDayOffset(0)
-                    setSelectedHall(d.hall)
-                    setSelectedMeal(d.meal)
+                    setSelectedHall(hall)
+                    setSelectedMeal(meal)
                     setActiveStationFilters([])
-                    setSearchQuery(d.name)
+                    setSearchQuery(g.name)
                     setActiveTab('log')
                     setIsFavSheetOpen(false)
                     Haptics.selectionChanged().catch(() => {})
                   }}
-                  className="w-full py-3 flex items-center justify-between gap-3 text-left press active:opacity-70"
-                >
-                  <span className="min-w-0 font-semibold text-fg break-words">{d.name}</span>
-                  <span className="shrink-0 text-xs font-semibold text-fg-muted text-right">
-                    {d.hall.replace(/ Dining Hall$/, '')}
-                    <span className="block text-sky">{d.meal}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                />
+              ))}
           </ul>
         </BottomSheet>
       )}

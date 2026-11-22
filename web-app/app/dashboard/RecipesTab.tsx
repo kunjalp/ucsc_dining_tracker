@@ -6,10 +6,9 @@ import { Haptics, NotificationType } from '@capacitor/haptics'
 import ConfirmTapButton from '../components/ConfirmTapButton'
 import BottomSheet, { SheetCloseButton } from '../components/BottomSheet'
 import EmptyState, { LoadingRows } from '../components/EmptyState'
-import FavoriteButton from '../components/FavoriteButton'
+import FavoriteSpotsRow from '../components/FavoriteSpotsRow'
 import { favoriteKey, useFavorites } from '@/lib/favorites'
 import { fetchTodayDishes, MEAL_ORDER, type TodayDish } from '@/lib/favoriteAlerts'
-import { getMealPeriodTimes } from '@/lib/diningHours'
 import { getCatalogue, peekCatalogue, type BrowseFood, type BrowseItem } from './BrowseTab'
 import {
   MAX_RECIPES,
@@ -914,11 +913,11 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
   }, [open, todayDishes, diningHalls])
 
   const spotsByKey = useMemo(() => {
-    const map = new Map<string, { hall: string; meal: string; times: string | null }[]>()
+    const map = new Map<string, { hall: string; meal: string }[]>()
     for (const d of todayDishes ?? []) {
       const key = favoriteKey(d.name)
       const list = map.get(key) ?? []
-      list.push({ hall: d.hall, meal: d.meal, times: getMealPeriodTimes(d.hall, d.meal) })
+      list.push({ hall: d.hall, meal: d.meal })
       map.set(key, list)
     }
     for (const list of map.values()) {
@@ -1020,35 +1019,12 @@ function FavoritesSection({ catalogue, diningHalls, defaultMeal }: { catalogue: 
                   {entries.map(({ key, name, item }) => {
                     const spots = (spotsByKey.get(key) ?? []).filter((spot) => mealFilter === 'All' || spot.meal === mealFilter)
                     return (
-                      <li key={key} className="py-3 flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-fg break-words">{name}</p>
-                          {item && (
-                            <p className="text-xs text-fg-muted tabular-nums">
-                              {Math.round(item.food.calories)} cal · P {Math.round(item.food.protein)}g
-                            </p>
-                          )}
-                          {!todayDishes ? (
-                            <p className="text-xs text-fg-muted mt-1 min-h-[1rem]">Checking today&apos;s menus…</p>
-                          ) : spots.length > 0 ? (
-                            <ul className="mt-1 space-y-0.5">
-                              {spots.map((spot) => (
-                                <li key={`${spot.hall}|${spot.meal}`} className="text-xs text-fg-subtle">
-                                  {spot.hall.replace(/ Dining Hall$/, '')}
-                                  <span className="text-sky tabular-nums">
-                                    {' · '}
-                                    {spot.meal}
-                                    {spot.times ? ` ${spot.times}` : ''}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-fg-muted mt-1">Not on today&apos;s menus</p>
-                          )}
-                        </div>
-                        <FavoriteButton name={name} />
-                      </li>
+                      <FavoriteSpotsRow
+                        key={key}
+                        name={name}
+                        detail={item ? `${Math.round(item.food.calories)} cal · P ${Math.round(item.food.protein)}g` : undefined}
+                        spots={todayDishes ? spots : null}
+                      />
                     )
                   })}
                 </ul>
